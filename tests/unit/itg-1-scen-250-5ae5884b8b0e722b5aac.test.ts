@@ -17,9 +17,9 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-250: 全員が期限までに提出した場合は未提出者一覧が空になる', () => {
   beforeEach(() => {

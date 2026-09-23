@@ -17,9 +17,9 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-253: 業務ルール br-tx_1-005 の制約5が設計どおりに働く', () => {
   beforeEach(() => {

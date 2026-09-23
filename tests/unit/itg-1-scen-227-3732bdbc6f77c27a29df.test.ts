@@ -15,9 +15,9 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-227: 日報提出状況の確認に失敗した場合は検知を中止する', () => {
   beforeEach(() => {

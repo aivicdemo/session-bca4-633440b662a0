@@ -14,9 +14,9 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-228: 検知ログの記録処理が失敗した場合はエラーを返す', () => {
   beforeEach(() => {

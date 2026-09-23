@@ -6,9 +6,9 @@ import {
   judgeSchedulerExecutionTiming,
 } from '../../src/logic/business-day-deadline-judgment';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-225: 提出期限に達していない時刻での実行を拒否する', () => {
   beforeEach(() => {

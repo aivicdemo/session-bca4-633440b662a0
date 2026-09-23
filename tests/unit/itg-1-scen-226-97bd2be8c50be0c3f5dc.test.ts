@@ -10,9 +10,9 @@ import {
   getActiveReportersForSubmissionCheck,
 } from '../../src/logic/reporter-master-management';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-226: 検知対象に有効な報告者が存在しない場合は処理を中断する', () => {
   beforeEach(() => {
