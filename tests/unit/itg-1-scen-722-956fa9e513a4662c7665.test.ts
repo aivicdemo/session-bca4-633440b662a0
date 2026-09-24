@@ -1,12 +1,22 @@
-import { describe, it, expect } from '@jest/globals';
-import type {
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import {
+  judgeSchedulerExecutionTiming,
   JudgeSchedulerExecutionTimingInput,
   JudgeSchedulerExecutionTimingOutput,
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-722: 未提出者一覧、提出済み日報、検知ログが統合され、リーダーの管理画面に表示するダッシュボードデータが生成される', () => {
-  it('未提出者一覧、提出済み日報、検知ログが統合され、リーダーの管理画面に表示するダッシュボードデータが生成される', () => {
-    // 現在時刻が営業日の定時実行時刻（17:30）の許容範囲内（±5分）
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(businessDayModule, 'isBusinessDay').mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('営業日17:30の許容範囲内での実行判定を確認', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -14,20 +24,12 @@ describe('SCEN-722: 未提出者一覧、提出済み日報、検知ログが統
       timeZone: 'Asia/Tokyo',
     };
 
-    // ダッシュボード画面が自動更新される状態を確認
-    const expectedOutput: JudgeSchedulerExecutionTimingOutput = {
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-      nextScheduledExecutionTime: null,
-      executionReason: '営業日の実行時刻内',
-    };
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
 
-    // 期待結果を検証
-    expect(expectedOutput.shouldExecute).toBe(true);
-    expect(expectedOutput.isBusinessDay).toBe(true);
-    expect(expectedOutput.isWithinExecutionWindow).toBe(true);
-    expect(expectedOutput.nextScheduledExecutionTime).toBe(null);
-    expect(expectedOutput.executionReason).toBe('営業日の実行時刻内');
+    expect(result.shouldExecute).toBe(true);
+    expect(result.isBusinessDay).toBe(true);
+    expect(result.isWithinExecutionWindow).toBe(true);
+    expect(result.nextScheduledExecutionTime).toBeNull();
+    expect(result.executionReason).toBe('営業日の実行時刻内');
   });
 });

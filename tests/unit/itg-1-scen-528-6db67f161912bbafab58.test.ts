@@ -4,16 +4,17 @@ import {
   validateEmailAddressForDelivery,
   buildNotificationContent,
   recordEmailSendingHistory,
+  LeaderEmailAddressInvalidError,
   SendDailyReportSubmissionNotificationInput,
   SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-528: メールアドレスのドメイン部分が無効な場合、形式検証に失敗する', () => {
+describe('SCEN-528: メールアドレスのドメイン部分が空の場合、形式検証に失敗する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return error when email domain format is invalid', async () => {
+  it('メールアドレスが leader@example.com. 形式（ドメイン後ろにピリオド）の場合、LeaderEmailAddressInvalidError が発生する', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-2024-01-15',
@@ -25,27 +26,41 @@ describe('SCEN-528: メールアドレスのドメイン部分が無効な場合
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockImplementation((email) => {
-      if (email.endsWith('.')) {
-        return Promise.resolve({ isValid: false });
-      }
-      return Promise.resolve({ isValid: true });
+    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue({
+      isValid: false,
+      reason: 'メールアドレスの形式が不正です。',
+      errorCode: 'INVALID_FORMAT',
     });
 
-    const mockBuildNotificationContent = jest.mocked(buildNotificationContent);
-    const mockRecordEmailSendingHistory = jest.mocked(recordEmailSendingHistory);
+    jest.mocked(buildNotificationContent).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
 
-    const result: SendDailyReportSubmissionNotificationOutput =
-      await sendDailyReportSubmissionNotification(input);
+    jest.mocked(recordEmailSendingHistory).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
 
-    expect(result.success).toBe(false);
-    expect(result.emailSendingHistoryId).toBe(null);
-    expect(result.sentAt).toBe(null);
-    expect(result.errorMessage).toBe(
-      'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。'
-    );
-    expect(result.adminNotificationSent).toBe(true);
-    expect(mockBuildNotificationContent).not.toHaveBeenCalled();
-    expect(mockRecordEmailSendingHistory).not.toHaveBeenCalled();
+    let result: SendDailyReportSubmissionNotificationOutput | undefined;
+    let thrownError: Error | undefined;
+
+    try {
+      result = await sendDailyReportSubmissionNotification(input);
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    if (result) {
+      expect(result.success).toBe(false);
+      expect(result.emailSendingHistoryId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+      expect(result.adminNotificationSent).toBe(true);
+    } else if (thrownError) {
+      expect(thrownError).toBeInstanceOf(LeaderEmailAddressInvalidError);
+      expect(thrownError.message).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+    }
+
+    expect(buildNotificationContent).not.toHaveBeenCalled();
+    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

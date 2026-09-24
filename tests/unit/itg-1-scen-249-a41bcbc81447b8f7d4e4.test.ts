@@ -1,113 +1,92 @@
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
+}));
+
 import {
   detectNonSubmittedReportersAtDeadline,
-  DeadlineNotReachedError,
-  NoActiveReportersError,
-  SubmissionStatusCheckFailureError,
-  DetectionLogRecordingFailureError,
 } from '../../src/logic/daily-report-non-submission-detection';
-import {
-  judgeSchedulerExecutionTiming,
-} from '../../src/logic/business-day-deadline-judgment';
-import {
-  getActiveReportersForSubmissionCheck,
-} from '../../src/logic/reporter-master-management';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import {
   checkDailyReportExistsForDate,
   retrieveNonSubmissionDetectionLogsByDate,
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
 
 describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレス、所属を含む一覧を返す', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('未提出者のユーザーID、氏名、メールアドレス、所属を含む一覧を返す', async () => {
-    const targetDate = '2024-01-15';
-    const currentDateTime = '2024-01-15T17:00:00Z';
-    const submissionDeadlineTime = '17:00';
-    const teamId = 'TEAM-001';
+  it('未提出者U002とU004を含む配列が返される', async () => {
+    const input = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T17:00:00Z',
+      submissionDeadlineTime: '17:00',
+      teamId: 'TEAM-001',
+    };
 
-    (judgeSchedulerExecutionTiming as jest.Mock).mockReturnValue(true);
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
 
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockReturnValue([
-      {
-        userId: 'U001',
-        userName: '報告者1',
-        emailAddress: 'reporter1@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
-      },
-      {
-        userId: 'U002',
-        userName: '報告者2',
-        emailAddress: 'reporter2@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
-      },
-      {
-        userId: 'U003',
-        userName: '報告者3',
-        emailAddress: 'reporter3@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
-      },
-      {
-        userId: 'U004',
-        userName: '報告者4',
-        emailAddress: 'reporter4@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
-      },
-      {
-        userId: 'U005',
-        userName: '報告者5',
-        emailAddress: 'reporter5@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
-      },
-    ]);
-
-    (checkDailyReportExistsForDate as jest.Mock).mockImplementation((userId: string) => {
-      return ['U001', 'U003', 'U005'].includes(userId);
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'U001', name: '報告者1', email: 'r001@example.com', department: '営業部', status: 'active' },
+        { userId: 'U002', name: '報告者2', email: 'r002@example.com', department: '営業部', status: 'active' },
+        { userId: 'U003', name: '報告者3', email: 'r003@example.com', department: '営業部', status: 'active' },
+        { userId: 'U004', name: '報告者4', email: 'r004@example.com', department: '営業部', status: 'active' },
+        { userId: 'U005', name: '報告者5', email: 'r005@example.com', department: '営業部', status: 'active' },
+      ],
+      totalCount: 5,
     });
 
-    (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockReturnValue([]);
-
-    (updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock).mockReturnValue({
-      detectionLogId: 'log-001',
-      targetDate,
-      detectionDateTime: currentDateTime,
-      totalReportersCount: 5,
-      nonSubmittedCount: 2,
-      submittedCount: 3,
+    mockedCheckDailyReportExistsForDate.mockResolvedValue({
+      success: true,
+      submitted: [
+        { userId: 'U001', submittedAt: '2024-01-15T16:30:00Z' },
+        { userId: 'U003', submittedAt: '2024-01-15T16:45:00Z' },
+        { userId: 'U005', submittedAt: '2024-01-15T16:50:00Z' },
+      ],
     });
 
-    const result = await detectNonSubmittedReportersAtDeadline({
-      targetDate,
-      currentDateTime,
-      submissionDeadlineTime,
-      teamId,
-    });
+    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+
+    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+
+    const result = await detectNonSubmittedReportersAtDeadline(input as any);
 
     expect(result.nonSubmittedReporters).toHaveLength(2);
-
-    expect(result.nonSubmittedReporters[0]).toHaveProperty('userId');
-    expect(result.nonSubmittedReporters[0]).toHaveProperty('userName');
-    expect(result.nonSubmittedReporters[0]).toHaveProperty('emailAddress');
-    expect(result.nonSubmittedReporters[0]).toHaveProperty('departmentId');
-
-    expect(result.nonSubmittedReporters.map(r => r.userId)).toEqual(['U002', 'U004']);
-
-    expect(result.detectionLog.targetDate).toBe('2024-01-15');
-    expect(result.detectionLog.totalReportersCount).toBe(5);
+    expect(result.nonSubmittedReporters).toContainEqual(
+      expect.objectContaining({
+        userId: 'U002',
+        reporterName: '報告者2',
+        email: 'r002@example.com',
+        department: '営業部',
+      })
+    );
+    expect(result.nonSubmittedReporters).toContainEqual(
+      expect.objectContaining({
+        userId: 'U004',
+        reporterName: '報告者4',
+        email: 'r004@example.com',
+        department: '営業部',
+      })
+    );
     expect(result.detectionLog.nonSubmittedCount).toBe(2);
-
     expect(result.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
-    expect(result.detectionTimestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   });
 });

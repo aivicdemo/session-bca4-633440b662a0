@@ -1,57 +1,51 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
   InvalidSettingParametersError,
 } from '../../src/logic/daily-report-reminder-notification';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReminderNotificationSettingsByUserId: jest.fn(),
-}));
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-324: 送信方法が定義済みの値でない場合、入力値エラーが返される', () => {
-  let mockSaveReminderNotificationSettings: jest.Mock;
-  let mockRetrieveReminderNotificationSettingsByUserId: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSaveReminderNotificationSettings = require('../../src/logic/user-master-persistence.ts')
-      .saveReminderNotificationSettings as jest.Mock;
-    mockRetrieveReminderNotificationSettingsByUserId = require('../../src/logic/user-master-persistence.ts')
-      .retrieveReminderNotificationSettingsByUserId as jest.Mock;
-
-    // @ts-ignore
-    mockRetrieveReminderNotificationSettingsByUserId.mockResolvedValue([]);
   });
 
-  it('送信方法に定義済み値の範囲外の値が指定された場合、InvalidSettingParametersErrorが返される', async () => {
-    const reporterId = 'reporter-001';
-    const executionTimestamp = new Date();
+  it('deliveryMethod="invalid-method"（定義済み値の範囲外）で呼び出すとInvalidSettingParametersErrorが返される', () => {
+    const mockRetrieve = jest.spyOn(
+      userMasterPersistence,
+      'retrieveReminderNotificationSettingsByUserId' as any
+    );
+    mockRetrieve.mockReturnValue([]);
+
+    const mockSave = jest.spyOn(
+      userMasterPersistence,
+      'saveReminderNotificationSettings' as any
+    );
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
-      reporterId,
+      reporterId: 'reporter-001',
       reminderSettingId: null,
       enabledFlag: true,
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 3, 5],
       deliveryMethod: 'invalid-method',
-      executionTimestamp,
+      executionTimestamp: new Date().toISOString(),
     };
 
-    // @ts-ignore
-    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput =
+      manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
     expect(result.reminderSettingId).toBe(null);
     expect(result.operation).toBe('register');
     expect(result.appliedAt).toBe(null);
     expect(result.errorDetails).toBe('リマインダー設定のパラメータが無効です。');
-
-    // データベースへの永続化処理が実行されないことを確認
-    expect(mockSaveReminderNotificationSettings).not.toHaveBeenCalled();
-    expect(mockRetrieveReminderNotificationSettingsByUserId).not.toHaveBeenCalled();
+    expect(mockRetrieve).not.toHaveBeenCalled();
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });

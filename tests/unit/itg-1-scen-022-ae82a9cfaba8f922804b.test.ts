@@ -1,9 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  LeaderNotificationSendingFailed,
-  Tx2Imp1AgentInput,
-  Tx2Imp1AgentOutput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -57,11 +52,9 @@ describe("SCEN-022: リーダーへの提出状況報告メール送信に失敗
       },
     ]);
 
-    (sendLeaderSubmissionNotification as jest.Mock).mockRejectedValue(
-      new LeaderNotificationSendingFailed(
-        "リーダーへの報告メール送信に失敗しました。"
-      )
-    );
+    const error = new Error("リーダーへの報告メール送信に失敗しました。");
+    (error as any).name = "LeaderNotificationSendingFailed";
+    (sendLeaderSubmissionNotification as jest.Mock).mockRejectedValue(error);
 
     (retrieveLeaderDashboardData as jest.Mock).mockResolvedValue({
       submittedReportCount: 4,
@@ -72,13 +65,14 @@ describe("SCEN-022: リーダーへの提出状況報告メール送信に失敗
   });
 
   it("リーダーへの報告メール送信が失敗し、executionStatusがpartial_failureに降格しleaderNotificationsSentが空配列になる", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
-    const result: Tx2Imp1AgentOutput = await runTx2Imp1Agent(input);
+    const mockAiClient = {};
+    const result = await runTx2Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("partial_failure");
 
@@ -86,7 +80,7 @@ describe("SCEN-022: リーダーへの提出状況報告メール送信に失敗
 
     // 設計上の Tx2Imp1AgentOutput にはエラー名（LeaderNotificationSendingFailed）・
     // エラー文言（リーダーへの報告メール送信に失敗しました。）を格納するフィールドが定義されて
-    // いないため、戻り値からこれらの値そのものは検証できない（.aivic/batches/30/unresolved.md 参照）。
+    // いないため、戻り値からこれらの値そのものは検証できない（.aivic/batches/29/unresolved.md 参照）。
 
     expect(result.detectionResult).toBeTruthy();
     expect(result.promptNotificationsSent).toHaveLength(1);

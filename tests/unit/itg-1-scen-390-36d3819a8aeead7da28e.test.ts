@@ -1,72 +1,84 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  getActiveReportersForSubmissionCheck,
-  GetActiveReportersForSubmissionCheckInput,
-  GetActiveReportersForSubmissionCheckOutput,
-  ActiveReporterInfo,
-  isReporterActiveAndValid,
-} from '../../src/logic/reporter-master-management';
-import {
-  isBusinessDay,
-  IsBusinessDayInput,
-} from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   isBusinessDay: jest.fn(),
 }));
-
-jest.mock('../../src/logic/reporter-master-management.ts', () => ({
+jest.mock('../../src/logic/reporter-master-management', () => ({
   isReporterActiveAndValid: jest.fn(),
 }));
 
+import {
+  getActiveReportersForSubmissionCheck,
+  isReporterActiveAndValid,
+  ActiveReporterInfo,
+  GetActiveReportersForSubmissionCheckOutput,
+} from '../../src/logic/reporter-master-management';
+import { isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
+
+const mockedIsBusinessDay = isBusinessDay as jest.Mock;
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
+
 describe('SCEN-390: 営業日かつ本日以前の指定日付で、有効な報告者が複数存在する場合、提出対象の報告者一覧と件数を正常に返す', () => {
-  let mockIsBusinessDay: jest.Mock;
-  let mockIsReporterActiveAndValid: jest.Mock;
+  const targetDate = new Date('2024-01-15T00:00:00Z');
+  const teamLeaderId = 'TL001';
+
+  const mockReporters: ActiveReporterInfo[] = [
+    {
+      reporterId: 'RPT-001',
+      userId: 'U001',
+      reporterName: '報告者1',
+      emailAddress: 'reporter1@example.com',
+      department: '営業部',
+      status: 'active',
+    },
+    {
+      reporterId: 'RPT-002',
+      userId: 'U002',
+      reporterName: '報告者2',
+      emailAddress: 'reporter2@example.com',
+      department: '営業部',
+      status: 'active',
+    },
+    {
+      reporterId: 'RPT-003',
+      userId: 'U003',
+      reporterName: '報告者3',
+      emailAddress: 'reporter3@example.com',
+      department: '開発部',
+      status: 'active',
+    },
+  ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    mockIsBusinessDay = require('../../src/logic/business-day-deadline-judgment.ts').isBusinessDay as jest.Mock;
-    mockIsReporterActiveAndValid = require('../../src/logic/reporter-master-management.ts').isReporterActiveAndValid as jest.Mock;
-
-    // @ts-ignore
-    mockIsBusinessDay.mockResolvedValue(true);
-
-    // 複数の報告者（3件）が有効を返す
-    // @ts-ignore
-    mockIsReporterActiveAndValid
-      // @ts-ignore
-      .mockResolvedValueOnce(true)
-      // @ts-ignore
-      .mockResolvedValueOnce(true)
-      // @ts-ignore
-      .mockResolvedValueOnce(true);
+    mockedIsBusinessDay.mockResolvedValue(true);
+    mockedIsReporterActiveAndValid.mockImplementation((input: any) =>
+      Promise.resolve(true)
+    );
   });
 
-  it('営業日の指定で有効な報告者が複数存在する場合、success=true、複数件の報告者一覧を返す', async () => {
-    const input: GetActiveReportersForSubmissionCheckInput = {
-      targetDate: new Date('2024-01-15'),
-      teamLeaderId: 'leader-001',
-    };
+  it('success=true、reporters配列に3件以上5件以下の要素、totalCount がreporters配列の要素数と一致', async () => {
+    mockedIsReporterActiveAndValid.mockImplementation(async (input: any) => {
+      return mockReporters.some((r) => r.reporterId === input.reporterId);
+    });
 
-    const result = await getActiveReportersForSubmissionCheck(input);
+    const result: GetActiveReportersForSubmissionCheckOutput = await getActiveReportersForSubmissionCheck({
+      targetDate,
+      teamLeaderId,
+    });
 
-    expect(result).toBeDefined();
     expect(result.success).toBe(true);
-    expect(result.reporters).toBeDefined();
-    expect(Array.isArray(result.reporters)).toBe(true);
     expect(result.reporters.length).toBeGreaterThanOrEqual(3);
     expect(result.reporters.length).toBeLessThanOrEqual(5);
     expect(result.totalCount).toBe(result.reporters.length);
-    expect(result.totalCount).toBeGreaterThanOrEqual(3);
-    expect(result.totalCount).toBeLessThanOrEqual(5);
-    expect(result.message).toBeDefined();
+    expect(typeof result.message).toBe('string');
 
-    // 各報告者がActiveReporterInfo型であることを確認
-    result.reporters.forEach((reporter: ActiveReporterInfo) => {
-      expect(reporter).toBeDefined();
-      // BasicActiveReporterInfo型の属性を確認
-      expect(typeof reporter).toBe('object');
+    result.reporters.forEach((reporter) => {
+      expect(reporter).toHaveProperty('reporterId');
+      expect(reporter).toHaveProperty('userId');
+      expect(reporter).toHaveProperty('reporterName');
+      expect(reporter).toHaveProperty('emailAddress');
+      expect(reporter).toHaveProperty('department');
+      expect(reporter).toHaveProperty('status');
     });
   });
 });

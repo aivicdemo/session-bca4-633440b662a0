@@ -1,142 +1,128 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import {
   confirmAndApproveUserInformation,
+  ConfirmAndApproveUserInformationInput,
+  ConfirmAndApproveUserInformationOutput,
 } from '../../src/logic/user-information-input-confirmation';
-
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/email-notification-management');
+import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
+import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
+import { registerReporterToMaster } from '../../src/logic/user-master-persistence';
+import { sendUserInformationApprovalNotification } from '../../src/logic/email-notification-management';
 
 describe('SCEN-407: チームリーダーが未処理のユーザー情報を承認すると、承認結果と状態遷移がシステムに記録され、通知が送信される', () => {
+  const leaderUserId = 'leader-001';
+  const reporterUserId = 'reporter-001';
+  const userInformationId = 'userinfo-001';
+  const reporterEmail = 'reporter@example.com';
+  const approvalTimestamp = new Date('2024-01-15T10:00:00Z');
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('チームリーダーが未処理のユーザー情報を承認したとき、success=true を返す', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('承認されたユーザー情報をシステムに記録し、成功結果と状態遷移、通知を返す', async () => {
+    // ステップ1: authenticateAndAuthorizeLeaderAccess をスタブ化
+    const leaderAuthStub = jest
+      .mocked(authenticateAndAuthorizeLeaderAccess)
+      .mockResolvedValue({
+        authorized: true,
+        leaderUserId,
+        userInformationId,
+      } as any);
+
+    // ステップ2: judgeBusinessDayAndDeadline をスタブ化
+    const deadlineStub = jest
+      .mocked(judgeBusinessDayAndDeadline)
+      .mockResolvedValue({
+        isWithinDeadline: true,
+        userInformationId,
+      } as any);
+
+    // ステップ3: detectDuplicateEmailAddress をスタブ化
+    const duplicateStub = jest
+      .mocked(detectDuplicateEmailAddress)
+      .mockResolvedValue({
+        isDuplicate: false,
+        emailAddress: reporterEmail,
+      } as any);
+
+    // ステップ4: registerReporterToMaster をスタブ化
+    const registerStub = jest
+      .mocked(registerReporterToMaster)
+      .mockResolvedValue({
+        success: true,
+        reporterUserId,
+      } as any);
+
+    // ステップ5: sendUserInformationApprovalNotification をスタブ化
+    const notificationStub = jest
+      .mocked(sendUserInformationApprovalNotification)
+      .mockResolvedValue({
+        notificationSent: true,
+      } as any);
+
+    // ステップ6: confirmAndApproveUserInformation を呼び出す
+    const input: ConfirmAndApproveUserInformationInput = {
+      leaderUserId,
+      userInformationId,
+      approvalDecision: 'approve',
       rejectionReason: null,
-      approvalTimestamp: now,
-    };
+      approvalTimestamp,
+    } as any;
 
-    const result = await confirmAndApproveUserInformation(input);
+    const result: ConfirmAndApproveUserInformationOutput = await confirmAndApproveUserInformation(input);
 
+    // ステップ7: success フィールドを検証
     expect(result.success).toBe(true);
-  });
 
-  it('承認決定時、approvalDecision=approve を返す', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
-
-    const result = await confirmAndApproveUserInformation(input);
-
+    // ステップ8: approvalDecision フィールドを検証
     expect(result.approvalDecision).toBe('approve');
-  });
 
-  it("承認決定時、reporterUserId='reporter-001' を返す", async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
+    // ステップ9: reporterUserId フィールドを検証
+    expect(result.reporterUserId).toBe(reporterUserId);
 
-    const result = await confirmAndApproveUserInformation(input);
-
-    expect(result.reporterUserId).toBe('reporter-001');
-  });
-
-  it('承認決定時、approvalNotificationSent=true を返す', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
-
-    const result = await confirmAndApproveUserInformation(input);
-
+    // ステップ10: approvalNotificationSent フィールドを検証
     expect(result.approvalNotificationSent).toBe(true);
-  });
 
-  it('承認決定時、reporterMasterRegistered=true を返す', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
-
-    const result = await confirmAndApproveUserInformation(input);
-
+    // ステップ11: reporterMasterRegistered フィールドを検証
     expect(result.reporterMasterRegistered).toBe(true);
-  });
 
-  it('承認決定時、processedTimestamp が呼び出し時刻以降の日時を返す', async () => {
-    const now = new Date();
-    const beforeCall = now.getTime();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
+    // ステップ12: processedTimestamp フィールドを検証
+    // processedTimestamp は呼び出し時刻以降の日時であること
+    expect(result.processedTimestamp).toBeDefined();
+    expect(new Date(result.processedTimestamp).getTime()).toBeGreaterThanOrEqual(approvalTimestamp.getTime());
 
-    const result = await confirmAndApproveUserInformation(input);
+    // 依存関数が正しい入力で呼ばれたことを確認
+    expect(leaderAuthStub).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leaderUserId,
+        userInformationId,
+      })
+    );
 
-    const processedTime = new Date(result.processedTimestamp).getTime();
-    expect(processedTime).toBeGreaterThanOrEqual(beforeCall);
-  });
+    expect(deadlineStub).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userInformationId,
+      })
+    );
 
-  it('承認処理が完了したとき、registerReporterToMaster が呼ばれて報告者がマスタに登録される', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
+    expect(duplicateStub).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAddress: reporterEmail,
+      })
+    );
 
-    const userPersistence = require('../../src/logic/user-master-persistence');
+    expect(registerStub).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterUserId,
+      })
+    );
 
-    await confirmAndApproveUserInformation(input);
-
-    expect(userPersistence.registerReporterToMaster).toHaveBeenCalled();
-  });
-
-  it('承認処理が完了したとき、sendUserInformationApprovalNotification が呼ばれて通知が送信される', async () => {
-    const now = new Date();
-    const input = {
-      leaderUserId: 'leader-001',
-      userInformationId: 'userinfo-001',
-      approvalDecision: 'approve' as const,
-      rejectionReason: null,
-      approvalTimestamp: now,
-    };
-
-    const emailNotification = require('../../src/logic/email-notification-management');
-
-    await confirmAndApproveUserInformation(input);
-
-    expect(emailNotification.sendUserInformationApprovalNotification).toHaveBeenCalled();
+    expect(notificationStub).toHaveBeenCalled();
   });
 });

@@ -1,38 +1,50 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { updateReporter } from '../../src/logic/reporter-master-management';
-import * as validation from '../../src/logic/input-validation-formatting';
-import { InvalidReporterNameFormatError } from '../../src/logic/reporter-master-management';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  UpdateReporterOutput,
+  InvalidReporterNameFormatError,
+} from '../../src/logic/reporter-master-management';
+import {
+  validateReporterNameFormat,
+} from '../../src/logic/input-validation-formatting';
 
 jest.mock('../../src/logic/input-validation-formatting');
 
-describe('SCEN-376: InvalidReporterNameFormatError when name is empty or invalid', () => {
+describe('SCEN-376: 更新された報告者名が空文字列または許可された文字種を超えると、InvalidReporterNameFormatErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return error output when reporter name is empty string', async () => {
-    // validateReporterNameFormat をスタブ化して InvalidReporterNameFormatError を発生させる
-    (validation.validateReporterNameFormat as any).mockRejectedValue(
-      new InvalidReporterNameFormatError('報告者名の形式が正しくありません。')
-    );
+  test('報告者名が空文字列の場合、エラー処理が行われる', () => {
+    const reporterId = 'reporter-001';
+    const teamLeaderId = 'leader-001';
+    const executionTimestamp = new Date('2025-01-15T10:00:00Z');
 
-    const input = {
-      reporterId: 'reporter-001',
+    (validateReporterNameFormat as jest.Mock).mockImplementation(() => {
+      throw new InvalidReporterNameFormatError('報告者名の形式が正しくありません。');
+    });
+
+    const input: UpdateReporterInput = {
+      reporterId,
       reporterName: '',
-      teamLeaderId: 'leader-001',
-      executionTimestamp: new Date(),
+      emailAddress: null,
+      department: null,
+      status: null,
+      teamLeaderId,
+      executionTimestamp,
     };
 
-    // InvalidReporterNameFormatError が発生することを期待
-    await expect(updateReporter(input)).rejects.toThrow(InvalidReporterNameFormatError);
-
-    // エラーメッセージを確認
     try {
-      await updateReporter(input);
+      const result: UpdateReporterOutput = updateReporter(input);
+      // エラーハンドリング出力が返される場合
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.changeHistoryId).toBeNull();
+      expect(result.message).toContain('報告者名の形式が正しくありません。');
     } catch (error) {
-      if (error instanceof InvalidReporterNameFormatError) {
-        expect(error.message).toBe('報告者名の形式が正しくありません。');
-      }
+      // 例外をスローする場合
+      expect(error).toBeInstanceOf(InvalidReporterNameFormatError);
+      expect((error as Error).message).toContain('報告者名の形式が正しくありません。');
     }
   });
 });

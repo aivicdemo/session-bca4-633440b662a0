@@ -2,10 +2,26 @@ import {
   registerReporter,
   RegisterReporterInput,
   RegisterReporterOutput,
+  DuplicateEmailAddressDetected,
 } from '../../src/logic/reporter-master-management';
 
-describe('SCEN-364: メールアドレスの重複が検出された場合、br-tx_7-005制約3により「このメールアドレスは既に登録されています」エラーが返される', () => {
-  it('重複したメールアドレスで登録失敗エラーが返される', async () => {
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  validateReporterNameFormat: jest.fn().mockResolvedValue(true),
+  validateEmailAddress: jest.fn().mockResolvedValue(true),
+  detectDuplicateEmailAddress: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  validateUserAccountActiveStatus: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  registerReporterToMaster: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
+}));
+
+describe('SCEN-364: 同じメールアドレスで複数の報告者が登録されている場合、br-tx_7-005の制約3により「このメールアドレスは既に登録されています」エラーメッセージが返される', () => {
+  test('既に登録済みのメールアドレスを指定した場合、DuplicateEmailAddressDetectedエラーが返される', async () => {
     const input: RegisterReporterInput = {
       userId: 'U001',
       reporterName: '新規報告者',
@@ -14,14 +30,12 @@ describe('SCEN-364: メールアドレスの重複が検出された場合、br-
       executionTimestamp: new Date('2024-01-15T10:00:00Z'),
     };
 
-    const result: RegisterReporterOutput = await registerReporter(input);
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
-    expect(result.reporterId).toBeNull();
-    expect(result.changeHistoryId).toBeNull();
-    expect(result.message).toContain(
-      'このメールアドレスは既に登録されています'
-    );
+    try {
+      await registerReporter(input);
+      fail('Expected DuplicateEmailAddressDetected to be thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DuplicateEmailAddressDetected);
+      expect(error.message).toContain('このメールアドレスは既に登録されています');
+    }
   });
 });

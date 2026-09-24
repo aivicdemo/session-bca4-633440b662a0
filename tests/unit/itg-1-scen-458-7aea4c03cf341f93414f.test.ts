@@ -4,6 +4,7 @@ import {
   UpdateReporterInMasterInput,
   UpdateReporterInMasterOutput,
   ReporterNotFoundError,
+  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
@@ -24,17 +25,11 @@ describe('SCEN-458: 存在しない報告者IDを指定して更新しようと�
       updateTimestamp: new Date(),
     };
 
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '指定された報告者が見つかりません。',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
-
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('指定された報告者が見つかりません。');
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

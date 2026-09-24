@@ -1,92 +1,53 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  registerReporter,
-  UserNotFoundInUserMaster,
-} from '../../src/logic/reporter-master-management';
-import type {
-  RegisterReporterInput,
-  RegisterReporterOutput,
-} from '../../src/logic/reporter-master-management';
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-authentication-authorization');
+jest.mock('../../src/logic/user-master-persistence');
 
-jest.mock('../../src/logic/input-validation-formatting.ts', () => ({
-  validateReporterNameFormat: jest.fn(),
-  validateEmailAddress: jest.fn(),
-  detectDuplicateEmailAddress: jest.fn(),
-}));
+import { registerReporter, UserNotFoundInUserMaster } from '../../src/logic/reporter-master-management';
+import { validateReporterNameFormat, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
+import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
+import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  validateUserAccountActiveStatus: jest.fn(),
-}));
+const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.Mock;
+const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
+const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
+const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  registerReporterToMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
-
-describe('SCEN-337: ユーザーマスタが空の場合、br-tx_3-004の制約1により「対象者が登録されていません。ユーザーマスタを設定してください」エラーで処理が中断される', () => {
-  let mockValidateReporterNameFormat: jest.Mock;
-  let mockValidateEmailAddress: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockValidateUserAccountActiveStatus: jest.Mock;
-  let mockRegisterReporterToMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
+describe('SCEN-337: ユーザーマスタが空の場合、br-tx_3-004の制約1により「対象者が登録されていません」エラーで処理が中断される', () => {
+  const userId = 'U001';
+  const reporterName = '山田太郎';
+  const emailAddress = 'yamada@example.com';
+  const teamLeaderId = 'TL001';
+  const executionTimestamp = new Date();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    mockValidateReporterNameFormat = require('../../src/logic/input-validation-formatting.ts')
-      .validateReporterNameFormat as jest.Mock;
-    mockValidateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .validateEmailAddress as jest.Mock;
-    mockDetectDuplicateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .detectDuplicateEmailAddress as jest.Mock;
-    mockValidateUserAccountActiveStatus = require('../../src/logic/user-authentication-authorization.ts')
-      .validateUserAccountActiveStatus as jest.Mock;
-    mockRegisterReporterToMaster = require('../../src/logic/user-master-persistence.ts')
-      .registerReporterToMaster as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts')
-      .persistReporterMasterChangeHistory as jest.Mock;
-
-    // スタブ設定：各検証処理は正常系を返す
-    // @ts-ignore
-    mockValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    // @ts-ignore
-    mockValidateEmailAddress.mockResolvedValue({ isValid: true });
-    // @ts-ignore
-    mockDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-
-    // ユーザーマスタが空の状態を再現：validateUserAccountActiveStatusが
-    // br-tx_3-004制約1のメッセージで例外を発生させる
-    // @ts-ignore
-    mockValidateUserAccountActiveStatus.mockImplementation(() => {
-      throw new UserNotFoundInUserMaster(
-        '対象者が登録されていません。ユーザーマスタを設定してください'
-      );
-    });
+    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true });
+    mockedValidateEmailAddress.mockResolvedValue({ isValid: true });
+    mockedDetectDuplicateEmailAddress.mockResolvedValue(false);
+    mockedValidateUserAccountActiveStatus.mockRejectedValue(
+      new Error('対象者が登録されていません。ユーザーマスタを設定してください')
+    );
   });
 
-  it('ユーザーマスタが空の場合、br-tx_3-004の制約1により対象者が登録されていません。ユーザーマスタを設定してください エラーが返される', async () => {
-    const executionTimestamp = new Date();
-    const input: RegisterReporterInput = {
-      userId: 'U001',
-      reporterName: '山田太郎',
-      emailAddress: 'yamada@example.com',
-      teamLeaderId: 'TL001',
+  it('ユーザーマスタが空の場合、success=false、reporterId=null、br-tx_3-004の制約文言をmessageに返す', async () => {
+    const input = {
+      userId,
+      reporterName,
+      emailAddress,
+      teamLeaderId,
       executionTimestamp,
     };
 
-    // @ts-ignore
-    const result: RegisterReporterOutput = await registerReporter(input);
+    const result = await registerReporter(input);
 
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
-    expect(result.message).toBe(
-      '対象者が登録されていません。ユーザーマスタを設定してください'
-    );
+    expect(result.message).toBe('対象者が登録されていません。ユーザーマスタを設定してください');
     expect(result.changeHistoryId).toBeNull();
-
-    // registerReporterToMasterおよびpersistReporterMasterChangeHistoryは呼び出されない
-    expect(mockRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
+    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

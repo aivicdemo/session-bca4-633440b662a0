@@ -1,14 +1,21 @@
-import { describe, it, expect, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
+
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
   LeaderAuthorizationError,
-  RetrieveEmailSendingHistoryDetailsInput,
 } from '../../src/logic/daily-report-management-view';
 
-describe('SCEN-590: リーダー権限がない、または対象チームの日報管理権限がない場合、LeaderAuthorizationErrorを発生させる', () => {
-  it('should throw LeaderAuthorizationError when user lacks leader permission', async () => {
-    const input: RetrieveEmailSendingHistoryDetailsInput = {
-      leaderId: 'user-without-permission',
+describe('SCEN-590: リーダー権限がない、または対象チームの日報管理権限がない場合、LeaderAuthorizationError を発生させる', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('リーダー権限を持たないユーザーIDを指定するとLeaderAuthorizationErrorが発生する', async () => {
+    const input = {
+      leaderId: 'non-leader-user-001',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
       emailType: null,
@@ -18,9 +25,37 @@ describe('SCEN-590: リーダー権限がない、または対象チームの日
       pageSize: 10,
     };
 
-    await expect(retrieveEmailSendingHistoryDetails(input)).rejects.toThrow(LeaderAuthorizationError);
-    await expect(retrieveEmailSendingHistoryDetails(input)).rejects.toThrow(
-      'You do not have permission to view email sending history for this team.'
-    );
+    try {
+      await retrieveEmailSendingHistoryDetails(input);
+      throw new Error('LeaderAuthorizationErrorが発生すべきですが、発生しませんでした。');
+    } catch (error) {
+      if (!(error instanceof LeaderAuthorizationError)) {
+        throw error;
+      }
+      expect(error.message).toBe('You do not have permission to view email sending history for this team.');
+    }
+  });
+
+  it('対象チームの日報管理権限がないユーザーIDを指定するとLeaderAuthorizationErrorが発生する', async () => {
+    const input = {
+      leaderId: 'leader-other-team-001',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      emailType: null,
+      sendingStatus: null,
+      recipientEmail: null,
+      pageNumber: 1,
+      pageSize: 10,
+    };
+
+    try {
+      await retrieveEmailSendingHistoryDetails(input);
+      throw new Error('LeaderAuthorizationErrorが発生すべきですが、発生しませんでした。');
+    } catch (error) {
+      if (!(error instanceof LeaderAuthorizationError)) {
+        throw error;
+      }
+      expect(error.message).toBe('You do not have permission to view email sending history for this team.');
+    }
   });
 });

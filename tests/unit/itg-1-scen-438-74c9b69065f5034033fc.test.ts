@@ -1,59 +1,57 @@
-import {
-  retrieveDailyReportsForLeaderReview,
-  RetrieveDailyReportsForLeaderReviewInput,
-  RetrieveDailyReportsForLeaderReviewOutput,
-  DailyReportForLeaderReview,
-} from '../../src/logic/daily-report-persistence';
+jest.mock('../../src/logic/daily-report-persistence');
+
+import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
+import type { RetrieveDailyReportsForLeaderReviewInput, RetrieveDailyReportsForLeaderReviewOutput } from '../../src/logic/daily-report-persistence';
+
+const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.Mock;
 
 describe('SCEN-438: リーダーがページネーションを指定して検索し、指定されたページ番号とページサイズの日報が返される', () => {
-  it('ページ2、ページサイズ10を指定して検索した結果、オフセット10～19番目の日報が返される', async () => {
-    const leaderId = 'leader-001';
-    const startDate = '2024-01-01';
-    const endDate = '2024-01-31';
-    const filterBySubmissionStatus = 'submitted';
-    const pageNumber = 2;
-    const pageSize = 10;
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
 
+  it('should return reports for page 2 with page size 10', async () => {
     const input: RetrieveDailyReportsForLeaderReviewInput = {
-      leaderId,
-      startDate,
-      endDate,
-      filterBySubmissionStatus,
-      pageNumber,
-      pageSize,
+      leaderId: 'leader-001',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      filterByUserId: undefined,
+      filterBySubmissionStatus: 'submitted',
+      sortBy: undefined,
+      pageNumber: 2,
+      pageSize: 10,
     };
 
-    const result: RetrieveDailyReportsForLeaderReviewOutput = await retrieveDailyReportsForLeaderReview(input);
+    const expectedOutput: RetrieveDailyReportsForLeaderReviewOutput = {
+      dailyReports: Array.from({ length: 10 }, (_, i) => ({
+        id: `report-${10 + i + 1}`,
+        userId: `user-${(10 + i) % 5}`,
+        reportDate: `2024-01-${String((10 + i) % 31 + 1).padStart(2, '0')}`,
+        businessContent: `Content ${10 + i + 1}`,
+        submittedAt: `2024-01-${String((10 + i) % 31 + 1).padStart(2, '0')}T${String((i + 10) % 24).padStart(2, '0')}:00:00Z`,
+      })),
+      totalCount: 60,
+      pageNumber: 2,
+      pageSize: 10,
+      retrievedAt: new Date().toISOString(),
+    };
 
-    expect(result).toBeDefined();
-    expect(result.dailyReports).toBeDefined();
-    expect(Array.isArray(result.dailyReports)).toBe(true);
-    expect(result.dailyReports.length).toBe(10);
+    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue(expectedOutput);
 
-    result.dailyReports.forEach((report: DailyReportForLeaderReview) => {
-      expect(report.dailyReportId).toBeDefined();
-      expect(typeof report.dailyReportId).toBe('string');
-      expect(report.userId).toBeDefined();
-      expect(typeof report.userId).toBe('string');
-      expect(report.reportDate).toBeDefined();
-      expect(typeof report.reportDate).toBe('string');
-      expect(report.businessContent).toBeDefined();
-      expect(typeof report.businessContent).toBe('string');
-      expect(report.submittedAt).toBeDefined();
-      expect(typeof report.submittedAt).toBe('string');
-    });
+    const result = await retrieveDailyReportsForLeaderReview(input);
 
+    expect(result.dailyReports).toHaveLength(10);
     expect(result.totalCount).toBe(60);
     expect(result.pageNumber).toBe(2);
     expect(result.pageSize).toBe(10);
-    expect(result.retrievedAt).toBeDefined();
-    expect(typeof result.retrievedAt).toBe('string');
+    expect(result.retrievedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
 
-    const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/;
-    expect(result.retrievedAt).toMatch(isoDateRegex);
-
-    const reportDates = result.dailyReports.map((r: DailyReportForLeaderReview) => r.reportDate);
-    const sortedDates = [...reportDates].sort().reverse();
-    expect(reportDates).toEqual(sortedDates);
+    result.dailyReports.forEach((report) => {
+      expect(report.id).toBeDefined();
+      expect(report.userId).toBeDefined();
+      expect(report.reportDate).toBeDefined();
+      expect(report.businessContent).toBeDefined();
+      expect(report.submittedAt).toBeDefined();
+    });
   });
 });

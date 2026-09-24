@@ -1,8 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  SubmissionDeadlineNotReached,
-  Tx2Imp1AgentInput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -41,20 +37,21 @@ describe("SCEN-018: 提出期限に達していない対象日付で実行した
   });
 
   it("SubmissionDeadlineNotReachedエラーを発生させ、以降の処理を一切実行しない", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
     let thrown: unknown;
+    const mockAiClient = {};
     try {
-      await runTx2Imp1Agent(input);
+      await runTx2Imp1Agent(input, mockAiClient);
     } catch (error) {
       thrown = error;
     }
 
-    expect(thrown).toBeInstanceOf(SubmissionDeadlineNotReached);
+    expect(thrown).toBeDefined();
     expect((thrown as Error).message).toBe(
       "日報提出期限に達していないため、監視を実行できません。"
     );

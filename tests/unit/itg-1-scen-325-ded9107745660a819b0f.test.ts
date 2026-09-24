@@ -1,58 +1,54 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
   SettingNotFoundError,
 } from '../../src/logic/daily-report-reminder-notification';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReminderNotificationSettingsByUserId: jest.fn(),
-}));
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-325: 削除操作時に指定されたリマインダー設定IDが存在しない場合、エラーが返される', () => {
-  let mockSaveReminderNotificationSettings: jest.Mock;
-  let mockRetrieveReminderNotificationSettingsByUserId: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSaveReminderNotificationSettings = require('../../src/logic/user-master-persistence.ts')
-      .saveReminderNotificationSettings as jest.Mock;
-    mockRetrieveReminderNotificationSettingsByUserId = require('../../src/logic/user-master-persistence.ts')
-      .retrieveReminderNotificationSettingsByUserId as jest.Mock;
-
-    // 存在しないIDなので空の結果を返す
-    // @ts-ignore
-    mockRetrieveReminderNotificationSettingsByUserId.mockResolvedValue([]);
   });
 
-  it('削除操作で存在しないreminderSettingIdが指定された場合、SettingNotFoundErrorが返される', async () => {
-    const reporterId = 'valid-reporter-id';
-    const nonexistentSettingId = 'non-existent-setting-uuid';
-    const executionTimestamp = new Date();
+  it('存在しないreminderSettingIdで削除操作を実行するとSettingNotFoundErrorが返される', () => {
+    const mockRetrieve = jest.spyOn(
+      userMasterPersistence,
+      'retrieveReminderNotificationSettingsByUserId' as any
+    );
+    mockRetrieve.mockReturnValue(null);
+
+    const mockSave = jest.spyOn(
+      userMasterPersistence,
+      'saveReminderNotificationSettings' as any
+    );
+
+    const testReporterId = 'valid-reporter-id';
+    const nonExistentSettingId = 'non-existent-setting-uuid';
+    const currentTimestamp = new Date().toISOString();
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'delete',
-      reporterId,
-      reminderSettingId: nonexistentSettingId,
+      reporterId: testReporterId,
+      reminderSettingId: nonExistentSettingId,
       enabledFlag: true,
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 2, 3, 4, 5],
       deliveryMethod: 'email',
-      executionTimestamp,
+      executionTimestamp: currentTimestamp,
     };
 
-    // @ts-ignore
-    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput =
+      manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
     expect(result.reminderSettingId).toBe(null);
     expect(result.operation).toBe('delete');
     expect(result.appliedAt).toBe(null);
     expect(result.errorDetails).toBe('指定されたリマインダー設定が見つかりません。');
-
-    // 削除処理（saveReminderNotificationSettings）が呼び出されないことを確認
-    expect(mockSaveReminderNotificationSettings).not.toHaveBeenCalled();
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });

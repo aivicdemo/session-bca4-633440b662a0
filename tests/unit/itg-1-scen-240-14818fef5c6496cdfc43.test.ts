@@ -1,38 +1,69 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  detectNonSubmittedReportersAtDeadline,
-  DeadlineNotReachedError,
-} from '../../src/logic/daily-report-non-submission-detection';
-import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
-import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
-import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+
+import { detectNonSubmittedReportersAtDeadline, DeadlineNotReachedError } from '../../src/logic/daily-report-non-submission-detection';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+
+const REPORTERS = [
+  { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
+  { reporterId: 'R002', userId: 'U002', reporterName: '報告者2', emailAddress: 'r002@example.com', department: '営業部', status: 'active' },
+  { reporterId: 'R003', userId: 'U003', reporterName: '報告者3', emailAddress: 'r003@example.com', department: '開発部', status: 'active' },
+  { reporterId: 'R004', userId: 'U004', reporterName: '報告者4', emailAddress: 'r004@example.com', department: '開発部', status: 'active' },
+  { reporterId: 'R005', userId: 'U005', reporterName: '報告者5', emailAddress: 'r005@example.com', department: '総務部', status: 'active' },
+];
 
 describe('SCEN-240: 現在時刻が提出期限より前の場合は検知をスキップする', () => {
+  const targetDate = '2024-01-15';
+  const currentDateTime = '2024-01-15T16:30:00Z';
+  const submissionDeadlineTime = '17:00';
+  const teamId = 'team-001';
+
   beforeEach(() => {
     jest.resetAllMocks();
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(false);
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: REPORTERS,
+      totalCount: REPORTERS.length,
+      message: '対象報告者を取得しました。',
+    });
   });
 
-  it('現在時刻が提出期限に達していない場合、DeadlineNotReachedErrorをスローする', async () => {
-    jest.spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming').mockResolvedValue(false);
-    jest.spyOn(reporterMasterManagement, 'getActiveReportersForSubmissionCheck').mockResolvedValue([
-      { userId: 'r1', name: '報告者1', email: 'r1@example.com', department: '部門1' },
-      { userId: 'r2', name: '報告者2', email: 'r2@example.com', department: '部門1' },
-      { userId: 'r3', name: '報告者3', email: 'r3@example.com', department: '部門1' },
-      { userId: 'r4', name: '報告者4', email: 'r4@example.com', department: '部門1' },
-      { userId: 'r5', name: '報告者5', email: 'r5@example.com', department: '部門1' },
-    ]);
+  it('提出期限前（16:30）では DeadlineNotReachedError が発生し、エラー文言が期待値と一致すること、及び nonSubmittedReporters、detectionLog、detectionTimestamp はいずれも返されないこと', async () => {
+    let errorThrown = false;
+    let errorMessage = '';
 
     try {
       await detectNonSubmittedReportersAtDeadline({
-        targetDate: '2024-01-15',
-        currentDateTime: '2024-01-15T16:30:00Z',
-        submissionDeadlineTime: '17:00',
-        teamId: 'team-001',
+        targetDate,
+        currentDateTime,
+        submissionDeadlineTime,
+        teamId,
       });
-      fail('Should have thrown DeadlineNotReachedError');
     } catch (error) {
-      expect(error).toBeInstanceOf(DeadlineNotReachedError);
-      expect((error as Error).message).toBe('日報提出期限に達していないため、未提出者検知を実行できません。');
+      errorThrown = true;
+      if (error instanceof DeadlineNotReachedError) {
+        errorMessage = error.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
     }
+
+    expect(errorThrown).toBe(true);
+    expect(errorMessage).toBe('日報提出期限に達していないため、未提出者検知を実行できません。');
+    expect(mockedJudgeSchedulerExecutionTiming).toHaveBeenCalledWith({
+      currentDateTime,
+      submissionDeadlineTime,
+      targetDate,
+      teamId,
+    });
   });
 });

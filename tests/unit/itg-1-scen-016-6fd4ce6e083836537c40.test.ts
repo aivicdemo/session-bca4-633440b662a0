@@ -1,8 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  Tx2Imp1AgentInput,
-  Tx2Imp1AgentOutput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -56,13 +52,14 @@ describe("SCEN-016: 提出期限に達した対象日付で、全員が日報を
   });
 
   it("未提出者がいないため催促メールは送信せず、リーダーへ提出状況報告のみ送信して成功する", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
-    const result: Tx2Imp1AgentOutput = await runTx2Imp1Agent(input);
+    const mockAiClient = {};
+    const result = await runTx2Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("success");
     expect(result.targetDate).toBe("2024-01-15");

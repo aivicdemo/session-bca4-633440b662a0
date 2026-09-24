@@ -1,45 +1,34 @@
-import { detectNonSubmittedReportersAtDeadline, SubmissionStatusCheckFailureError } from '../../src/logic/daily-report-non-submission-detection';
+import { describe, it, expect } from '@jest/globals';
+import {
+  detectNonSubmittedReportersAtDeadline,
+  DetectNonSubmittedReportersAtDeadlineInput,
+  SubmissionStatusCheckFailureError,
+} from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-230: 提出期限の時刻が設定されていない場合は処理を拒否する', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('submissionDeadlineTime が null の場合は SubmissionStatusCheckFailureError をスロー', async () => {
+  it('should reject when submissionDeadlineTime is null', () => {
     const input = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:00:00Z',
-      submissionDeadlineTime: null,
+      submissionDeadlineTime: null as any,
       teamId: 'team-001',
-    };
+    } as DetectNonSubmittedReportersAtDeadlineInput;
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input as any)
-    ).rejects.toThrow(SubmissionStatusCheckFailureError);
-
-    try {
-      await detectNonSubmittedReportersAtDeadline(input as any);
-    } catch (error: any) {
-      expect(error.message).toContain('日報提出状況の確認に失敗しました。');
-    }
+    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
+      SubmissionStatusCheckFailureError
+    );
   });
 
-  it('submissionDeadlineTime が空文字列の場合は SubmissionStatusCheckFailureError をスロー', async () => {
-    const input = {
+  it('should reject when submissionDeadlineTime is empty string', () => {
+    const input: DetectNonSubmittedReportersAtDeadlineInput = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:00:00Z',
       submissionDeadlineTime: '',
       teamId: 'team-001',
     };
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input)
-    ).rejects.toThrow(SubmissionStatusCheckFailureError);
-
-    try {
-      await detectNonSubmittedReportersAtDeadline(input);
-    } catch (error: any) {
-      expect(error.message).toContain('日報提出状況の確認に失敗しました。');
-    }
+    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
+      SubmissionStatusCheckFailureError
+    );
   });
 });

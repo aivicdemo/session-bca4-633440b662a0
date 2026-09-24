@@ -1,14 +1,9 @@
-import { jest } from '@jest/globals';
-import {
-  submitDailyReport,
-  SubmitDailyReportInput,
-  SubmitDailyReportOutput,
-} from '../../src/logic/daily-report-submission';
-import * as userAuth from '../../src/logic/user-authentication-authorization';
-import * as validation from '../../src/logic/input-validation-formatting';
-import * as judgment from '../../src/logic/business-day-deadline-judgment';
-import * as persistence from '../../src/logic/daily-report-persistence';
-import * as notification from '../../src/logic/email-notification-management';
+import { submitDailyReport, SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/input-validation-formatting');
@@ -20,38 +15,17 @@ describe('SCEN-209: 提出時刻が期限内である場合、submissionStatus �
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (userAuth.authenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
-      isAuthenticated: true,
-      isEligible: true,
-    });
-
-    (validation.validateDailyReportContent as jest.Mock<any>).mockResolvedValue({
-      isValid: true,
-    });
-
-    (judgment.judgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      isWithinDeadline: true,
-    });
-
-    (persistence.checkDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue({
-      exists: false,
-    });
-
-    (persistence.saveDailyReport as jest.Mock<any>).mockResolvedValue({
-      dailyReportId: 'report-009',
-    });
-
-    (persistence.updateDailyReportSubmissionTimestamp as jest.Mock<any>).mockResolvedValue({
-      success: true,
-    });
-
-    (notification.sendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
-      triggered: true,
-    });
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(false);
+    (persistenceModule.saveDailyReport as jest.Mock).mockResolvedValue({ dailyReportId: 'report-123' });
+    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.Mock).mockResolvedValue({ updated: true });
+    (notificationModule.sendDailyReportSubmissionNotification as jest.Mock).mockResolvedValue({ triggered: true });
   });
 
-  it('提出時刻が期限内である場合、submissionStatus が within_deadline として返される', async () => {
-    const input: SubmitDailyReportInput = {
+  it('提出時刻が期限内のとき、submissionStatus が within_deadline で返される', async () => {
+    const input = {
       userId: 'reporter001',
       reportDate: '2024-01-15',
       businessContent: '本日のタスクを完了した',
@@ -61,19 +35,113 @@ describe('SCEN-209: 提出時刻が期限内である場合、submissionStatus �
       submissionTimestamp: '2024-01-15T16:59:00Z',
     };
 
-    const result = await submitDailyReport(input);
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.submissionStatus).toBe('within_deadline');
+  });
 
-    // 戻り値の検証
-    expect(result).toBeDefined();
-    const output = result as SubmitDailyReportOutput;
-    expect(output.submissionStatus).toBe('within_deadline');
-    expect(output.dailyReportId).toBeTruthy();
-    expect(typeof output.dailyReportId).toBe('string');
-    expect(output.userId).toBe('reporter001');
-    expect(output.reportDate).toBe('2024-01-15');
-    expect(output.submissionTimestamp).toBe('2024-01-15T16:59:00Z');
-    expect(output.notificationTriggered).toBe(true);
-    expect(output.completionMessage).toBeTruthy();
-    expect(typeof output.completionMessage).toBe('string');
+  it('dailyReportId が文字列で返される', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(typeof result.dailyReportId).toBe('string');
+    expect(result.dailyReportId).toBe('report-123');
+  });
+
+  it('userId が入力値と一致する', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.userId).toBe('reporter001');
+  });
+
+  it('reportDate が入力値と一致する', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.reportDate).toBe('2024-01-15');
+  });
+
+  it('submissionTimestamp が入力値と一致する', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.submissionTimestamp).toBe('2024-01-15T16:59:00Z');
+  });
+
+  it('notificationTriggered が true で返される', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.notificationTriggered).toBe(true);
+  });
+
+  it('completionMessage が空でない文字列で返される', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    const result = (await submitDailyReport(input)) as SubmitDailyReportOutput;
+    expect(result.completionMessage).toBeTruthy();
+    expect(typeof result.completionMessage).toBe('string');
+  });
+
+  it('エラーが発生しない', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日のタスクを完了した',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T16:59:00Z',
+    };
+
+    await expect(submitDailyReport(input)).resolves.toBeDefined();
   });
 });

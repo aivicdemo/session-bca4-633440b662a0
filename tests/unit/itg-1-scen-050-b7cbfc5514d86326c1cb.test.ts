@@ -32,41 +32,36 @@ const mockedJudgePromptNecessityAndMethod = judgePromptNecessityAndMethod as jes
 const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.Mock;
 const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
 
-describe('SCEN-050: 定時スケジューラ実行タイミングが正常で、未提出者と遅延者を正しく判定し、催促メール送信と検知ログ記録が完了する', () => {
-  const targetDate = '2024-01-15';
-  const executionContext = { scheduledAt: '2024-01-15T17:00:00Z', executedBy: 'scheduler-system' };
-
-  const ACTIVE_REPORTERS = [
-    { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
-    { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
-    { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
-    { userId: 'U004', userName: 'Reporter D', reporterName: 'Report D' },
-    { userId: 'U005', userName: 'Reporter E', reporterName: 'Report E' },
-  ];
-
-  const NON_SUBMITTED = [
-    { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A', targetDate: '2024-01-15', detectionTime: '2024-01-15T17:00:30Z' },
-    { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B', targetDate: '2024-01-15', detectionTime: '2024-01-15T17:00:30Z' },
-  ];
-
-  const DELAYED = [
-    { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C', submissionTime: '2024-01-15T17:15:45Z', delayMinutes: 15 },
-  ];
-
+describe('SCEN-050: 定時スケジューラ実行タイミング正常・未提出者と遅延者を正しく判定・催促メール送信完了', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+  });
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-    });
+  it('スケジューラ実行が正常で、未提出者2名と遅延者1名を判定し、催促メール送信と検知ログ記録が完了する', async () => {
+    const executionContext = {
+      scheduledAt: '2024-01-15T17:00:00Z',
+      executedBy: 'scheduler-system',
+    };
+    const targetDate = '2024-01-15';
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(ACTIVE_REPORTERS);
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([
+      { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
+      { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
+      { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
+      { userId: 'U004', userName: 'Reporter D', reporterName: 'Report D' },
+      { userId: 'U005', userName: 'Reporter E', reporterName: 'Report E' },
+    ]);
 
     mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
-      nonSubmittedReporters: NON_SUBMITTED,
-      delayedReporters: DELAYED,
+      nonSubmitted: [
+        { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A', targetDate: '2024-01-15', detectionTime: '2024-01-15T17:00:30Z' },
+        { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B', targetDate: '2024-01-15', detectionTime: '2024-01-15T17:00:30Z' },
+      ],
+      delayed: [
+        { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C', submissionTime: '2024-01-15T17:15:45Z', delayMinutes: 15 },
+      ],
     });
 
     mockedJudgePromptNecessityAndMethod.mockResolvedValue([
@@ -87,31 +82,53 @@ describe('SCEN-050: 定時スケジューラ実行タイミングが正常で、
       detectionLogId: 'DL-20240115-001',
       leaderNotificationSent: true,
     });
-  });
 
-  it('未提出者2名・遅延者1名を判定し、催促通知送信と検知ログ記録が完了する', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+    const input = {
+      targetDate: '2024-01-15',
+      executionContext: {
+        scheduledAt: '2024-01-15T17:00:00Z',
+        executedBy: 'scheduler-system',
+      },
+    };
+
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe('success');
+
     expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'U001', userName: 'Reporter A', detectionTime: '2024-01-15T17:00:30Z' }),
-        expect.objectContaining({ userId: 'U002', userName: 'Reporter B', detectionTime: '2024-01-15T17:00:30Z' }),
-      ])
-    );
+    expect(result.nonSubmittedReporters[0]).toEqual({
+      userId: 'U001',
+      userName: 'Reporter A',
+      reporterName: 'Report A',
+      targetDate: '2024-01-15',
+      detectionTime: '2024-01-15T17:00:30Z',
+    });
+    expect(result.nonSubmittedReporters[1]).toEqual({
+      userId: 'U002',
+      userName: 'Reporter B',
+      reporterName: 'Report B',
+      targetDate: '2024-01-15',
+      detectionTime: '2024-01-15T17:00:30Z',
+    });
+
     expect(result.delayedReporters).toHaveLength(1);
-    expect(result.delayedReporters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'U003', submissionTime: '2024-01-15T17:15:45Z', delayMinutes: 15 }),
-      ])
-    );
+    expect(result.delayedReporters[0]).toEqual({
+      userId: 'U003',
+      userName: 'Reporter C',
+      reporterName: 'Report C',
+      submissionTime: '2024-01-15T17:15:45Z',
+      delayMinutes: 15,
+    });
+
     expect(result.promptNotificationsSent).toHaveLength(3);
-    expect(
-      result.promptNotificationsSent.every((n: { status: string }) => n.status === 'sent')
-    ).toBe(true);
+    expect(result.promptNotificationsSent.map((n: any) => n.userId)).toEqual(['U001', 'U002', 'U003']);
+    expect(result.promptNotificationsSent.every((n: any) => n.status === 'sent')).toBe(true);
+
     expect(result.detectionLogId).toBe('DL-20240115-001');
+
     expect(result.leaderNotificationSent).toBe(true);
+
     expect(result.errorDetails).toBeNull();
   });
 });

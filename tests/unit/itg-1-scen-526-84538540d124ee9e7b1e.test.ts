@@ -13,34 +13,41 @@ describe('SCEN-526: 報告者が無効化された状態である場合、Report
     jest.clearAllMocks();
   });
 
-  it('should throw ReporterNotValidError when reporter is not valid', async () => {
+  it('報告者IDが無効化済みまたはシステムに未登録の場合、ReporterNotValidError が発生する', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'invalid-reporter-id',
-      dailyReportId: 'report-001',
-      reportContent: '本日の業務内容',
+      dailyReportId: 'report-20240115',
+      reportContent: '本日は顧客A社のシステム要件ヒアリングを実施した',
       reportDate: '2024-01-15',
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',
-      reporterName: 'テスト太郎',
-      submissionTimestamp: '2024-01-15T09:00:00Z',
+      reporterName: '山田太郎',
+      submissionTimestamp: '2024-01-15T10:30:00Z',
     };
 
-    const mockValidateEmailAddressForDelivery = jest.mocked(
-      validateEmailAddressForDelivery
-    );
-    const mockBuildNotificationContent = jest.mocked(buildNotificationContent);
-    const mockRecordEmailSendingHistory = jest.mocked(recordEmailSendingHistory);
+    jest.mocked(validateEmailAddressForDelivery).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
 
-    await expect(
-      sendDailyReportSubmissionNotification(input)
-    ).rejects.toThrow(
-      new ReporterNotValidError(
-        '報告者が無効であるため、メール通知を送信できません。'
-      )
-    );
+    jest.mocked(buildNotificationContent).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
 
-    expect(mockValidateEmailAddressForDelivery).not.toHaveBeenCalled();
-    expect(mockBuildNotificationContent).not.toHaveBeenCalled();
-    expect(mockRecordEmailSendingHistory).not.toHaveBeenCalled();
+    jest.mocked(recordEmailSendingHistory).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
+
+    let thrownError: Error | undefined;
+    try {
+      await sendDailyReportSubmissionNotification(input);
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    expect(thrownError).toBeInstanceOf(ReporterNotValidError);
+    expect(thrownError?.message).toBe('報告者が無効であるため、メール通知を送信できません。');
+    expect(validateEmailAddressForDelivery).not.toHaveBeenCalled();
+    expect(buildNotificationContent).not.toHaveBeenCalled();
+    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

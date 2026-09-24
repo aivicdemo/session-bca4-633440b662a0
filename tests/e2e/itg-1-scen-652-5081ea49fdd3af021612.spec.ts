@@ -48,7 +48,7 @@ async function login(page: Page, username: string) {
   await page.getByTestId('username').fill(username);
   await page.getByTestId('password').fill('password');
   await page.getByTestId('login-button').click();
-  await page.waitForURL(/panels\/scr-1790147087109\.html/);
+  await page.waitForURL(/\/index\.html/);
 }
 
 test('提出期限の時刻が未設定のとき未提出者検知でエラーが表示される', async ({ page, request }) => {
@@ -56,14 +56,14 @@ test('提出期限の時刻が未設定のとき未提出者検知でエラー�
   await login(page, 'admin_scen652');
   const config = await readAivicConfig(page);
 
-  await page.getByText('管理', { exact: true }).click();
-  await page.waitForURL(/panels\/scr-1790147095974\.html/);
+  // 日報確認・管理画面へ移動
+  await page.goto('/panels/scr-1790147095974.html');
+  await page.waitForLoadState('networkidle');
   const managementUrl = page.url();
 
   const mailBefore = await fetchTableRecords(request, config, 'メール送信履歴');
 
   // リマインダー設定管理画面（設定モーダル）を開く。
-  await page.locator('.rm-tab[data-tab="reminder"]').click();
   await page.locator('#rm-settings-btn').click();
   await expect(page.locator('#rm-settings-modal')).toHaveClass(/is-visible/);
 

@@ -1,13 +1,20 @@
-import { describe, it, expect } from '@jest/globals';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
+
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
   InvalidFilterCriteriaError,
-  RetrieveEmailSendingHistoryDetailsInput,
 } from '../../src/logic/daily-report-management-view';
 
-describe('SCEN-591: 開始日が終了日より後、またはメールタイプが定義済み値以外の場合、InvalidFilterCriteriaErrorを発生させる', () => {
-  it('should throw InvalidFilterCriteriaError when startDate is after endDate', async () => {
-    const input: RetrieveEmailSendingHistoryDetailsInput = {
+describe('SCEN-591: 開始日が終了日より後、またはメールタイプが定義済み値以外の場合、InvalidFilterCriteriaError を発生させる', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('開始日が終了日より後の場合、InvalidFilterCriteriaErrorが発生する', async () => {
+    const input = {
       leaderId: 'leader-001',
       startDate: '2025-01-15',
       endDate: '2025-01-10',
@@ -18,9 +25,37 @@ describe('SCEN-591: 開始日が終了日より後、またはメールタイプ
       pageSize: 10,
     };
 
-    await expect(retrieveEmailSendingHistoryDetails(input)).rejects.toThrow(InvalidFilterCriteriaError);
-    await expect(retrieveEmailSendingHistoryDetails(input)).rejects.toThrow(
-      'Invalid filter criteria: date range or email type is not valid.'
-    );
+    try {
+      await retrieveEmailSendingHistoryDetails(input);
+      throw new Error('InvalidFilterCriteriaErrorが発生すべきですが、発生しませんでした。');
+    } catch (error) {
+      if (!(error instanceof InvalidFilterCriteriaError)) {
+        throw error;
+      }
+      expect(error.message).toBe('Invalid filter criteria: date range or email type is not valid.');
+    }
+  });
+
+  it('メールタイプが定義済み値以外の場合、InvalidFilterCriteriaErrorが発生する', async () => {
+    const input = {
+      leaderId: 'leader-001',
+      startDate: '2025-01-10',
+      endDate: '2025-01-15',
+      emailType: 'invalid_email_type',
+      sendingStatus: null,
+      recipientEmail: null,
+      pageNumber: 1,
+      pageSize: 10,
+    };
+
+    try {
+      await retrieveEmailSendingHistoryDetails(input);
+      throw new Error('InvalidFilterCriteriaErrorが発生すべきですが、発生しませんでした。');
+    } catch (error) {
+      if (!(error instanceof InvalidFilterCriteriaError)) {
+        throw error;
+      }
+      expect(error.message).toBe('Invalid filter criteria: date range or email type is not valid.');
+    }
   });
 });

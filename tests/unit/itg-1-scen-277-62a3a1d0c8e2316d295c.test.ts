@@ -1,24 +1,18 @@
-import { describe, it, expect, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   JudgePromptNecessityAndMethodOutput,
 } from '../../src/logic/non-submission-prompt-decision';
-import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-277: 連続未提出日数が2日以上の場合、中以上の優先度で催促が必要と判定される', () => {
-  it('should return medium priority when consecutive miss count is 2 or more', async () => {
-    // Setup stub for isWithinSubmissionDeadline
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<
-      typeof isWithinSubmissionDeadline
-    >;
-    mockIsWithinSubmissionDeadline.mockResolvedValue({
-      overdueDurationMinutes: 35,
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // Prepare test input
+  it('should return medium priority when consecutive missed days are 2 or more', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',
@@ -28,13 +22,16 @@ describe('SCEN-277: 連続未提出日数が2日以上の場合、中以上の�
       previousReminderSentDateTime: null,
     };
 
-    // Call the function
-    const result: JudgePromptNecessityAndMethodOutput =
-      await judgePromptNecessityAndMethod(input);
+    (deadlineJudgment.isWithinSubmissionDeadline as jest.Mock).mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -35,
+    });
 
-    // Verify the output
+    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+
     expect(result.isPromptNecessary).toBe(true);
-    expect(result.promptPriority).toMatch(/medium|high/);
+    expect(result.promptPriority).toBe('medium');
     expect(['email_and_system_notification', 'escalate_to_leader']).toContain(result.promptMethod);
     expect(result.suggestedPromptMessage).toContain('連続未提出');
     expect(result.overdueDurationMinutes).toBe(35);

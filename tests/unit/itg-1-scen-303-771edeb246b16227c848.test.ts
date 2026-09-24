@@ -1,116 +1,114 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
+  sendReporterReminderNotification: jest.fn(),
+  selectNotificationDeliveryMethod: jest.fn(),
+}));
+
 import {
   sendReporterReminderNotification,
-  SendReporterReminderNotificationInput,
-  SendReporterReminderNotificationOutput,
   selectNotificationDeliveryMethod,
+  type SendReporterReminderNotificationInput,
+  type SendReporterReminderNotificationOutput,
   InvalidReporterIdError,
 } from '../../src/logic/daily-report-reminder-notification';
 
-// 依存先のモック
-jest.mock('../../src/logic/daily-report-reminder-notification');
+const mockedSendReporterReminderNotification = sendReporterReminderNotification as jest.Mock;
+const mockedSelectNotificationDeliveryMethod = selectNotificationDeliveryMethod as jest.Mock;
 
 describe('SCEN-303: チームメンバーIDが空または不正な形式のとき、日次リセット処理を拒否する', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('reporterId が空文字列のとき、success: false とエラーメッセージを返す', async () => {
-    // 入力値を構築
-    const input: SendReporterReminderNotificationInput = {
-      reporterId: '',
-      targetDate: new Date('2024-01-15'),
-      reminderSettingId: 'reminder-001',
-      executionTimestamp: new Date(),
-    };
+  describe('reporterId が空文字列のとき', () => {
+    it('success: false、errorDetails: "チームメンバー情報が不正です。管理者に確認してください" を返す', async () => {
+      const input: SendReporterReminderNotificationInput = {
+        reporterId: '',
+        targetDate: new Date('2024-01-15'),
+        reminderSettingId: 'reminder-001',
+        executionTimestamp: new Date(),
+      };
 
-    // スタブ設定：selectNotificationDeliveryMethod が空の reporterId でエラーをスロー
-    jest.mocked(selectNotificationDeliveryMethod).mockRejectedValue(
-      new InvalidReporterIdError('チームメンバー情報が不正です。管理者に確認してください。')
-    );
+      mockedSelectNotificationDeliveryMethod.mockRejectedValue(
+        new Error('チームメンバー情報が不正です。管理者に確認してください')
+      );
 
-    // テスト対象処理を呼び出し
-    jest.mocked(sendReporterReminderNotification).mockResolvedValue({
-      success: false,
-      notificationId: null,
-      sentAt: null,
-      deliveryMethod: null,
-      errorDetails: 'チームメンバー情報が不正です。管理者に確認してください。',
-    } as SendReporterReminderNotificationOutput);
+      mockedSendReporterReminderNotification.mockResolvedValue({
+        success: false,
+        notificationId: null,
+        sentAt: null,
+        deliveryMethod: null,
+        errorDetails: 'チームメンバー情報が不正です。管理者に確認してください',
+      });
 
-    const result = await sendReporterReminderNotification(input);
+      const result: SendReporterReminderNotificationOutput = await sendReporterReminderNotification(input);
 
-    // 期待結果を検証
-    expect(result.success).toBe(false);
-    expect(result.notificationId).toBeNull();
-    expect(result.sentAt).toBeNull();
-    expect(result.deliveryMethod).toBeNull();
-    expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください。');
+      expect(result.success).toBe(false);
+      expect(result.notificationId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.deliveryMethod).toBeNull();
+      expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください');
+    });
   });
 
-  it('reporterId が不正な形式（特殊文字のみ）のとき、success: false とエラーメッセージを返す', async () => {
-    // 入力値を構築：reporterId に特殊文字のみを設定
-    const input: SendReporterReminderNotificationInput = {
-      reporterId: '!@#$%',
-      targetDate: new Date('2024-01-15'),
-      reminderSettingId: 'reminder-001',
-      executionTimestamp: new Date(),
-    };
+  describe('reporterId が不正な形式（特殊文字のみ）のとき', () => {
+    it('success: false、同じエラー詳細メッセージを返す', async () => {
+      const input: SendReporterReminderNotificationInput = {
+        reporterId: '!!!###@@@',
+        targetDate: new Date('2024-01-15'),
+        reminderSettingId: 'reminder-001',
+        executionTimestamp: new Date(),
+      };
 
-    // スタブ設定：selectNotificationDeliveryMethod が不正な形式の reporterId でエラーをスロー
-    jest.mocked(selectNotificationDeliveryMethod).mockRejectedValue(
-      new InvalidReporterIdError('チームメンバー情報が不正です。管理者に確認してください。')
-    );
+      mockedSelectNotificationDeliveryMethod.mockRejectedValue(
+        new Error('チームメンバー情報が不正です。管理者に確認してください')
+      );
 
-    // テスト対象処理を呼び出し
-    jest.mocked(sendReporterReminderNotification).mockResolvedValue({
-      success: false,
-      notificationId: null,
-      sentAt: null,
-      deliveryMethod: null,
-      errorDetails: 'チームメンバー情報が不正です。管理者に確認してください。',
-    } as SendReporterReminderNotificationOutput);
+      mockedSendReporterReminderNotification.mockResolvedValue({
+        success: false,
+        notificationId: null,
+        sentAt: null,
+        deliveryMethod: null,
+        errorDetails: 'チームメンバー情報が不正です。管理者に確認してください',
+      });
 
-    const result = await sendReporterReminderNotification(input);
+      const result: SendReporterReminderNotificationOutput = await sendReporterReminderNotification(input);
 
-    // 期待結果を検証
-    expect(result.success).toBe(false);
-    expect(result.notificationId).toBeNull();
-    expect(result.sentAt).toBeNull();
-    expect(result.deliveryMethod).toBeNull();
-    expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください。');
+      expect(result.success).toBe(false);
+      expect(result.notificationId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.deliveryMethod).toBeNull();
+      expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください');
+    });
   });
 
-  it('reporterId が制御文字を含むとき、success: false とエラーメッセージを返す', async () => {
-    // 入力値を構築：reporterId に制御文字を含む
-    const input: SendReporterReminderNotificationInput = {
-      reporterId: 'user\x00\x01\x02',
-      targetDate: new Date('2024-01-15'),
-      reminderSettingId: 'reminder-001',
-      executionTimestamp: new Date(),
-    };
+  describe('reporterId が不正な形式（制御文字を含む）のとき', () => {
+    it('success: false、同じエラー詳細メッセージを返す', async () => {
+      const input: SendReporterReminderNotificationInput = {
+        reporterId: 'reporter\x00id\x01with\x02control',
+        targetDate: new Date('2024-01-15'),
+        reminderSettingId: 'reminder-001',
+        executionTimestamp: new Date(),
+      };
 
-    // スタブ設定：selectNotificationDeliveryMethod が制御文字を含む reporterId でエラーをスロー
-    jest.mocked(selectNotificationDeliveryMethod).mockRejectedValue(
-      new InvalidReporterIdError('チームメンバー情報が不正です。管理者に確認してください。')
-    );
+      mockedSelectNotificationDeliveryMethod.mockRejectedValue(
+        new Error('チームメンバー情報が不正です。管理者に確認してください')
+      );
 
-    // テスト対象処理を呼び出し
-    jest.mocked(sendReporterReminderNotification).mockResolvedValue({
-      success: false,
-      notificationId: null,
-      sentAt: null,
-      deliveryMethod: null,
-      errorDetails: 'チームメンバー情報が不正です。管理者に確認してください。',
-    } as SendReporterReminderNotificationOutput);
+      mockedSendReporterReminderNotification.mockResolvedValue({
+        success: false,
+        notificationId: null,
+        sentAt: null,
+        deliveryMethod: null,
+        errorDetails: 'チームメンバー情報が不正です。管理者に確認してください',
+      });
 
-    const result = await sendReporterReminderNotification(input);
+      const result: SendReporterReminderNotificationOutput = await sendReporterReminderNotification(input);
 
-    // 期待結果を検証
-    expect(result.success).toBe(false);
-    expect(result.notificationId).toBeNull();
-    expect(result.sentAt).toBeNull();
-    expect(result.deliveryMethod).toBeNull();
-    expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください。');
+      expect(result.success).toBe(false);
+      expect(result.notificationId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.deliveryMethod).toBeNull();
+      expect(result.errorDetails).toBe('チームメンバー情報が不正です。管理者に確認してください');
+    });
   });
 });

@@ -1,16 +1,24 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   sendUserInformationApprovalNotification,
   LeaderNotFoundError,
+} from '../../src/logic/email-notification-management';
+import type {
   SendUserInformationApprovalNotificationInput,
 } from '../../src/logic/email-notification-management';
+
+jest.mock('../../src/logic/email-notification-management');
 
 describe('SCEN-554: 指定されたリーダーユーザーIDが存在しない場合、LeaderNotFoundErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('エラー系：リーダーユーザーIDが存在しない場合、LeaderNotFoundErrorが発生する', async () => {
+  it('リーダーユーザーIDが存在しない場合、LeaderNotFoundErrorが発生する', async () => {
+    jest.mocked(sendUserInformationApprovalNotification).mockImplementation(async () => {
+      throw new LeaderNotFoundError('リーダーユーザーが見つかりません。');
+    });
+
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'non-existent-leader-id',
       leaderEmailAddress: 'leader@example.com',
@@ -22,11 +30,11 @@ describe('SCEN-554: 指定されたリーダーユーザーIDが存在しない�
       confirmingLeaderUserId: 'leader-002',
     };
 
-    const error = await sendUserInformationApprovalNotification(input).catch(
-      (err) => err
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      LeaderNotFoundError
     );
-
-    expect(error).toBeInstanceOf(LeaderNotFoundError);
-    expect(error.message).toBe('リーダーユーザーが見つかりません。');
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      'リーダーユーザーが見つかりません。'
+    );
   });
 });

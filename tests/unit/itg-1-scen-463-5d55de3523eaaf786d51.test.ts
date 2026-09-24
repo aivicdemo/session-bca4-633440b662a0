@@ -1,4 +1,8 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  persistReporterMasterChangeHistory: jest.fn(),
+  updateReporterInMaster: jest.requireActual('../../src/logic/user-master-persistence').updateReporterInMaster,
+}));
+
 import {
   updateReporterInMaster,
   UpdateReporterInMasterInput,
@@ -6,107 +10,147 @@ import {
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence');
+const mockedPersistChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
 
 describe('SCEN-463: 複数の更新可能項目（名前、メールアドレス、部門、ステータス）のいずれかのみを指定して更新すると、指定された項目だけが反映される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedPersistChangeHistory.mockResolvedValue({ success: true });
   });
 
-  it('should update only reporterName when specified alone', async () => {
+  it('報告者名のみを更新した場合、指定された項目だけがデータベースに反映される', async () => {
+    const reporterId = 'reporter-001';
+    const leaderUserId = 'leader-001';
+    const updateTimestamp = new Date('2026-01-15T10:00:00Z');
+
     const input: UpdateReporterInMasterInput = {
-      reporterId: 'reporter-001',
+      reporterId,
       reporterName: '新しい名前',
       emailAddress: undefined,
       department: undefined,
       status: undefined,
-      leaderUserId: 'leader-001',
-      updateTimestamp: new Date(),
+      leaderUserId,
+      updateTimestamp,
     };
-
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: true,
-      reporterId: 'reporter-001',
-      message: '報告者情報が正常に更新されました',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
-    jest.mocked(persistReporterMasterChangeHistory).mockResolvedValue({});
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(true);
-    expect(result.reporterId).toBe('reporter-001');
+    expect(result.reporterId).toBe(reporterId);
+    expect(result.message).toBeTruthy();
+
+    expect(mockedPersistChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId,
+        leaderUserId,
+        updateTimestamp,
+      })
+    );
+
+    // 呼び出し時の引数から指定された項目のみが含まれることを確認
+    const callArgs = mockedPersistChangeHistory.mock.calls[0][0];
+    expect(callArgs).toHaveProperty('reporterName', '新しい名前');
   });
 
-  it('should update only emailAddress when specified alone', async () => {
+  it('メールアドレスのみを更新した場合、指定された項目だけがデータベースに反映される', async () => {
+    const reporterId = 'reporter-002';
+    const leaderUserId = 'leader-001';
+    const updateTimestamp = new Date('2026-01-15T11:00:00Z');
+    const newEmail = 'newemail@example.com';
+
     const input: UpdateReporterInMasterInput = {
-      reporterId: 'reporter-002',
+      reporterId,
       reporterName: undefined,
-      emailAddress: 'newemail@example.com',
+      emailAddress: newEmail,
       department: undefined,
       status: undefined,
-      leaderUserId: 'leader-001',
-      updateTimestamp: new Date(),
+      leaderUserId,
+      updateTimestamp,
     };
-
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: true,
-      reporterId: 'reporter-002',
-      message: '報告者情報が正常に更新されました',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(true);
-    expect(result.reporterId).toBe('reporter-002');
+    expect(result.reporterId).toBe(reporterId);
+    expect(result.message).toBeTruthy();
+
+    expect(mockedPersistChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId,
+        leaderUserId,
+        updateTimestamp,
+      })
+    );
+
+    const callArgs = mockedPersistChangeHistory.mock.calls[0][0];
+    expect(callArgs).toHaveProperty('emailAddress', newEmail);
   });
 
-  it('should update only department when specified alone', async () => {
+  it('部門のみを更新した場合、指定された項目だけがデータベースに反映される', async () => {
+    const reporterId = 'reporter-003';
+    const leaderUserId = 'leader-002';
+    const updateTimestamp = new Date('2026-01-15T12:00:00Z');
+    const newDepartment = '企画部';
+
     const input: UpdateReporterInMasterInput = {
-      reporterId: 'reporter-003',
+      reporterId,
       reporterName: undefined,
       emailAddress: undefined,
-      department: '企画部',
+      department: newDepartment,
       status: undefined,
-      leaderUserId: 'leader-001',
-      updateTimestamp: new Date(),
+      leaderUserId,
+      updateTimestamp,
     };
-
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: true,
-      reporterId: 'reporter-003',
-      message: '報告者情報が正常に更新されました',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(true);
-    expect(result.reporterId).toBe('reporter-003');
+    expect(result.reporterId).toBe(reporterId);
+    expect(result.message).toBeTruthy();
+
+    expect(mockedPersistChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId,
+        leaderUserId,
+        updateTimestamp,
+      })
+    );
+
+    const callArgs = mockedPersistChangeHistory.mock.calls[0][0];
+    expect(callArgs).toHaveProperty('department', newDepartment);
   });
 
-  it('should update only status when specified alone', async () => {
+  it('ステータスのみを更新した場合、指定された項目だけがデータベースに反映される', async () => {
+    const reporterId = 'reporter-004';
+    const leaderUserId = 'leader-001';
+    const updateTimestamp = new Date('2026-01-15T13:00:00Z');
+    const newStatus = 'inactive';
+
     const input: UpdateReporterInMasterInput = {
-      reporterId: 'reporter-004',
+      reporterId,
       reporterName: undefined,
       emailAddress: undefined,
       department: undefined,
-      status: 'inactive',
-      leaderUserId: 'leader-001',
-      updateTimestamp: new Date(),
+      status: newStatus,
+      leaderUserId,
+      updateTimestamp,
     };
-
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: true,
-      reporterId: 'reporter-004',
-      message: '報告者情報が正常に更新されました',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(true);
-    expect(result.reporterId).toBe('reporter-004');
+    expect(result.reporterId).toBe(reporterId);
+    expect(result.message).toBeTruthy();
+
+    expect(mockedPersistChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId,
+        leaderUserId,
+        updateTimestamp,
+      })
+    );
+
+    const callArgs = mockedPersistChangeHistory.mock.calls[0][0];
+    expect(callArgs).toHaveProperty('status', newStatus);
   });
 });

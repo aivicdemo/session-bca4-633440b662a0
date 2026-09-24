@@ -1,27 +1,31 @@
+import { describe, it, expect } from '@jest/globals';
 import {
   generateNonSubmissionDetectionResult,
   InvalidDetectionResultError,
+  type GenerateNonSubmissionDetectionResultInput,
 } from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-265: 検知ログがundefinedのとき、不正な検知結果エラーが発生する', () => {
-  it('検知ログがundefinedで、未提出者リストとタイムスタンプが有効な場合、InvalidDetectionResultErrorが発生する', async () => {
-    const input = {
+  it('should throw InvalidDetectionResultError when detectionLog is undefined', () => {
+    const input: GenerateNonSubmissionDetectionResultInput = {
       nonSubmittedReporters: [
         {
-          userId: 'user-001',
+          userId: 'U001',
           userName: '報告者1',
-          emailAddress: 'reporter1@example.com',
-          departmentId: 'dept-001',
-          promptPriority: 'high',
+          emailAddress: 'u001@example.com',
+          departmentId: 'D001',
         },
       ],
       detectionLog: undefined as any,
       detectionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    await expect(generateNonSubmissionDetectionResult(input)).rejects.toThrow(InvalidDetectionResultError);
-    await expect(generateNonSubmissionDetectionResult(input)).rejects.toThrow(
-      '未提出者検知結果が不正です。検知処理を再実行してください。'
-    );
+    try {
+      generateNonSubmissionDetectionResult(input);
+      fail('Expected InvalidDetectionResultError to be thrown');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(InvalidDetectionResultError);
+      expect(error.message).toBe('未提出者検知結果が不正です。検知処理を再実行してください。');
+    }
   });
 });

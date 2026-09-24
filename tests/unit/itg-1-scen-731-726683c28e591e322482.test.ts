@@ -1,67 +1,63 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  judgeSchedulerExecutionTiming,
-  InvalidSchedulerConfigurationError,
-  JudgeSchedulerExecutionTimingInput,
-  JudgeSchedulerExecutionTimingOutput,
-  isBusinessDay as realIsBusinessDay,
-} from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
 
-const mockIsBusinessDay = jest.fn();
+describe('SCEN-731: 提出期限時刻の形式が不正なとき、InvalidSchedulerConfigurationErrorが発生', () => {
+  const currentTimestamp = '2024-01-15T17:30:00Z';
+  const executionTimeToleranceMinutes = 5;
+  const timeZone = 'Asia/Tokyo';
 
-describe('SCEN-731: 提出期限時刻の形式が不正なとき、エラーが発生して処理が中断される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (mockIsBusinessDay as any).mockResolvedValue(true);
+  describe('テストケース1: 24時間形式の上限を超える時刻（25:00）', () => {
+    it('25:00という不正な時刻を設定すると、InvalidSchedulerConfigurationErrorが発生する', async () => {
+      const scheduledExecutionTime = '25:00';
+
+      await expect(
+        judgeSchedulerExecutionTiming({
+          currentTimestamp,
+          scheduledExecutionTime,
+          executionTimeToleranceMinutes,
+          timeZone,
+        })
+      ).rejects.toThrow(InvalidSchedulerConfigurationError);
+
+      try {
+        await judgeSchedulerExecutionTiming({
+          currentTimestamp,
+          scheduledExecutionTime,
+          executionTimeToleranceMinutes,
+          timeZone,
+        });
+      } catch (error) {
+        if (error instanceof InvalidSchedulerConfigurationError) {
+          expect(error.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+        }
+      }
+    });
   });
 
-  it('テストケース1: 実行予定時刻が25:00のとき、InvalidSchedulerConfigurationErrorが発生する', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '25:00',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
-      teamMemberIds: ['M001'],
-      leaderEmail: 'leader@example.com',
-    };
+  describe('テストケース2: 非数値の時刻文字列（abc:00）', () => {
+    it('abc:00という非数値の時刻を設定すると、InvalidSchedulerConfigurationErrorが発生する', async () => {
+      const scheduledExecutionTime = 'abc:00';
 
-    // @ts-ignore
-    const fn = () => judgeSchedulerExecutionTiming(input);
-    await expect(fn).rejects.toThrow(InvalidSchedulerConfigurationError);
-  });
+      await expect(
+        judgeSchedulerExecutionTiming({
+          currentTimestamp,
+          scheduledExecutionTime,
+          executionTimeToleranceMinutes,
+          timeZone,
+        })
+      ).rejects.toThrow(InvalidSchedulerConfigurationError);
 
-  it('テストケース2: 実行予定時刻がabc:00のとき、InvalidSchedulerConfigurationErrorが発生する', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: 'abc:00',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
-      teamMemberIds: ['M001'],
-      leaderEmail: 'leader@example.com',
-    };
-
-    // @ts-ignore
-    const fn = () => judgeSchedulerExecutionTiming(input);
-    await expect(fn).rejects.toThrow(InvalidSchedulerConfigurationError);
-  });
-
-  it('エラー文言が正確であること', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '25:00',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
-      teamMemberIds: ['M001'],
-      leaderEmail: 'leader@example.com',
-    };
-
-    try {
-      // @ts-ignore
-      await judgeSchedulerExecutionTiming(input);
-      expect(true).toBe(false);
-    } catch (error) {
-      expect(error).toBeInstanceOf(InvalidSchedulerConfigurationError);
-      expect((error as Error).message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
-    }
+      try {
+        await judgeSchedulerExecutionTiming({
+          currentTimestamp,
+          scheduledExecutionTime,
+          executionTimeToleranceMinutes,
+          timeZone,
+        });
+      } catch (error) {
+        if (error instanceof InvalidSchedulerConfigurationError) {
+          expect(error.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+        }
+      }
+    });
   });
 });

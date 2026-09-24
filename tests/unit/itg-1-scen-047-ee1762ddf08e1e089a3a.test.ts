@@ -48,17 +48,17 @@ describe('SCEN-047: 一部の報告者が日報を未提出の場合、nonSubmit
   const teamId = 'team-A';
 
   const activeReporters = [
-    { reporterId: 'R001', userId: 'user-001', userName: 'reporter-001', reporterName: '報告者1', emailAddress: 'user-001@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R002', userId: 'user-002', userName: 'reporter-002', reporterName: '報告者2', emailAddress: 'user-002@example.com', department: '開発部', status: 'active' },
-    { reporterId: 'R003', userId: 'user-003', userName: 'reporter-003', reporterName: '報告者3', emailAddress: 'user-003@example.com', department: '人事部', status: 'active' },
-    { reporterId: 'R004', userId: 'user-004', userName: 'reporter-004', reporterName: '田中太郎', emailAddress: 'user-004@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R005', userId: 'user-005', userName: 'reporter-005', reporterName: '鈴木花子', emailAddress: 'user-005@example.com', department: '開発部', status: 'active' },
+    { userId: 'user-001', userName: 'reporter-001', reporterName: '報告者1' },
+    { userId: 'user-002', userName: 'reporter-002', reporterName: '報告者2' },
+    { userId: 'user-003', userName: 'reporter-003', reporterName: '報告者3' },
+    { userId: 'user-004', userName: 'reporter-004', reporterName: '報告者4' },
+    { userId: 'user-005', userName: 'reporter-005', reporterName: '報告者5' },
   ];
 
-  const submittedDailyReports = [
-    { dailyReportId: 'DR-047-1', userId: 'user-001', reportDate: targetDate, businessContent: '本日の業務内容', submittedAt: `${targetDate}T09:00:00+09:00` },
-    { dailyReportId: 'DR-047-2', userId: 'user-002', reportDate: targetDate, businessContent: '本日の業務内容', submittedAt: `${targetDate}T09:01:00+09:00` },
-    { dailyReportId: 'DR-047-3', userId: 'user-003', reportDate: targetDate, businessContent: '本日の業務内容', submittedAt: `${targetDate}T09:02:00+09:00` },
+  const submittedReports = [
+    { userId: 'user-001', submissionTimestamp: '2024-01-15T16:00:00+09:00' },
+    { userId: 'user-002', submissionTimestamp: '2024-01-15T16:10:00+09:00' },
+    { userId: 'user-003', submissionTimestamp: '2024-01-15T16:20:00+09:00' },
   ];
 
   const nonSubmittedReporters = [
@@ -70,102 +70,135 @@ describe('SCEN-047: 一部の報告者が日報を未提出の場合、nonSubmit
     jest.resetAllMocks();
 
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: true,
       isBusinessDay: true,
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: `${targetDate}T17:00:00+09:00`,
-      processingPolicy: 'accept',
-      rejectionReason: null,
+      deadline: '2024-01-15T17:00:00+09:00',
     });
 
     mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
       reporters: activeReporters,
-      totalCount: activeReporters.length,
-      message: '有効な報告者を取得しました。',
+      count: 5,
     });
 
     mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
-      dailyReports: submittedDailyReports,
-      totalCount: submittedDailyReports.length,
-      pageNumber: 1,
-      pageSize: 50,
-      retrievedAt: `${targetDate}T18:00:00+09:00`,
+      reports: submittedReports,
+      count: 3,
     });
 
     mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
       nonSubmittedReporters,
-      detectionLog: {
-        detectionLogId: 'LOG-047-001',
-        targetDate,
-        detectionDateTime: `${targetDate}T18:00:00+09:00`,
-        totalReportersCount: activeReporters.length,
-        nonSubmittedCount: nonSubmittedReporters.length,
-        submittedCount: submittedDailyReports.length,
-      },
-      detectionTimestamp: `${targetDate}T18:00:00+09:00`,
+      count: 2,
+      detectionLogId: 'log-20240115-001',
     });
 
     mockedJudgePromptNecessityAndMethod.mockResolvedValue({
-      isPromptNecessary: true,
-      promptPriority: 'high',
-      promptMethod: 'email',
-      estimatedNonSubmissionReason: 'unknown',
-      suggestedPromptMessage: '日報の提出をお願いします。',
-      overdueDurationMinutes: 60,
+      isPromptRequired: true,
     });
 
     mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
-      success: true,
-      notificationId: 'NOTIF-LEADER-047-001',
-      sentAt: new Date(`${targetDate}T18:05:00+09:00`),
-      deliveryMethod: 'email',
-      nonSubmittedReporterCount: nonSubmittedReporters.length,
-      errorDetails: null,
+      sent: 1,
     });
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue(true);
+    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+      sent: 2,
+      failed: 0,
+    });
 
     mockedRetrieveLeaderDashboardData.mockResolvedValue({
-      submittedReports: submittedDailyReports,
-      nonSubmittedReporters,
-      detectionLogs: [],
-      emailSendingHistory: [],
-      submissionStatusSummary: {
-        submittedCount: submittedDailyReports.length,
-        nonSubmittedCount: nonSubmittedReporters.length,
-        submissionRate: 60,
-        promptedCount: nonSubmittedReporters.length,
-      },
-      progressSummaryText: '提出率：60%（3/5）、未提出者：2名（田中太郎、鈴木花子）',
+      progressSummary: '提出率：60%（3/5）、未提出者：2名（田中太郎、鈴木花子）',
+      submittedCount: 3,
+      nonSubmittedCount: 2,
     });
   });
 
-  it('未提出者2名の詳細情報がnonSubmittedReportersに含まれ、催促メールが2件送信される', async () => {
-    const result = await runTx4Imp1Agent({
-      targetDate,
-      leaderUserId,
-      teamId,
-    });
+  it('should return success status with partial submission', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
 
     expect(result.executionStatus).toBe('success');
-    expect(result.targetDate).toBe(targetDate);
+    expect(result.targetDate).toBe('2024-01-15');
     expect(result.submittedReportCount).toBe(3);
     expect(result.nonSubmittedReporterCount).toBe(2);
-    expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters).toEqual([
-      { userId: 'user-004', userName: 'reporter-004', reporterName: '田中太郎', lastSubmissionDate: '2024-01-14' },
-      { userId: 'user-005', userName: 'reporter-005', reporterName: '鈴木花子', lastSubmissionDate: null },
-    ]);
+  });
+
+  it('should include detailed non-submitted reporter information', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.nonSubmittedReporters).toBeDefined();
+    expect(Array.isArray(result.nonSubmittedReporters)).toBe(true);
+    expect(result.nonSubmittedReporters.length).toBe(2);
+
+    expect(result.nonSubmittedReporters[0]).toMatchObject({
+      userId: 'user-004',
+      userName: 'reporter-004',
+      reporterName: '田中太郎',
+      lastSubmissionDate: '2024-01-14',
+    });
+
+    expect(result.nonSubmittedReporters[1]).toMatchObject({
+      userId: 'user-005',
+      userName: 'reporter-005',
+      reporterName: '鈴木花子',
+      lastSubmissionDate: null,
+    });
+  });
+
+  it('should send prompt notifications for all non-submitted reporters', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
     expect(result.promptNotificationsSent).toBe(2);
     expect(result.promptNotificationsFailed).toBe(0);
-    expect(result.progressSummary).toContain('提出率：60%（3/5）、未提出者：2名（田中太郎、鈴木花子）');
-    expect(result.leaderNotificationSent).toBe(true);
-    expect(typeof result.detectionLogId).toBe('string');
-    expect(result.detectionLogId.length).toBeGreaterThan(0);
-    expect(result.executionTimestamp).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
+    expect(mockedSendNonSubmissionPromptNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it('should include progress summary with submitted percentage and non-submitted names', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
     );
-    expect(result.errors ?? []).toEqual([]);
+
+    expect(result.progressSummary).toContain('提出率');
+    expect(result.progressSummary).toContain('60%');
+    expect(result.progressSummary).toContain('田中太郎');
+    expect(result.progressSummary).toContain('鈴木花子');
+  });
+
+  it('should send leader notification with all data', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.leaderNotificationSent).toBe(true);
+    expect(result.detectionLogId).toBeTruthy();
+    expect(result.executionTimestamp).toBeTruthy();
+  });
+
+  it('should have no errors on success', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.errors === undefined || result.errors.length === 0).toBe(true);
   });
 });

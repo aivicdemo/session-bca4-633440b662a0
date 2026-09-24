@@ -1,34 +1,66 @@
+import { describe, it, expect } from '@jest/globals';
 import {
   generateNonSubmissionDetectionResult,
   InvalidReporterDataError,
+  type GenerateNonSubmissionDetectionResultInput,
 } from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-268: 未提出者の中にuserNameが欠けている要素があるとき、必須項目不足エラーが発生する', () => {
-  it('未提出者情報から必須フィールド（userName）が欠落している場合、InvalidReporterDataErrorが発生する', async () => {
-    const input = {
+  it('should throw InvalidReporterDataError when userName is undefined', () => {
+    const input: GenerateNonSubmissionDetectionResultInput = {
       nonSubmittedReporters: [
         {
-          userId: 'user-001',
-          // userName が欠落
-          emailAddress: 'reporter1@example.com',
-          departmentId: 'dept-001',
-          promptPriority: 'high',
-        } as any,
+          userId: 'U001',
+          userName: undefined as any,
+          emailAddress: 'u001@example.com',
+          departmentId: 'D001',
+        },
       ],
       detectionLog: {
-        detectionLogId: 'log-001',
-        targetDate: '2024-01-15',
-        detectionDateTime: '2024-01-15T09:00:00Z',
-        totalReportersCount: 1,
         nonSubmittedCount: 1,
-        submittedCount: 0,
+        detectionTimestamp: '2024-01-15T09:00:00Z',
       },
       detectionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    await expect(generateNonSubmissionDetectionResult(input)).rejects.toThrow(InvalidReporterDataError);
-    await expect(generateNonSubmissionDetectionResult(input)).rejects.toThrow(
-      '未提出者情報に必須項目が不足しています。'
-    );
+    try {
+      generateNonSubmissionDetectionResult(input);
+      fail('Expected InvalidReporterDataError to be thrown');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(InvalidReporterDataError);
+      expect(error.message).toBe('未提出者情報に必須項目が不足しています。');
+    }
+  });
+
+  it('should throw InvalidReporterDataError when multiple reporters have missing userName', () => {
+    const input: GenerateNonSubmissionDetectionResultInput = {
+      nonSubmittedReporters: [
+        {
+          userId: 'U001',
+          userName: '報告者1',
+          emailAddress: 'u001@example.com',
+          departmentId: 'D001',
+        },
+        {
+          userId: 'U002',
+          userName: undefined as any,
+          emailAddress: 'u002@example.com',
+          departmentId: 'D001',
+        },
+      ],
+      detectionLog: {
+        nonSubmittedCount: 2,
+        detectionTimestamp: '2024-01-15T09:00:00Z',
+      },
+      detectionTimestamp: '2024-01-15T09:00:00Z',
+    };
+
+    try {
+      generateNonSubmissionDetectionResult(input);
+      fail('Expected InvalidReporterDataError to be thrown');
+    } catch (error: any) {
+      expect(error).toBeInstanceOf(InvalidReporterDataError);
+      expect(error.message).toBe('未提出者情報に必須項目が不足しています。');
+    }
   });
 });

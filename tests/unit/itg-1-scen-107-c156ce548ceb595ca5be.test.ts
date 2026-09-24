@@ -1,20 +1,10 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   authenticateAndAuthorizeLeaderAccess,
+  validateUserAccountActiveStatus,
+  validateUserHasLeaderRole,
   UserAccountInactiveError,
 } from '../../src/logic/user-authentication-authorization';
-
-const validateUserAccountActiveStatusMock = jest.fn();
-const validateUserHasLeaderRoleMock = jest.fn();
-
-jest.mock('../../src/logic/user-authentication-authorization', () => {
-  const actual = jest.requireActual('../../src/logic/user-authentication-authorization');
-  return {
-    ...actual,
-    validateUserAccountActiveStatus: validateUserAccountActiveStatusMock,
-    validateUserHasLeaderRole: validateUserHasLeaderRoleMock,
-  };
-});
 
 describe('SCEN-107: ユーザーアカウントが無効化されている場合、UserAccountInactiveError が発生する', () => {
   beforeEach(() => {
@@ -22,11 +12,18 @@ describe('SCEN-107: ユーザーアカウントが無効化されている場合
   });
 
   it('ユーザーアカウントが無効化されているとき UserAccountInactiveError がスローされる', async () => {
-    validateUserAccountActiveStatusMock.mockResolvedValue({ isActive: false });
-    validateUserHasLeaderRoleMock.mockResolvedValue({ hasRole: true });
-
     const userId = 'leader-001';
     const isAuthenticated = true;
+
+    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+      isValid: false,
+      userId,
+    } as any);
+
+    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
+      hasRole: true,
+      userId,
+    } as any);
 
     await expect(
       authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
@@ -35,5 +32,28 @@ describe('SCEN-107: ユーザーアカウントが無効化されている場合
     await expect(
       authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
     ).rejects.toThrow('ユーザーアカウントが無効です。');
+  });
+
+  it('validateUserAccountActiveStatus が呼び出され、戻り値が無効化された状態を返す', async () => {
+    const userId = 'leader-001';
+    const isAuthenticated = true;
+
+    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+      isValid: false,
+      userId,
+    } as any);
+
+    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
+      hasRole: true,
+      userId,
+    } as any);
+
+    try {
+      await authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated });
+    } catch {
+      // Expected to throw
+    }
+
+    expect(validateUserHasLeaderRole).not.toHaveBeenCalled();
   });
 });

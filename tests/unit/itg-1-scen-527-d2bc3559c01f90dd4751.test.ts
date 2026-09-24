@@ -14,7 +14,7 @@ describe('SCEN-527: メールアドレスが @を含まない場合、形式検�
     jest.clearAllMocks();
   });
 
-  it('should return error when email address does not contain @', async () => {
+  it('メールアドレスが @を含まない場合、LeaderEmailAddressInvalidError が発生する', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-20240115',
@@ -26,22 +26,41 @@ describe('SCEN-527: メールアドレスが @を含まない場合、形式検�
       submissionTimestamp: '2024-01-15T10:30:00Z',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockImplementation((email) => {
-      if (!email.includes('@')) {
-        return Promise.resolve({ isValid: false });
-      }
-      return Promise.resolve({ isValid: true });
+    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue({
+      isValid: false,
+      reason: 'メールアドレスの形式が不正です。',
+      errorCode: 'INVALID_FORMAT',
     });
 
-    const result: SendDailyReportSubmissionNotificationOutput =
-      await sendDailyReportSubmissionNotification(input);
+    jest.mocked(buildNotificationContent).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
 
-    expect(result.success).toBe(false);
-    expect(result.emailSendingHistoryId).toBe(null);
-    expect(result.sentAt).toBe(null);
-    expect(result.errorMessage).toBe(
-      'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。'
-    );
-    expect(result.adminNotificationSent).toBe(true);
+    jest.mocked(recordEmailSendingHistory).mockImplementation(() => {
+      throw new Error('Should not be called');
+    });
+
+    let result: SendDailyReportSubmissionNotificationOutput | undefined;
+    let thrownError: Error | undefined;
+
+    try {
+      result = await sendDailyReportSubmissionNotification(input);
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    if (result) {
+      expect(result.success).toBe(false);
+      expect(result.emailSendingHistoryId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+      expect(result.adminNotificationSent).toBe(true);
+    } else if (thrownError) {
+      expect(thrownError).toBeInstanceOf(LeaderEmailAddressInvalidError);
+      expect(thrownError.message).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+    }
+
+    expect(buildNotificationContent).not.toHaveBeenCalled();
+    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

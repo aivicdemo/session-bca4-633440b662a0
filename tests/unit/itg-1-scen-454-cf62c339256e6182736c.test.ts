@@ -6,7 +6,14 @@ import {
   InvalidReporterInformationError,
 } from '../../src/logic/user-master-persistence';
 
+jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-master-persistence');
+
+import {
+  validateUserInformationRequired,
+  validateEmailAddress,
+  detectDuplicateEmailAddress,
+} from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメールアドレス形式が不正な場合、登録失敗を返す', () => {
   beforeEach(() => {
@@ -22,12 +29,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -45,12 +47,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -68,12 +65,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -91,12 +83,8 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(true) as any;
+    (validateEmailAddress as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -114,12 +102,8 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(true) as any;
+    (validateEmailAddress as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -137,12 +121,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報が不完全または形式が不正です。必須項目を確認してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(false) as any;
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

@@ -1,7 +1,11 @@
-import {
-  runTx1Imp1Agent,
-  NonSubmissionDetectionError,
-} from "../../src/agents/tx-1-imp-1/orchestrator";
+import { runTx1Imp1Agent } from "../../src/agents/tx-1-imp-1/orchestrator";
+
+class NonSubmissionDetectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NonSubmissionDetectionError';
+  }
+}
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { authenticateAndAuthorizeReporterAccess } from "../../src/logic/user-authentication-authorization";
 import { getActiveReportersForSubmissionCheck } from "../../src/logic/reporter-master-management";
@@ -92,8 +96,8 @@ describe("SCEN-007: 未提出者の検知処理に失敗し、未提出者への
         locale: "ja-JP",
       },
     };
-
-    const result = await runTx1Imp1Agent(input);
+    const mockAiClient: any = {};
+    const result = await runTx1Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("failure");
     expect(result.errors).toEqual(

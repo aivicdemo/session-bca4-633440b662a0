@@ -1,5 +1,7 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   detectNonSubmittedReportersAtDeadline,
+  DetectNonSubmittedReportersAtDeadlineInput,
   DetectionLogRecordingFailureError,
 } from '../../src/logic/daily-report-non-submission-detection';
 import {
@@ -19,91 +21,75 @@ jest.mock('../../src/logic/reporter-master-management');
 jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-228: 検知ログの記録処理が失敗した場合はエラーを返す', () => {
+  const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<typeof judgeSchedulerExecutionTiming>;
+  const mockGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<typeof getActiveReportersForSubmissionCheck>;
+  const mockCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<typeof checkDailyReportExistsForDate>;
+  const mockRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<typeof retrieveNonSubmissionDetectionLogsByDate>;
+  const mockUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.MockedFunction<typeof updateNonSubmissionDetectionLogWithReminderStatus>;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('updateNonSubmissionDetectionLogWithReminderStatusが失敗した場合、DetectionLogRecordingFailureErrorをスローする', async () => {
-    const targetDate = '2024-01-15';
-    const currentDateTime = '2024-01-15T17:00:00Z';
-    const submissionDeadlineTime = '17:00';
-    const teamId = 'team-001';
+  it('ログ記録処理が失敗した場合、DetectionLogRecordingFailureError をスローする', async () => {
+    const input: DetectNonSubmittedReportersAtDeadlineInput = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T17:00:00Z',
+      submissionDeadlineTime: '17:00',
+      teamId: 'team-001',
+    };
 
-    // judgeSchedulerExecutionTiming: 提出期限に達したことを返す
-    (judgeSchedulerExecutionTiming as jest.Mock).mockReturnValue(true);
+    mockJudgeSchedulerExecutionTiming.mockResolvedValue(true);
 
-    // getActiveReportersForSubmissionCheck: 5名の有効な報告者を返す
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockReturnValue([
+    mockGetActiveReportersForSubmissionCheck.mockResolvedValue([
       {
-        userId: 'user-001',
-        userName: '報告者1',
-        emailAddress: 'reporter1@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
+        userId: 'USER-001',
+        userName: '太郎',
+        emailAddress: 'user1@example.com',
+        departmentId: 'DEPT-001',
       },
       {
-        userId: 'user-002',
-        userName: '報告者2',
-        emailAddress: 'reporter2@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
+        userId: 'USER-002',
+        userName: '花子',
+        emailAddress: 'user2@example.com',
+        departmentId: 'DEPT-001',
       },
       {
-        userId: 'user-003',
-        userName: '報告者3',
-        emailAddress: 'reporter3@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
+        userId: 'USER-003',
+        userName: '次郎',
+        emailAddress: 'user3@example.com',
+        departmentId: 'DEPT-002',
       },
       {
-        userId: 'user-004',
-        userName: '報告者4',
-        emailAddress: 'reporter4@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
+        userId: 'USER-004',
+        userName: '美咲',
+        emailAddress: 'user4@example.com',
+        departmentId: 'DEPT-002',
       },
       {
-        userId: 'user-005',
-        userName: '報告者5',
-        emailAddress: 'reporter5@example.com',
-        departmentId: 'dept-001',
-        isActive: true,
+        userId: 'USER-005',
+        userName: '健太',
+        emailAddress: 'user5@example.com',
+        departmentId: 'DEPT-003',
       },
     ]);
 
-    // checkDailyReportExistsForDate: 3名が提出済み、2名が未提出を返す
-    (checkDailyReportExistsForDate as jest.Mock).mockImplementation((userId: string) => {
-      return ['user-001', 'user-002', 'user-003'].includes(userId);
+    mockCheckDailyReportExistsForDate.mockImplementation(async (userId: string) => {
+      return ['USER-001', 'USER-002', 'USER-003'].includes(userId);
     });
 
-    // retrieveNonSubmissionDetectionLogsByDate: 空の既存ログを返す
-    (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockReturnValue([]);
+    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
 
-    // updateNonSubmissionDetectionLogWithReminderStatus: ログ記録処理が失敗
-    (updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock).mockImplementation(() => {
-      throw new Error('Database connection error');
-    });
+    mockUpdateNonSubmissionDetectionLogWithReminderStatus.mockRejectedValue(new Error('データベース接続エラー'));
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline({
-        targetDate,
-        currentDateTime,
-        submissionDeadlineTime,
-        teamId,
-      })
-    ).rejects.toThrow(DetectionLogRecordingFailureError);
-
+    let thrownError: unknown;
     try {
-      await detectNonSubmittedReportersAtDeadline({
-        targetDate,
-        currentDateTime,
-        submissionDeadlineTime,
-        teamId,
-      });
+      await detectNonSubmittedReportersAtDeadline(input);
     } catch (error) {
-      if (error instanceof DetectionLogRecordingFailureError) {
-        expect(error.message).toBe('未提出者検知ログの記録に失敗しました。');
-      }
+      thrownError = error;
     }
+
+    expect(thrownError).toBeInstanceOf(DetectionLogRecordingFailureError);
+    expect((thrownError as Error).message).toBe('未提出者検知ログの記録に失敗しました。');
   });
 });

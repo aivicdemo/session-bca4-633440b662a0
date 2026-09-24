@@ -1,15 +1,24 @@
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import {
+  judgeBusinessDayAndDeadline,
+  JudgeBusinessDayAndDeadlineInput,
+  JudgeBusinessDayAndDeadlineOutput,
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-180: 営業日外で isAcceptable が true、processingPolicy が defer_to_next_business_day になる', () => {
-  it('営業日外（休業日）の提出は defer_to_next_business_day で受け付ける', () => {
-    const input = {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('営業日外の場合、翌営業日扱いに自動切り替え', async () => {
+    const input: JudgeBusinessDayAndDeadlineInput = {
       targetDate: '2024-01-01',
-      teamLeaderId: 'TL001',
-      reporterUserId: 'reporter001',
+      teamLeaderId: 'leader-001',
+      reporterUserId: 'reporter-001',
       submissionAttemptTimestamp: '2024-01-01T15:30:00Z',
     };
 
-    const result = judgeBusinessDayAndDeadline(input);
+    const result: JudgeBusinessDayAndDeadlineOutput = await judgeBusinessDayAndDeadline(input);
 
     expect(result.isAcceptable).toBe(true);
     expect(result.processingPolicy).toBe('defer_to_next_business_day');

@@ -1,13 +1,28 @@
-import { describe, it, expect } from '@jest/globals';
+jest.mock('../../src/logic/email-notification-management', () => ({
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
 import {
   sendDailyReportSubmissionNotification,
   EmailSendingFailedError,
+  validateEmailAddressForDelivery,
+  buildNotificationContent,
+  recordEmailSendingHistory,
   SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-484: メール送信処理がシステム障害で失敗した場合、EmailSendingFailedError が発生', () => {
-  it('メール送信がシステム障害で失敗した場合、出力が返されるか、エラーが発生される', async () => {
+const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
+const mockedBuildNotificationContent = buildNotificationContent as jest.Mock;
+const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.Mock;
+
+describe('SCEN-484: メール送信処理がシステム障害で失敗した場合、EmailSendingFailedError が発生して管理者に通知される', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('メール送信に失敗した場合、EmailSendingFailedError が発生し、管理者に通知されること', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-20240115-001',
@@ -19,17 +34,29 @@ describe('SCEN-484: メール送信処理がシステム障害で失敗した場
       submissionTimestamp: '2024-01-15T18:00:00Z',
     };
 
-    try {
-      const result = await sendDailyReportSubmissionNotification(input);
+    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+      isValid: true,
+      reason: null,
+      errorCode: null,
+    });
 
-      expect(result.success).toBe(false);
-      expect(result.emailSendingHistoryId).toBeNull();
-      expect(result.sentAt).toBeNull();
-      expect(result.errorMessage).toBe('メール送信に失敗しました。管理者に通知します。');
-      expect(result.adminNotificationSent).toBe(true);
+    mockedBuildNotificationContent.mockResolvedValue({
+      subject: '【日報】2024年01月15日 田中太郎',
+      body: '田中太郎さんからの日報です\n\n本日はシステム障害対応を実施。ログサーバーの再起動により復旧完了。',
+    });
+
+    const emailSendingError = new EmailSendingFailedError('メール送信に失敗しました。管理者に通知します。');
+    mockedRecordEmailSendingHistory.mockRejectedValue(emailSendingError);
+
+    try {
+      await sendDailyReportSubmissionNotification(input);
+      expect(true).toBe(false);
     } catch (error) {
       expect(error).toBeInstanceOf(EmailSendingFailedError);
       expect((error as Error).message).toBe('メール送信に失敗しました。管理者に通知します。');
     }
+
+    expect(mockedValidateEmailAddressForDelivery).toHaveBeenCalled();
+    expect(mockedBuildNotificationContent).toHaveBeenCalled();
   });
 });

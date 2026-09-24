@@ -1,27 +1,31 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
+
+jest.mock('../../src/logic/daily-report-persistence');
+
 import {
   retrieveDailyReportsForLeaderReview,
   DatabaseConnectionError,
+  RetrieveDailyReportsForLeaderReviewInput,
 } from '../../src/logic/daily-report-persistence';
 
-describe('SCEN-445: データベース接続失敗時のエラー', () => {
-  it('データベース接続に失敗する場合、DatabaseConnectionErrorが発生する', async () => {
-    const input = {
+describe('SCEN-445: 日報データベースへの接続に失敗した場合、DatabaseConnectionErrorが発生', () => {
+  it('DatabaseConnectionErrorが発生し、エラー文言「日報データの取得に失敗しました。」が返される', async () => {
+    const error = new DatabaseConnectionError('日報データの取得に失敗しました。');
+    (retrieveDailyReportsForLeaderReview as jest.Mock).mockRejectedValueOnce(error);
+
+    const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: 'leader-001',
       startDate: '2025-01-01',
       endDate: '2025-01-31',
-      filterByUserId: undefined,
       filterBySubmissionStatus: 'submitted',
-      sortBy: undefined,
-      pageNumber: undefined,
-      pageSize: undefined,
     };
 
-    await expect(retrieveDailyReportsForLeaderReview(input)).rejects.toThrow(
-      DatabaseConnectionError
-    );
-    await expect(retrieveDailyReportsForLeaderReview(input)).rejects.toThrow(
-      '日報データの取得に失敗しました。'
-    );
+    try {
+      await retrieveDailyReportsForLeaderReview(input);
+      fail('DatabaseConnectionErrorが発生するはずです');
+    } catch (caughtError) {
+      expect(caughtError).toBeInstanceOf(DatabaseConnectionError);
+      expect((caughtError as any).message).toBe('日報データの取得に失敗しました。');
+    }
   });
 });

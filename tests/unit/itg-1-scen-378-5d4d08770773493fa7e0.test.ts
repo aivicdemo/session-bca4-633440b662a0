@@ -1,108 +1,121 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { updateReporter } from '../../src/logic/reporter-master-management';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
-import * as validation from '../../src/logic/input-validation-formatting';
-import { PersistenceError } from '../../src/logic/reporter-master-management';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  UpdateReporterOutput,
+  PersistenceError,
+} from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as persistence from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence');
 jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-master-persistence');
 
-describe('SCEN-378: PersistenceError when write to master or history fails', () => {
+describe('SCEN-378: 報告者マスタまたは変更履歴テーブルへの書き込みに失敗すると、PersistenceErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return error output and throw PersistenceError when updateReporterInMaster fails', async () => {
-    const existingReporter = {
-      reporterId: 'reporter-001',
-      reporterName: 'Reporter A',
-      emailAddress: 'reporter-a@example.com',
-      department: 'Engineering',
+  it('should return failure output and throw PersistenceError when reporter master write fails', () => {
+    const mockValidateName = jest.spyOn(inputValidation, 'validateReporterNameFormat' as any);
+    mockValidateName.mockReturnValue(true);
+
+    const mockValidateEmail = jest.spyOn(inputValidation, 'validateEmailAddress' as any);
+    mockValidateEmail.mockReturnValue(true);
+
+    const mockDetectDuplicate = jest.spyOn(inputValidation, 'detectDuplicateEmailAddress' as any);
+    mockDetectDuplicate.mockReturnValue(false);
+
+    const mockRetrieveReporter = jest.spyOn(persistence, 'retrieveReporterByUserId' as any);
+    mockRetrieveReporter.mockReturnValue({
+      reporterId: 'RPT001',
+      reporterName: '既存名前',
+      emailAddress: 'existing@example.com',
+      department: '部署A',
       status: 'active',
-      teamId: 'team-001',
+    });
+
+    const mockUpdateMaster = jest.spyOn(persistence, 'updateReporterInMaster' as any);
+    mockUpdateMaster.mockImplementation(() => {
+      throw new Error('Database write failed');
+    });
+
+    const input: UpdateReporterInput = {
+      reporterId: 'RPT001',
+      reporterName: '新しい名前',
+      emailAddress: 'new@example.com',
+      department: '部署B',
+      status: 'active',
+      teamLeaderId: 'TL001',
+      executionTimestamp: new Date('2025-01-15T09:00:00Z'),
     };
 
-    // 検証関数はすべて成功を返す
-    (validation.validateReporterNameFormat as any).mockResolvedValue(true);
-    (validation.validateEmailAddress as any).mockResolvedValue(true);
-    (validation.detectDuplicateEmailAddress as any).mockResolvedValue(false);
-    (userMasterPersistence.retrieveReporterByUserId as any).mockResolvedValue(existingReporter);
+    let thrownError: any;
+    let result: UpdateReporterOutput | undefined;
 
-    // updateReporterInMaster が失敗をシミュレート
-    (userMasterPersistence.updateReporterInMaster as any).mockRejectedValue(
-      new Error('Database write failed')
-    );
-
-    const input = {
-      reporterId: 'reporter-001',
-      reporterName: 'Updated Name',
-      emailAddress: 'updated@example.com',
-      department: 'Sales',
-      status: 'active',
-      teamLeaderId: 'leader-001',
-      executionTimestamp: new Date(),
-    };
-
-    // PersistenceError が発生することを期待
-    await expect(updateReporter(input)).rejects.toThrow();
-
-    // エラーメッセージを確認
     try {
-      await updateReporter(input);
+      result = updateReporter(input);
     } catch (error) {
-      if (error instanceof PersistenceError) {
-        expect(error.message).toBe('報告者情報の更新に失敗しました。');
-      }
+      thrownError = error;
     }
 
-    // persistReporterMasterChangeHistory が呼ばれていないことを確認
-    expect(userMasterPersistence.persistReporterMasterChangeHistory as any).not.toHaveBeenCalled();
+    expect(result?.success).toBe(false);
+    expect(result?.reporterId).toBeNull();
+    expect(result?.changeHistoryId).toBeNull();
+    expect(result?.message).toBe('報告者情報の更新に失敗しました。');
+    expect(thrownError).toBeInstanceOf(PersistenceError);
   });
 
-  it('should return error output and throw PersistenceError when persistReporterMasterChangeHistory fails', async () => {
-    const existingReporter = {
-      reporterId: 'reporter-001',
-      reporterName: 'Reporter A',
-      emailAddress: 'reporter-a@example.com',
-      department: 'Engineering',
+  it('should return failure output and throw PersistenceError when change history persistence fails', () => {
+    const mockValidateName = jest.spyOn(inputValidation, 'validateReporterNameFormat' as any);
+    mockValidateName.mockReturnValue(true);
+
+    const mockValidateEmail = jest.spyOn(inputValidation, 'validateEmailAddress' as any);
+    mockValidateEmail.mockReturnValue(true);
+
+    const mockDetectDuplicate = jest.spyOn(inputValidation, 'detectDuplicateEmailAddress' as any);
+    mockDetectDuplicate.mockReturnValue(false);
+
+    const mockRetrieveReporter = jest.spyOn(persistence, 'retrieveReporterByUserId' as any);
+    mockRetrieveReporter.mockReturnValue({
+      reporterId: 'RPT001',
+      reporterName: '既存名前',
+      emailAddress: 'existing@example.com',
+      department: '部署A',
       status: 'active',
-      teamId: 'team-001',
+    });
+
+    const mockUpdateMaster = jest.spyOn(persistence, 'updateReporterInMaster' as any);
+    mockUpdateMaster.mockReturnValue(true);
+
+    const mockPersistHistory = jest.spyOn(persistence, 'persistReporterMasterChangeHistory' as any);
+    mockPersistHistory.mockImplementation(() => {
+      throw new Error('Change history persistence failed');
+    });
+
+    const input: UpdateReporterInput = {
+      reporterId: 'RPT001',
+      reporterName: '新しい名前',
+      emailAddress: 'new@example.com',
+      department: '部署B',
+      status: 'active',
+      teamLeaderId: 'TL001',
+      executionTimestamp: new Date('2025-01-15T09:00:00Z'),
     };
 
-    // 検証関数はすべて成功を返す
-    (validation.validateReporterNameFormat as any).mockResolvedValue(true);
-    (validation.validateEmailAddress as any).mockResolvedValue(true);
-    (validation.detectDuplicateEmailAddress as any).mockResolvedValue(false);
-    (userMasterPersistence.retrieveReporterByUserId as any).mockResolvedValue(existingReporter);
+    let thrownError: any;
+    let result: UpdateReporterOutput | undefined;
 
-    // updateReporterInMaster は成功
-    (userMasterPersistence.updateReporterInMaster as any).mockResolvedValue({ success: true });
-
-    // persistReporterMasterChangeHistory が失敗をシミュレート
-    (userMasterPersistence.persistReporterMasterChangeHistory as any).mockRejectedValue(
-      new Error('Change history persistence failed')
-    );
-
-    const input = {
-      reporterId: 'reporter-001',
-      reporterName: 'Updated Name',
-      emailAddress: 'updated@example.com',
-      department: 'Sales',
-      status: 'active',
-      teamLeaderId: 'leader-001',
-      executionTimestamp: new Date(),
-    };
-
-    // PersistenceError が発生することを期待
-    await expect(updateReporter(input)).rejects.toThrow();
-
-    // エラーメッセージを確認
     try {
-      await updateReporter(input);
+      result = updateReporter(input);
     } catch (error) {
-      if (error instanceof PersistenceError) {
-        expect(error.message).toBe('報告者情報の更新に失敗しました。');
-      }
+      thrownError = error;
     }
+
+    expect(result?.success).toBe(false);
+    expect(result?.reporterId).toBeNull();
+    expect(result?.changeHistoryId).toBeNull();
+    expect(result?.message).toBe('報告者情報の更新に失敗しました。');
+    expect(thrownError).toBeInstanceOf(PersistenceError);
   });
 });

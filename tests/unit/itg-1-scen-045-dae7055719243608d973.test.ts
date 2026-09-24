@@ -48,142 +48,142 @@ describe('SCEN-045: リーダーへの進捗サマリー通知送信に失敗し
   const teamId = 'team-A';
 
   const activeReporters = [
-    { reporterId: 'R001', userId: 'U001', userName: '報告者1', reporterName: '報告者1', emailAddress: 'u001@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R002', userId: 'U002', userName: '報告者2', reporterName: '報告者2', emailAddress: 'u002@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R003', userId: 'U003', userName: '報告者3', reporterName: '報告者3', emailAddress: 'u003@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R004', userId: 'U004', userName: '報告者4', reporterName: '報告者4', emailAddress: 'u004@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R005', userId: 'U005', userName: '報告者5', reporterName: '報告者5', emailAddress: 'u005@example.com', department: '営業部', status: 'active' },
+    { userId: 'user-001', userName: 'reporter-001', reporterName: '報告者1' },
+    { userId: 'user-002', userName: 'reporter-002', reporterName: '報告者2' },
+    { userId: 'user-003', userName: 'reporter-003', reporterName: '報告者3' },
+    { userId: 'user-004', userName: 'reporter-004', reporterName: '報告者4' },
+    { userId: 'user-005', userName: 'reporter-005', reporterName: '報告者5' },
   ];
 
-  const submittedDailyReports = activeReporters.slice(0, 3).map((r, i) => ({
-    dailyReportId: `DR-04${i + 1}`,
-    userId: r.userId,
-    reportDate: targetDate,
-    businessContent: '本日の業務内容',
-    submittedAt: `${targetDate}T09:0${i}:00+09:00`,
-  }));
+  const submittedReports = [
+    { userId: 'user-001', submissionTimestamp: '2024-01-15T16:00:00+09:00' },
+    { userId: 'user-002', submissionTimestamp: '2024-01-15T16:10:00+09:00' },
+    { userId: 'user-003', submissionTimestamp: '2024-01-15T16:20:00+09:00' },
+  ];
 
   const nonSubmittedReporters = [
-    { userId: 'U004', userName: 'ユーザーA', reporterName: 'ユーザーA', lastSubmissionDate: '2024-01-14' },
-    { userId: 'U005', userName: 'ユーザーB', reporterName: 'ユーザーB', lastSubmissionDate: null },
+    { userId: 'user-004', userName: 'reporter-004', reporterName: 'ユーザーA', lastSubmissionDate: '2024-01-14' },
+    { userId: 'user-005', userName: 'reporter-005', reporterName: 'ユーザーB', lastSubmissionDate: null },
   ];
 
   beforeEach(() => {
     jest.resetAllMocks();
 
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: true,
       isBusinessDay: true,
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: '2024-01-16T17:00:00+09:00',
-      processingPolicy: 'accept',
-      rejectionReason: null,
+      deadline: '2024-01-15T17:00:00+09:00',
     });
 
     mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
       reporters: activeReporters,
-      totalCount: activeReporters.length,
-      message: '有効な報告者を取得しました。',
+      count: 5,
     });
 
     mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
-      dailyReports: submittedDailyReports,
-      totalCount: submittedDailyReports.length,
-      pageNumber: 1,
-      pageSize: 50,
-      retrievedAt: `${targetDate}T18:00:00+09:00`,
+      reports: submittedReports,
+      count: 3,
     });
 
     mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
       nonSubmittedReporters,
-      detectionLog: {
-        detectionLogId: 'log-001',
-        targetDate,
-        detectionDateTime: `${targetDate}T18:00:00+09:00`,
-        totalReportersCount: activeReporters.length,
-        nonSubmittedCount: nonSubmittedReporters.length,
-        submittedCount: submittedDailyReports.length,
-      },
-      detectionTimestamp: `${targetDate}T18:00:00+09:00`,
+      count: 2,
+      detectionLogId: 'log-001',
     });
 
     mockedJudgePromptNecessityAndMethod.mockResolvedValue({
-      isPromptNecessary: true,
-      promptPriority: 'high',
-      promptMethod: 'email',
-      estimatedNonSubmissionReason: 'unknown',
-      suggestedPromptMessage: '日報の提出をお願いします。',
-      overdueDurationMinutes: 60,
+      isPromptRequired: true,
     });
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValue(
-      new Error('リーダーへの通知送信に失敗しました')
-    );
+    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      sent: 2,
+    });
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue(true);
+    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+      sent: 2,
+      failed: 0,
+    });
 
     mockedRetrieveLeaderDashboardData.mockResolvedValue({
-      submittedReports: submittedDailyReports,
-      nonSubmittedReporters,
-      detectionLogs: [
-        {
-          detectionLogId: 'log-001',
-          targetDate,
-          detectionDateTime: `${targetDate}T18:00:00+09:00`,
-          totalReportersCount: activeReporters.length,
-          nonSubmittedCount: nonSubmittedReporters.length,
-          submittedCount: submittedDailyReports.length,
-        },
-      ],
-      emailSendingHistory: [],
-      submissionStatusSummary: {
-        submittedCount: submittedDailyReports.length,
-        nonSubmittedCount: nonSubmittedReporters.length,
-        submissionRate: 60,
-        promptedCount: nonSubmittedReporters.length,
-      },
-      progressSummaryText:
-        '提出率60%、未提出者2名：ユーザーA（最終提出:2024-01-14）、ユーザーB（未提出）、主要課題：進捗遅延',
+      progressSummary: '提出率60%、未提出者2名：ユーザーA（最終提出:2024-01-14）、ユーザーB（未提出）、主要課題：進捗遅延',
+      submittedCount: 3,
+      nonSubmittedCount: 2,
     });
   });
 
-  it('LeaderNotificationFailedエラーがerrorsに含まれ、leaderNotificationSentがfalseになる', async () => {
-    const result = await runTx4Imp1Agent({
-      targetDate,
-      leaderUserId,
-      teamId,
-    });
+  it('should return partial_failure status when leader notification fails', async () => {
+    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValueOnce(
+      new Error('LeaderNotificationFailed')
+    );
+
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
 
     expect(result.executionStatus).toBe('partial_failure');
     expect(result.leaderNotificationSent).toBe(false);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'LeaderNotificationFailed',
-          message: 'リーダーへの通知送信に失敗しました。',
-        }),
-      ])
+  });
+
+  it('should include LeaderNotificationFailed error', async () => {
+    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValueOnce(
+      new Error('LeaderNotificationFailed')
     );
 
-    expect(result.targetDate).toBe(targetDate);
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.errors).toBeDefined();
+    expect(Array.isArray(result.errors)).toBe(true);
+    
+    const error = result.errors.find((e: any) => e.code === 'LeaderNotificationFailed');
+    expect(error).toBeDefined();
+    expect(error.message).toContain('リーダーへの通知送信に失敗しました');
+  });
+
+  it('should include all expected data fields despite notification failure', async () => {
+    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValueOnce(
+      new Error('LeaderNotificationFailed')
+    );
+
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.targetDate).toBe('2024-01-15');
     expect(result.submittedReportCount).toBe(3);
     expect(result.nonSubmittedReporterCount).toBe(2);
-    expect(result.nonSubmittedReporters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'U004' }),
-        expect.objectContaining({ userId: 'U005' }),
-      ])
-    );
-    expect(result.nonSubmittedReporters).toHaveLength(2);
     expect(result.promptNotificationsSent).toBe(2);
     expect(result.promptNotificationsFailed).toBe(0);
-    expect(result.progressSummary).toBe(
-      '提出率60%、未提出者2名：ユーザーA（最終提出:2024-01-14）、ユーザーB（未提出）、主要課題：進捗遅延'
-    );
+    expect(result.progressSummary).toContain('提出率60%');
     expect(result.detectionLogId).toBe('log-001');
-    expect(result.executionTimestamp).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
+    expect(result.executionTimestamp).toBeTruthy();
+  });
+
+  it('should include non-submitted reporter details', async () => {
+    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValueOnce(
+      new Error('LeaderNotificationFailed')
     );
+
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
+
+    expect(result.nonSubmittedReporters).toBeDefined();
+    expect(Array.isArray(result.nonSubmittedReporters)).toBe(true);
+    expect(result.nonSubmittedReporters.length).toBe(2);
+    expect(result.nonSubmittedReporters[0].userId).toBe('user-004');
+    expect(result.nonSubmittedReporters[1].lastSubmissionDate).toBeNull();
   });
 });

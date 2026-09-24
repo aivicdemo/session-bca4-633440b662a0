@@ -1,9 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  PromptNotificationSendingFailed,
-  Tx2Imp1AgentInput,
-  Tx2Imp1AgentOutput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -48,9 +43,9 @@ describe("SCEN-021: 未提出者への催促メール送信に失敗した場合
       promptMethod: "email",
     });
 
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockRejectedValue(
-      new PromptNotificationSendingFailed("催促メール送信に失敗しました。")
-    );
+    const error = new Error("催促メール送信に失敗しました。");
+    (error as any).name = "PromptNotificationSendingFailed";
+    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockRejectedValue(error);
 
     (sendLeaderSubmissionNotification as jest.Mock).mockResolvedValue({
       leaderUserId: "leader1",
@@ -68,13 +63,14 @@ describe("SCEN-021: 未提出者への催促メール送信に失敗した場合
   });
 
   it("催促メール送信が失敗し、executionStatusがpartial_failureとなりpromptNotificationsSentが空配列になる", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
-    const result: Tx2Imp1AgentOutput = await runTx2Imp1Agent(input);
+    const mockAiClient = {};
+    const result = await runTx2Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("partial_failure");
     expect(result.targetDate).toBe("2024-01-15");
@@ -88,7 +84,7 @@ describe("SCEN-021: 未提出者への催促メール送信に失敗した場合
 
     // 設計上の Tx2Imp1AgentOutput にはエラー名（PromptNotificationSendingFailed）・
     // エラー文言（催促メール送信に失敗しました。）を格納するフィールドが定義されていないため、
-    // 戻り値からこれらの値そのものを検証することはできない（.aivic/batches/30/unresolved.md 参照）。
+    // 戻り値からこれらの値そのものを検証することはできない（.aivic/batches/29/unresolved.md 参照）。
     expect(result.dashboardData).toBeTruthy();
     expect(Array.isArray(result.leaderNotificationsSent)).toBe(true);
   });

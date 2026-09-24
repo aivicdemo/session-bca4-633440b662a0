@@ -2,11 +2,15 @@ jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeSchedulerExecutionTiming: jest.fn(),
 }));
 
-import {
-  runTx1Imp1Agent,
-  SchedulerExecutionTimingError,
-} from '../../src/agents/tx-1-imp-1/orchestrator';
+import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+
+class SchedulerExecutionTimingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchedulerExecutionTimingError';
+  }
+}
 
 const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
 
@@ -27,11 +31,12 @@ describe('SCEN-002: スケジューラ実行タイミング判定に失敗し、
   });
 
   it('executionStatusがfailureとなり、SchedulerExecutionTimingErrorがerrorsに記録される', async () => {
+    const mockAiClient: any = {};
     const result = await runTx1Imp1Agent({
       executionTimestamp,
       targetDate,
       systemContext,
-    });
+    }, mockAiClient);
 
     expect(result.executionStatus).toBe('failure');
     expect(result.errors).toEqual(

@@ -1,37 +1,25 @@
-import { describe, it, expect, jest } from '@jest/globals';
-import {
-  judgeSchedulerExecutionTiming,
-  InvalidSchedulerConfigurationError,
-  isBusinessDay,
-} from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-190: 実行予定時刻が不正な形式のとき、スケジューラ設定エラーが発生する', () => {
-  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is in invalid format', () => {
-    // Stub isBusinessDay to return true
-    jest.spyOn(require('../../src/logic/business-day-deadline-judgment'), 'isBusinessDay')
-      .mockReturnValue(true);
-
+  it('時間が25、分が99という不正な形式の実行予定時刻でInvalidSchedulerConfigurationErrorが発生する', () => {
     const input = {
       currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '25:99', // Invalid: hour is 25, minute is 99
+      scheduledExecutionTime: '25:99',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',
     };
 
-    // Call judgeSchedulerExecutionTiming and expect it to throw
-    expect(() => {
-      judgeSchedulerExecutionTiming(input);
-    }).toThrow(InvalidSchedulerConfigurationError);
+    const mockIsBusinessDay = jest.fn().mockReturnValue(true);
+    const dependencies = { isBusinessDay: mockIsBusinessDay };
 
-    // Verify error message
-    let error;
+    let thrownError: Error | null = null;
     try {
-      judgeSchedulerExecutionTiming(input);
-    } catch (e) {
-      error = e;
+      judgeSchedulerExecutionTiming(input, dependencies);
+    } catch (error) {
+      thrownError = error as Error;
     }
 
-    expect(error).toBeInstanceOf(InvalidSchedulerConfigurationError);
-    expect(error?.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+    expect(thrownError).toBeInstanceOf(InvalidSchedulerConfigurationError);
+    expect(thrownError?.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
   });
 });

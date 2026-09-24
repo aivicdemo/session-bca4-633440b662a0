@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   retrieveLeaderDashboardData,
   RetrieveLeaderDashboardDataInput,
-  DataRetrievalFailedError,
 } from '../../src/logic/daily-report-management-view';
 
 jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
@@ -26,7 +25,7 @@ jest.mock('../../src/logic/notification-delivery.ts', () => ({
   validateAndDeliverLeaderNotification: jest.fn(),
 }));
 
-describe('SCEN-569: メールアドレスの形式が不正である場合、エラーが発生する', () => {
+describe('SCEN-569: リーダーメールアドレスの形式が不正である場合、例外がスローされる', () => {
   let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock;
   let mockJudgeBusinessDayAndDeadline: jest.Mock;
   let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
@@ -50,9 +49,13 @@ describe('SCEN-569: メールアドレスの形式が不正である場合、エ
     mockValidateAndDeliverLeaderNotification = require('../../src/logic/notification-delivery.ts')
       .validateAndDeliverLeaderNotification as jest.Mock;
 
-    // Setup successful stubs for other operations
+    // Setup successful stubs for authentication and business day judgment
     // @ts-ignore
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ isAuthorized: true });
+    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+      leaderId: 'leader-001',
+      leaderEmail: 'leader@domain', // Invalid email format (no dot in domain)
+      isAuthorized: true,
+    });
     // @ts-ignore
     mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
     // @ts-ignore
@@ -62,24 +65,51 @@ describe('SCEN-569: メールアドレスの形式が不正である場合、エ
     // @ts-ignore
     mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
 
-    // Setup validateAndDeliverLeaderNotification to return error for invalid email format
+    // Setup validateAndDeliverLeaderNotification to throw error for invalid email format
     // @ts-ignore
-    mockValidateAndDeliverLeaderNotification.mockResolvedValue({
-      isValid: false,
-      failureReason: 'メールアドレスの形式が無効です。正しいアドレスを入力してください。',
-      deliveryStatus: 'failed',
+    mockValidateAndDeliverLeaderNotification.mockImplementation(() => {
+      const error = new Error('メールアドレスの形式が無効です。正しいアドレスを入力してください。');
+      throw error;
     });
   });
 
-  it('メールアドレスの形式が不正である場合、エラーメッセージ「メールアドレスの形式が無効です。正しいアドレスを入力してください。」が発生する', async () => {
+  it('メールアドレスがleader@domain（ドメイン部分に「.」を含まない）の形式の場合、例外がスローされること', async () => {
     const input: RetrieveLeaderDashboardDataInput = {
       leaderId: 'leader-001',
-      targetDate: '2025-01-15',
+      targetDate: '2026-09-24',
     };
 
-    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(DataRetrievalFailedError);
+    // 呼び出しが例外をスローすることを確認
     await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(
       'メールアドレスの形式が無効です。正しいアドレスを入力してください。'
     );
+  });
+
+  it('メールアドレス形式検証エラーの場合、RetrieveLeaderDashboardDataOutputが返されないこと', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
+      leaderId: 'leader-001',
+      targetDate: '2026-09-24',
+    };
+
+    const result = retrieveLeaderDashboardData(input);
+
+    // 例外がスローされることを検証
+    await expect(result).rejects.toThrow();
+  });
+
+  it('validateAndDeliverLeaderNotificationが内部で実行され、メールアドレス検証に到達すること', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
+      leaderId: 'leader-001',
+      targetDate: '2026-09-24',
+    };
+
+    try {
+      await retrieveLeaderDashboardData(input);
+    } catch {
+      // Expected error
+    }
+
+    // validateAndDeliverLeaderNotification が呼ばれたことを確認
+    expect(mockValidateAndDeliverLeaderNotification).toHaveBeenCalled();
   });
 });

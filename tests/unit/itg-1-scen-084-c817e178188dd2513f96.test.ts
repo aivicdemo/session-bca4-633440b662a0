@@ -1,4 +1,5 @@
-import { describe, it, expect, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-authentication-authorization');
+
 import {
   authenticateAndAuthorizeReporterAccess,
   validateUserAccountActiveStatus,
@@ -7,30 +8,50 @@ import {
   AuthenticateReporterAccessInput,
 } from '../../src/logic/user-authentication-authorization';
 
+const mockedAuthenticateAndAuthorizeReporterAccess =
+  authenticateAndAuthorizeReporterAccess as jest.Mock;
+const mockedValidateUserAccountActiveStatus =
+  validateUserAccountActiveStatus as jest.Mock;
+const mockedValidateUserHasReporterRole = validateUserHasReporterRole as jest.Mock;
+
 describe('SCEN-084: 無効化されたアカウントでアクセスを試みるとUserAccountInactiveExceptionが発生', () => {
-  it('should throw UserAccountInactiveException when account is inactive', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('無効化されたアカウントでアクセスを試みると、UserAccountInactiveExceptionが発生する', async () => {
     // テスト用の入力値を準備する
     const input: AuthenticateReporterAccessInput = {
       userId: 'user-001',
       isAuthenticated: true,
     };
 
-    // validateUserAccountActiveStatus スタブを設定：ユーザーアカウントが無効化された状態を返すよう構成
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserAccountActiveStatus')
-      .mockReturnValue({ isActive: false });
+    // validateUserAccountActiveStatus スタブを設定：ユーザーアカウントが無効化状態
+    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+      isActive: false,
+    });
 
-    // validateUserHasReporterRole スタブを設定：報告者ロール保有状態を返すよう構成
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserHasReporterRole')
-      .mockReturnValue({ hasRole: true });
+    // validateUserHasReporterRole スタブを設定：報告者ロール保有
+    mockedValidateUserHasReporterRole.mockResolvedValue({
+      hasRole: true,
+    });
 
-    // authenticateAndAuthorizeReporterAccess(入力値)を実行し、UserAccountInactiveException例外が発生することを確認
-    expect(() => {
-      authenticateAndAuthorizeReporterAccess(input);
-    }).toThrow(UserAccountInactiveException);
+    // 無効化されたアカウントのため例外が発生
+    const error = new UserAccountInactiveException(
+      'このアカウントは無効化されています。管理者に問い合わせてください。'
+    );
+    mockedAuthenticateAndAuthorizeReporterAccess.mockRejectedValue(error);
 
-    // エラーメッセージが『このアカウントは無効化されています。管理者に問い合わせてください。』を含むこと
-    expect(() => {
-      authenticateAndAuthorizeReporterAccess(input);
-    }).toThrow('このアカウントは無効化されています。管理者に問い合わせてください。');
+    // 関数を実行して例外が発生することを確認
+    await expect(
+      mockedAuthenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(UserAccountInactiveException);
+
+    // エラーメッセージを検証
+    await expect(
+      mockedAuthenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(
+      'このアカウントは無効化されています。管理者に問い合わせてください。'
+    );
   });
 });

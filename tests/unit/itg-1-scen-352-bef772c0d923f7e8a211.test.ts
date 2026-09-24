@@ -1,51 +1,66 @@
-import { jest } from '@jest/globals';
-import { registerReporter } from '../../src/logic/reporter-master-management';
+import {
+  registerReporter,
+  RegisterReporterInput,
+  RegisterReporterOutput,
+} from '../../src/logic/reporter-master-management';
+import {
+  validateReporterNameFormat,
+  validateEmailAddress,
+  detectDuplicateEmailAddress,
+} from '../../src/logic/input-validation-formatting';
+import {
+  registerReporterToMaster,
+  persistReporterMasterChangeHistory,
+} from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/input-validation-formatting.ts');
-jest.mock('../../src/logic/user-authentication-authorization.ts');
-jest.mock('../../src/logic/user-master-persistence.ts');
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-master-persistence');
 
-import * as validationModule from '../../src/logic/input-validation-formatting';
-import * as authModule from '../../src/logic/user-authentication-authorization';
-import * as persistenceModule from '../../src/logic/user-master-persistence';
-
-describe('SCEN-352: 新規登録正常系', () => {
+describe('SCEN-352: 新規登録操作で、メールアドレスが未登録で、報告者名が存在し、メールアドレス形式が正しい場合、br-tx_7-004により保存可能と判定される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('メールアドレス未登録で、報告者名が有効、形式が正しい場合、報告者が登録される', async () => {
-    // スタブ設定
-    (validationModule.validateReporterNameFormat as any).mockReturnValue(true);
-    (validationModule.validateEmailAddress as any).mockReturnValue(true);
-    (validationModule.detectDuplicateEmailAddress as any).mockReturnValue(false);
-    (authModule.validateUserAccountActiveStatus as any).mockReturnValue(true);
-    (persistenceModule.registerReporterToMaster as any).mockResolvedValue({ reporterId: 'REP001' });
-    (persistenceModule.persistReporterMasterChangeHistory as any).mockResolvedValue({ changeHistoryId: 'HIST001' });
+  test('新規登録時に検証に合格した場合、br-tx_7-004により保存可能と判定される', () => {
+    // スタブ化の設定
+    (validateReporterNameFormat as jest.Mock).mockReturnValue(true);
+    (validateEmailAddress as jest.Mock).mockReturnValue(true);
+    (detectDuplicateEmailAddress as jest.Mock).mockReturnValue(false);
+    (registerReporterToMaster as jest.Mock).mockResolvedValue({
+      reporterId: 'REP001',
+    });
+    (persistReporterMasterChangeHistory as jest.Mock).mockResolvedValue({
+      changeHistoryId: 'HIST001',
+    });
 
-    const input = {
+    const input: RegisterReporterInput = {
       userId: 'USER001',
       reporterName: '山田太郎',
       emailAddress: 'yamada@example.com',
       teamLeaderId: 'LEADER001',
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: new Date(),
     };
 
-    const result = await registerReporter(input);
+    const result: RegisterReporterOutput = registerReporter(input);
 
+    // 期待結果の検証
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('REP001');
+    expect(result.reporterId).not.toBeNull();
     expect(result.message).toBeTruthy();
+    expect(typeof result.message).toBe('string');
     expect(result.message).not.toBe('');
     expect(result.changeHistoryId).toBe('HIST001');
+    expect(result.changeHistoryId).not.toBeNull();
 
-    // 依存先の関数が呼び出されたことを確認
-    expect(validationModule.validateReporterNameFormat).toHaveBeenCalledWith('山田太郎');
-    expect(validationModule.validateEmailAddress).toHaveBeenCalledWith('yamada@example.com');
-    expect(validationModule.detectDuplicateEmailAddress).toHaveBeenCalledWith('yamada@example.com');
-    expect(authModule.validateUserAccountActiveStatus).toHaveBeenCalledWith('USER001');
-    expect(authModule.validateUserAccountActiveStatus).toHaveBeenCalledWith('LEADER001');
-    expect(persistenceModule.registerReporterToMaster).toHaveBeenCalled();
-    expect(persistenceModule.persistReporterMasterChangeHistory).toHaveBeenCalled();
+    // persistReporterMasterChangeHistory が正しく呼ばれていることを検証
+    expect(persistReporterMasterChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationType: 'CREATE',
+        reporterId: 'REP001',
+        changedFields: expect.any(Array),
+        executedBy: 'LEADER001',
+      })
+    );
   });
 });

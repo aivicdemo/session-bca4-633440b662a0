@@ -1,84 +1,46 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { jest } from '@jest/globals';
 import {
-  InvalidReminderSettingsError,
+  saveReminderNotificationSettings,
+  retrieveReporterByUserId,
+  persistReporterMasterChangeHistory,
   SaveReminderNotificationSettingsInput,
+  SaveReminderNotificationSettingsOutput,
+  InvalidReminderSettingsError,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReporterByUserId: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-  InvalidReminderSettingsError: class extends Error {},
-}));
-
 describe('SCEN-475: 送信時刻がHH:MM形式の有効な24時間時刻でない場合、InvalidReminderSettingsErrorが発生し失敗応答が返される', () => {
-  let mockSaveReminderNotificationSettings: jest.Mock;
-  let mockRetrieveReporterByUserId: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockSaveReminderNotificationSettings = require('../../src/logic/user-master-persistence.ts').saveReminderNotificationSettings as jest.Mock;
-    mockRetrieveReporterByUserId = require('../../src/logic/user-master-persistence.ts').retrieveReporterByUserId as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts').persistReporterMasterChangeHistory as jest.Mock;
-
-    // retrieveReporterByUserIdが有効なユーザーレコードを返すようにモック
-    // @ts-ignore
-    mockRetrieveReporterByUserId.mockResolvedValue({
-      success: true,
-      userId: 'user-001',
-      reporterName: 'テストユーザー',
-      department: 'テスト部門',
-    });
-
-    // saveReminderNotificationSettingsが無効な時刻でエラーを発生させるようにモック
-    // @ts-ignore
-    mockSaveReminderNotificationSettings.mockImplementation(
-      async (input: SaveReminderNotificationSettingsInput) => {
-        // 時刻の妥当性チェック
-        const [hours, minutes] = input.sendingTime.split(':');
-        const hour = parseInt(hours, 10);
-        const minute = parseInt(minutes, 10);
-
-        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-          const error = new InvalidReminderSettingsError('リマインダー設定の値が無効です。');
-          throw error;
-        }
-
-        // @ts-ignore
-        await mockPersistReporterMasterChangeHistory();
-        return { success: true, reminderSettingId: 'reminder-setting-001', message: 'リマインダー設定が正常に保存されました。' };
-      }
-    );
-
-    // @ts-ignore
-    mockPersistReporterMasterChangeHistory.mockResolvedValue(undefined);
-  });
-
-  it('無効な24時間時刻でInvalidReminderSettingsErrorが発生する', async () => {
+  it('should return error when sending time is invalid', async () => {
     const input: SaveReminderNotificationSettingsInput = {
       userId: 'user-001',
       enabledFlag: true,
       sendingTime: '25:00',
-      sendingDaysOfWeek: ['MON', 'TUE', 'WED', 'THU', 'FRI'],
-      sendingMethod: 'EMAIL',
+      sendingDaysOfWeek: ['月', '火', '水', '木', '金'],
+      sendingMethod: 'メール',
       leaderUserId: 'leader-001',
       updateTimestamp: new Date(),
     };
 
-    let caughtError: Error | undefined;
+    jest.mocked(retrieveReporterByUserId).mockResolvedValueOnce({
+      success: true,
+      reporter: {
+        reporterId: 'RPT-001',
+        userId: 'user-001',
+        reporterName: 'テストユーザー',
+        emailAddress: 'test@example.com',
+        department: '営業部',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      message: 'ユーザーが見つかりました。',
+    });
 
-    try {
-      await mockSaveReminderNotificationSettings(input);
-    } catch (error) {
-      caughtError = error as Error;
-    }
+    const result: SaveReminderNotificationSettingsOutput =
+      await saveReminderNotificationSettings(input);
 
-    // InvalidReminderSettingsErrorが発生したことを確認
-    expect(caughtError).toBeDefined();
-    expect(caughtError?.message).toBe('リマインダー設定の値が無効です。');
-
-    // データベースへの保存操作は実行されない
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.reminderSettingId).toBeNull();
+    expect(result.message).toBe('リマインダー設定の値が無効です。');
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

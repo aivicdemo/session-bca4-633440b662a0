@@ -1,45 +1,15 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { jest } from '@jest/globals';
 import {
-  UserNotFoundError,
+  saveReminderNotificationSettings,
+  retrieveReporterByUserId,
+  persistReporterMasterChangeHistory,
   SaveReminderNotificationSettingsInput,
+  SaveReminderNotificationSettingsOutput,
+  UserNotFoundError,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReporterByUserId: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-  UserNotFoundError: class extends Error {},
-}));
-
 describe('SCEN-474: 指定されたユーザーIDが存在しない場合、UserNotFoundErrorが発生し失敗応答が返される', () => {
-  let mockSaveReminderNotificationSettings: jest.Mock;
-  let mockRetrieveReporterByUserId: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockSaveReminderNotificationSettings = require('../../src/logic/user-master-persistence.ts').saveReminderNotificationSettings as jest.Mock;
-    mockRetrieveReporterByUserId = require('../../src/logic/user-master-persistence.ts').retrieveReporterByUserId as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts').persistReporterMasterChangeHistory as jest.Mock;
-
-    // retrieveReporterByUserIdがnullを返すようにモック
-    // @ts-ignore
-    mockRetrieveReporterByUserId.mockResolvedValue(null);
-
-    // saveReminderNotificationSettingsがUserNotFoundErrorをスロー
-    mockSaveReminderNotificationSettings.mockImplementation(
-      async (input: SaveReminderNotificationSettingsInput) => {
-        const user = await mockRetrieveReporterByUserId({ userId: input.userId });
-        if (!user) {
-          const error = new UserNotFoundError('ユーザーが見つかりません。');
-          throw error;
-        }
-        return { success: true, reminderSettingId: 'reminder-setting-001', message: 'リマインダー設定が正常に保存されました。' };
-      }
-    );
-  });
-
-  it('存在しないユーザーIDでUserNotFoundErrorが発生する', async () => {
+  it('should return error when user is not found', async () => {
     const input: SaveReminderNotificationSettingsInput = {
       userId: 'non-existent-user-id',
       enabledFlag: true,
@@ -50,19 +20,18 @@ describe('SCEN-474: 指定されたユーザーIDが存在しない場合、User
       updateTimestamp: new Date(),
     };
 
-    let caughtError: Error | undefined;
+    jest.mocked(retrieveReporterByUserId).mockResolvedValueOnce({
+      success: false,
+      reporter: null,
+      message: 'ユーザーが見つかりません。',
+    });
 
-    try {
-      await mockSaveReminderNotificationSettings(input);
-    } catch (error) {
-      caughtError = error as Error;
-    }
+    const result: SaveReminderNotificationSettingsOutput =
+      await saveReminderNotificationSettings(input);
 
-    // UserNotFoundErrorが発生したことを確認
-    expect(caughtError).toBeDefined();
-    expect(caughtError?.message).toBe('ユーザーが見つかりません。');
-
-    // persistReporterMasterChangeHistoryは呼び出されない
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.reminderSettingId).toBeNull();
+    expect(result.message).toBe('ユーザーが見つかりません。');
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

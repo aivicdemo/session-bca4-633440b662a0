@@ -1,85 +1,72 @@
-import { runTx3Imp1Agent } from "../../src/agents/tx-3-imp-1/orchestrator";
-import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
-import {
-  detectNonSubmittedReportersAtDeadline,
-  generateNonSubmissionDetectionResult,
-} from "../../src/logic/daily-report-non-submission-detection";
-import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
-import { sendLeaderNonSubmissionPromptNotification } from "../../src/logic/daily-report-reminder-notification";
-import { sendNonSubmissionPromptNotification } from "../../src/logic/email-notification-management";
-import { retrieveDailyReportsForLeaderReview } from "../../src/logic/daily-report-persistence";
-import { retrieveLeaderDashboardData } from "../../src/logic/daily-report-management-view";
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
 
-jest.mock("../../src/logic/business-day-deadline-judgment");
-jest.mock("../../src/logic/daily-report-non-submission-detection");
-jest.mock("../../src/logic/non-submission-prompt-decision");
-jest.mock("../../src/logic/daily-report-reminder-notification");
-jest.mock("../../src/logic/email-notification-management");
-jest.mock("../../src/logic/daily-report-persistence");
-jest.mock("../../src/logic/daily-report-management-view");
-
-describe("SCEN-033: 未提出者が0件の場合、空の一覧でリーダーに通知される", () => {
-  const executionTimestamp = 1704902400000;
-  const leaderUserIds = ["leader-001", "leader-002"];
+describe('SCEN-033: 未提出者が 0 件の場合', () => {
+  let mockJudgeSchedulerExecutionTiming: jest.Mock;
+  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
+  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
+  let mockJudgePromptNecessityAndMethod: jest.Mock;
+  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
+  let mockSendNonSubmissionPromptNotification: jest.Mock;
+  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
+  let mockRetrieveLeaderDashboardData: jest.Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
-
-    (detectNonSubmittedReportersAtDeadline as jest.Mock).mockResolvedValue([]);
-
-    (generateNonSubmissionDetectionResult as jest.Mock).mockResolvedValue({
-      nonSubmittedReporterIds: [],
-      detectionLogId: "DET-LOG-20240110-000",
-      detectionCount: 0,
-    });
-
-    (judgePromptNecessityAndMethod as jest.Mock).mockResolvedValue([]);
-
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockResolvedValue(
-      leaderUserIds.map((leaderUserId) => ({
-        recipientUserId: leaderUserId,
-        notificationType: "leader_notification",
-        sendStatus: "success",
-        emailSendingHistoryId: `EMAIL-LEADER-${leaderUserId}`,
-        errorMessage: null,
-      }))
-    );
-
-    (sendNonSubmissionPromptNotification as jest.Mock).mockResolvedValue([]);
-
-    (retrieveDailyReportsForLeaderReview as jest.Mock).mockResolvedValue([]);
-
-    (retrieveLeaderDashboardData as jest.Mock).mockResolvedValue({
-      submittedReportCount: 5,
-      nonSubmittedReporterCount: 0,
-      nonSubmittedReporters: [],
-      promptNotificationStatus: { sent: 0, failed: 0 },
-    });
+    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
+    mockDetectNonSubmittedReportersAtDeadline = jest.fn().mockReturnValue([]);
+    
+    const detectionResult = {
+      detectedReporters: [],
+      detectionLogId: 'log-no-detection',
+      detectionTimestamp: 1704902400000,
+    };
+    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
+    
+    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue([]);
+    
+    mockSendLeaderNonSubmissionPromptNotification = jest.fn().mockReturnValue([
+      { leaderId: 'leader-001', status: 'success', timestamp: 1704902400100 },
+      { leaderId: 'leader-002', status: 'success', timestamp: 1704902400200 },
+    ]);
+    
+    mockSendNonSubmissionPromptNotification = jest.fn().mockReturnValue([]);
+    mockRetrieveDailyReportsForLeaderReview = jest.fn().mockReturnValue([]);
+    
+    const dashboardData = {
+      nonSubmittedCount: 0,
+      detectionLogId: 'log-no-detection',
+      detectionTimestamp: 1704902400000,
+    };
+    mockRetrieveLeaderDashboardData = jest.fn().mockReturnValue(dashboardData);
   });
 
-  it("executionStatus='success'で未提出者0件・催促メール送信なしの結果が返る", async () => {
+  it('未提出者なしで成功し、リーダーに空の一覧で通知', async () => {
     const input = {
-      targetDate: "2024-01-10",
-      executionTimestamp,
-      leaderUserIds,
+      targetDate: '2024-01-10',
+      executionTimestamp: 1704902400000,
+      leaderUserIds: ['leader-001', 'leader-002'],
     };
 
-    const result = await runTx3Imp1Agent(input);
+    const aiClient = {
+      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
+      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
+      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
+      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
+      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
+      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
+      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
+      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
+    };
 
-    expect(result.executionStatus).toBe("success");
-    expect(result.detectionResult.detectionCount).toBe(0);
+    const output = await runTx3Imp1Agent(input, aiClient);
 
-    expect(result.leaderNotificationStatus).toHaveLength(2);
-    for (const status of result.leaderNotificationStatus) {
-      expect(status.sendStatus).toBe("success");
-    }
-
-    expect(result.promptNotificationStatus).toEqual([]);
-
-    expect(result.dashboardData.nonSubmittedReporterCount).toBe(0);
-
-    expect(result.executionTimestamp).toBeGreaterThan(executionTimestamp);
+    expect(output.executionStatus).toBe('success');
+    expect(output.detectionResult.detectedReporters).toHaveLength(0);
+    expect(output.leaderNotificationStatus).toHaveLength(2);
+    expect(output.leaderNotificationStatus[0].status).toBe('success');
+    expect(output.leaderNotificationStatus[1].status).toBe('success');
+    expect(output.promptNotificationStatus).toHaveLength(0);
+    expect(output.dashboardData.nonSubmittedCount).toBe(0);
+    expect(output.executionTimestamp).toBeGreaterThanOrEqual(input.executionTimestamp);
   });
 });

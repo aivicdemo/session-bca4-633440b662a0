@@ -1,27 +1,37 @@
-import {
-  validateUserInformationRequired,
-  ValidateUserInformationRequiredInput,
-  ValidateUserInformationRequiredOutput,
-} from '../../src/logic/input-validation-formatting';
-
 jest.mock('../../src/logic/input-validation-formatting', () => {
   const actual = jest.requireActual('../../src/logic/input-validation-formatting');
   return {
     ...actual,
-    validateEmailAddress: jest.fn((input) => ({
-      isValid: true,
-      validatedEmailAddress: input.emailAddress,
-      errorCode: null,
-    })),
+    validateEmailAddress: jest.fn(),
   };
 });
 
+import {
+  validateUserInformationRequired,
+  validateEmailAddress,
+  ValidateUserInformationRequiredInput,
+  ValidateUserInformationRequiredOutput,
+} from '../../src/logic/input-validation-formatting';
+
+const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
+
 describe('SCEN-150: 最大許容文字数がデフォルト値を使用する場合、100文字以内で名前と所属が検証される', () => {
-  test('should validate with default maximum lengths when not specified', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedValidateEmailAddress.mockReturnValue({
+      isValid: true,
+      validatedEmailAddress: 'yamada.taro@example.com',
+      errorCode: null,
+    });
+  });
+
+  test('should validate user information with default maximum lengths (100 chars)', () => {
     const input: ValidateUserInformationRequiredInput = {
       userName: '山田太郎',
       emailAddress: 'yamada.taro@example.com',
       department: '営業部',
+      maximumUserNameLength: undefined,
+      maximumDepartmentLength: undefined,
     };
 
     const result: ValidateUserInformationRequiredOutput = validateUserInformationRequired(input);

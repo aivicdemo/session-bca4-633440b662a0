@@ -1,5 +1,7 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   detectNonSubmittedReportersAtDeadline,
+  DetectNonSubmittedReportersAtDeadlineInput,
   DeadlineNotReachedError,
 } from '../../src/logic/daily-report-non-submission-detection';
 import {
@@ -7,45 +9,32 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
 
 describe('SCEN-225: 提出期限に達していない時刻での実行を拒否する', () => {
+  const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<typeof judgeSchedulerExecutionTiming>;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('提出期限17:00より前の時刻16:59での実行で、DeadlineNotReachedErrorをスローする', async () => {
-    const targetDate = '2024-01-15';
-    const currentDateTime = '2024-01-15T16:59:00Z';
-    const submissionDeadlineTime = '17:00';
-    const teamId = 'team-001';
+  it('提出期限時刻より1分前（16:59）に実行された場合、DeadlineNotReachedError をスローする', async () => {
+    const input: DetectNonSubmittedReportersAtDeadlineInput = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T16:59:00Z',
+      submissionDeadlineTime: '17:00',
+      teamId: 'team-001',
+    };
 
-    // judgeSchedulerExecutionTiming: 期限に未到達を返す
-    (judgeSchedulerExecutionTiming as jest.Mock).mockReturnValue(false);
+    mockJudgeSchedulerExecutionTiming.mockResolvedValue(false);
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline({
-        targetDate,
-        currentDateTime,
-        submissionDeadlineTime,
-        teamId,
-      })
-    ).rejects.toThrow(DeadlineNotReachedError);
-
+    let thrownError: unknown;
     try {
-      await detectNonSubmittedReportersAtDeadline({
-        targetDate,
-        currentDateTime,
-        submissionDeadlineTime,
-        teamId,
-      });
+      await detectNonSubmittedReportersAtDeadline(input);
     } catch (error) {
-      if (error instanceof DeadlineNotReachedError) {
-        expect(error.message).toBe(
-          '日報提出期限に達していないため、未提出者検知を実行できません。'
-        );
-      }
+      thrownError = error;
     }
+
+    expect(thrownError).toBeInstanceOf(DeadlineNotReachedError);
+    expect((thrownError as Error).message).toBe('日報提出期限に達していないため、未提出者検知を実行できません。');
   });
 });

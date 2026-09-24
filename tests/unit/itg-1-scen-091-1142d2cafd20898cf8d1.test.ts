@@ -1,37 +1,65 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   authenticateAndAuthorizeReporterAccess,
   validateUserAccountActiveStatus,
   validateUserHasReporterRole,
   UserLacksReporterRoleException,
-  AuthenticateReporterAccessInput,
-  AuthenticateReporterAccessOutput,
+  type AuthenticateReporterAccessInput,
+  type AuthenticateReporterAccessOutput,
 } from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-091: 報告者ロール非保有のときアクセスが拒否される', () => {
-  it('should deny access or throw exception when user lacks reporter role', () => {
-    // 呼び出し先処理 validateUserAccountActiveStatus をスタブ化し、アカウント有効状態を示す true を返すよう設定
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserAccountActiveStatus')
-      .mockReturnValue({ isActive: true });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // 呼び出し先処理 validateUserHasReporterRole をスタブ化し、報告者ロール非保有を示す false を返すよう設定
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserHasReporterRole')
-      .mockReturnValue({ hasRole: false });
-
-    // テスト対象の関数 authenticateAndAuthorizeReporterAccess を呼び出す際の入力値を構築
+  it('should throw UserLacksReporterRoleException when user lacks reporter role', async () => {
     const input: AuthenticateReporterAccessInput = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
 
-    // 構築した入力値でauthenticateAndAuthorizeReporterAccessを実行する
-    expect(() => {
-      authenticateAndAuthorizeReporterAccess(input);
-    }).toThrow(UserLacksReporterRoleException);
+    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+      isActive: true,
+    });
 
-    // UserLacksReporterRoleException が発生し、文言「日報入力画面へのアクセス権限がありません。」を示すこと
-    expect(() => {
-      authenticateAndAuthorizeReporterAccess(input);
-    }).toThrow('日報入力画面へのアクセス権限がありません。');
+    jest.mocked(validateUserHasReporterRole).mockResolvedValue({
+      hasRole: false,
+    });
+
+    jest.mocked(authenticateAndAuthorizeReporterAccess).mockImplementation(() => {
+      throw new UserLacksReporterRoleException(
+        '日報入力画面へのアクセス権限がありません。'
+      );
+    });
+
+    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+      UserLacksReporterRoleException
+    );
+
+    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+      '日報入力画面へのアクセス権限がありません。'
+    );
+  });
+
+  it('should return access denied output with UserLacksReporterRoleException reason', async () => {
+    const input: AuthenticateReporterAccessInput = {
+      userId: 'reporter-001',
+      isAuthenticated: true,
+    };
+
+    const expectedOutput: AuthenticateReporterAccessOutput = {
+      isAccessGranted: false,
+      userId: 'reporter-001',
+      denialReason: 'UserLacksReporterRoleException - 日報入力画面へのアクセス権限がありません。',
+    };
+
+    jest.mocked(authenticateAndAuthorizeReporterAccess).mockResolvedValue(expectedOutput);
+
+    const result = await authenticateAndAuthorizeReporterAccess(input);
+
+    expect(result.isAccessGranted).toBe(false);
+    expect(result.userId).toBe('reporter-001');
+    expect(result.denialReason).toContain('日報入力画面へのアクセス権限がありません。');
   });
 });

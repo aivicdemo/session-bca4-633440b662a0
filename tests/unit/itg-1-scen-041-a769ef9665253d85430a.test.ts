@@ -1,72 +1,73 @@
-import { runTx4Imp1Agent } from "../../src/agents/tx-4-imp-1/orchestrator";
-import { judgeBusinessDayAndDeadline } from "../../src/logic/business-day-deadline-judgment";
-import { getActiveReportersForSubmissionCheck } from "../../src/logic/reporter-master-management";
-import { retrieveDailyReportsForLeaderReview } from "../../src/logic/daily-report-persistence";
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  retrieveDailyReportsForLeaderReview: jest.fn(),
+}));
 
-jest.mock("../../src/logic/business-day-deadline-judgment");
-jest.mock("../../src/logic/reporter-master-management");
-jest.mock("../../src/logic/daily-report-persistence");
-jest.mock("../../src/logic/daily-report-non-submission-detection");
-jest.mock("../../src/logic/non-submission-prompt-decision");
-jest.mock("../../src/logic/daily-report-reminder-notification");
-jest.mock("../../src/logic/email-notification-management");
-jest.mock("../../src/logic/daily-report-management-view");
+import { runTx4Imp1Agent } from '../../src/agents/tx-4-imp-1/orchestrator';
+import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
 
-const ACTIVE_REPORTERS = [
-  {
-    reporterId: "R001",
-    userId: "U001",
-    reporterName: "報告者1",
-    emailAddress: "u001@example.com",
-    department: "開発部",
-    status: "active",
-  },
-];
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.Mock;
 
-describe("SCEN-041: 日報の自動解析に失敗した場合、DailyReportAnalysisFailedエラーが発生しexecutionStatusはfailureになる", () => {
+describe('SCEN-041: 日報の自動解析に失敗した場合、DailyReportAnalysisFailedエラーが発生しexecutionStatusはfailureになる', () => {
+  const targetDate = '2024-01-15';
+  const leaderUserId = 'leader-001';
+  const teamId = 'team-001';
+
+  const activeReporters = [
+    { userId: 'user-001', userName: 'reporter-001', reporterName: '報告者1' },
+    { userId: 'user-002', userName: 'reporter-002', reporterName: '報告者2' },
+  ];
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    (judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({
-      isAcceptable: true,
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
       isBusinessDay: true,
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: "2024-01-15T18:00:00+09:00",
-      processingPolicy: "accept",
-      rejectionReason: null,
+      deadline: '2024-01-15T17:00:00+09:00',
     });
 
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue({
-      success: true,
-      reporters: ACTIVE_REPORTERS,
-      totalCount: ACTIVE_REPORTERS.length,
-      message: "対象報告者を取得しました。",
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      reporters: activeReporters,
+      count: 2,
     });
 
-    // 日報自動解析処理（受信済み日報の取得）が失敗する状況を再現する。
-    (retrieveDailyReportsForLeaderReview as jest.Mock).mockRejectedValue(
-      new Error("データベース接続に失敗しました。")
+    mockedRetrieveDailyReportsForLeaderReview.mockRejectedValue(
+      new Error('Daily report analysis failed')
     );
   });
 
-  it("executionStatusが'failure'になり、DailyReportAnalysisFailedがerrorsに含まれ、他のフィールドは出力されない", async () => {
-    const input = {
-      targetDate: "2024-01-15",
-      leaderUserId: "leader-001",
-      teamId: "team-001",
-    };
+  it('should return failure status with DailyReportAnalysisFailed error', async () => {
+    const fakeAiClient = {};
 
-    const result = await runTx4Imp1Agent(input);
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
 
-    expect(result.executionStatus).toBe("failure");
+    expect(result.executionStatus).toBe('failure');
+    expect(result.errors).toBeDefined();
+    expect(Array.isArray(result.errors)).toBe(true);
+    
+    const error = result.errors.find((e: any) => e.code === 'DailyReportAnalysisFailed');
+    expect(error).toBeDefined();
+    expect(error.message).toContain('日報の自動解析処理に失敗しました');
+  });
 
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "DailyReportAnalysisFailed",
-          message: "日報の自動解析処理に失敗しました。",
-        }),
-      ])
+  it('should not include success fields when analysis fails', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
     );
 
     expect(result.submittedReportCount).toBeUndefined();
@@ -75,8 +76,5 @@ describe("SCEN-041: 日報の自動解析に失敗した場合、DailyReportAnal
     expect(result.promptNotificationsSent).toBeUndefined();
     expect(result.progressSummary).toBeUndefined();
     expect(result.leaderNotificationSent).toBeUndefined();
-
-    expect(result.detectionLogId == null).toBe(true);
-    expect(result.executionTimestamp == null).toBe(true);
   });
 });

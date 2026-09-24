@@ -1,42 +1,40 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  authenticateAndAuthorizeReporterAccess,
-  AuthenticateReporterAccessInput,
-} from '../../src/logic/user-authentication-authorization';
-
-const validateUserAccountActiveStatusMock = jest.fn();
-
 jest.mock('../../src/logic/user-authentication-authorization', () => {
   const actual = jest.requireActual('../../src/logic/user-authentication-authorization');
   return {
     ...actual,
-    validateUserAccountActiveStatus: validateUserAccountActiveStatusMock,
+    validateUserAccountActiveStatus: jest.fn(),
   };
 });
 
+import {
+  authenticateAndAuthorizeReporterAccess,
+  validateUserAccountActiveStatus,
+} from '../../src/logic/user-authentication-authorization';
+
+const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
+
 describe('SCEN-101: ユーザーマスタへのデータベースアクセスが失敗したとき例外が発生する', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('データベースアクセス失敗時に例外が発生する', async () => {
-    validateUserAccountActiveStatusMock.mockRejectedValue(
-      new Error('システムエラーが発生しました。管理者に連絡してください')
-    );
+  it('ユーザーマスタへのデータベースアクセスが失敗したときに、例外メッセージに「システムエラーが発生しました。管理者に連絡してください」が含まれる', async () => {
+    // 呼び出し先処理 validateUserAccountActiveStatus をスタブ化し、
+    // データベース接続エラーをシミュレートする例外を発生させるように設定する
+    const dbError = new Error('システムエラーが発生しました。管理者に連絡してください');
+    mockedValidateUserAccountActiveStatus.mockRejectedValueOnce(dbError);
 
-    const input: AuthenticateReporterAccessInput = {
+    // 入力値を準備する：userId = 'reporter-001'、isAuthenticated = true
+    const input = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
 
-    await expect(
-      authenticateAndAuthorizeReporterAccess(input)
-    ).rejects.toThrow();
-
-    try {
-      await authenticateAndAuthorizeReporterAccess(input);
-    } catch (error) {
-      expect((error as Error).message).toContain('システムエラーが発生しました。管理者に連絡してください');
-    }
+    // authenticateAndAuthorizeReporterAccess(userId, isAuthenticated) を呼び出す
+    // 呼び出し先処理 validateUserAccountActiveStatus がデータベースエラーをスロー時、
+    // 例外がそのまま伝播することを確認する
+    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+      'システムエラーが発生しました。管理者に連絡してください'
+    );
   });
 });

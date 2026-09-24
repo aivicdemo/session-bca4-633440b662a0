@@ -1,108 +1,69 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   retrieveLeaderDashboardData,
-  RetrieveLeaderDashboardDataInput,
   RetrieveLeaderDashboardDataOutput,
-  SubmittedDailyReportSummary,
-  EmailHistorySummary,
-  SubmissionStatusSummary,
 } from '../../src/logic/daily-report-management-view';
-import * as userAuth from '../../src/logic/user-authentication-authorization';
-import * as businessDayJudge from '../../src/logic/business-day-deadline-judgment';
-import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
-
-type NonSubmittedReporterInfo = any;
-type DetectionLogSummary = any;
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as reportPersistenceModule from '../../src/logic/daily-report-persistence';
+import * as emailHistoryModule from '../../src/logic/user-master-persistence';
 
 describe('SCEN-579: 本日の検知ログが複数件存在するとき、すべての検知ログが配列に集約される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should aggregate multiple detection logs when multiple logs exist', async () => {
+  it('複数の検知ログがすべて配列に集約される', async () => {
     const leaderId = 'leader-001';
     const targetDate = '2024-01-15';
 
-    const mockSubmittedReports: SubmittedDailyReportSummary[] = [];
+    jest.spyOn(authModule, 'authenticateAndAuthorizeLeaderAccess').mockResolvedValue({
+      leaderId,
+      isAuthenticated: true,
+      role: 'leader',
+    });
 
-    const mockDetectionLogs: DetectionLogSummary[] = [
+    jest.spyOn(businessDayModule, 'judgeBusinessDayAndDeadline').mockResolvedValue({
+      isBusinessDay: true,
+      targetDate,
+      deadlineDateTime: '2024-01-15T18:00:00Z',
+    });
+
+    jest.spyOn(reportPersistenceModule, 'retrieveDailyReportsForLeaderReview').mockResolvedValue([]);
+
+    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue([
       {
-        logId: 'log-001',
-        targetDate: '2024-01-15',
-        detectionDateTime: '2024-01-15T15:00:00Z',
-        reporterId: 'reporter-001',
-        reporterName: '山田太郎',
-        detectionType: 'non_submitted',
+        detectionLogId: 'DL-001',
+        targetDate,
+        detectionDateTime: '2024-01-15T09:00:00Z',
+        nonSubmittedReporters: [{ userId: 'E-001', userName: '山田太郎', emailAddress: 'yamada@example.com' }],
       },
       {
-        logId: 'log-002',
-        targetDate: '2024-01-15',
-        detectionDateTime: '2024-01-15T15:30:00Z',
-        reporterId: 'reporter-002',
-        reporterName: '鈴木花子',
-        detectionType: 'non_submitted',
+        detectionLogId: 'DL-002',
+        targetDate,
+        detectionDateTime: '2024-01-15T10:00:00Z',
+        nonSubmittedReporters: [{ userId: 'E-002', userName: '田中花子', emailAddress: 'tanaka@example.com' }],
       },
       {
-        logId: 'log-003',
-        targetDate: '2024-01-15',
-        detectionDateTime: '2024-01-15T16:00:00Z',
-        reporterId: 'reporter-003',
-        reporterName: '佐藤次郎',
-        detectionType: 'non_submitted',
+        detectionLogId: 'DL-003',
+        targetDate,
+        detectionDateTime: '2024-01-15T11:00:00Z',
+        nonSubmittedReporters: [{ userId: 'E-003', userName: '佐藤次郎', emailAddress: 'satoh@example.com' }],
       },
-    ];
+    ]);
 
-    const mockNonSubmittedReporters: NonSubmittedReporterInfo[] = [
-      {
-        reporterId: 'reporter-001',
-        reporterName: '山田太郎',
-        detectionDateTime: '2024-01-15T15:00:00Z',
-      },
-      {
-        reporterId: 'reporter-002',
-        reporterName: '鈴木花子',
-        detectionDateTime: '2024-01-15T15:30:00Z',
-      },
-      {
-        reporterId: 'reporter-003',
-        reporterName: '佐藤次郎',
-        detectionDateTime: '2024-01-15T16:00:00Z',
-      },
-    ];
+    jest.spyOn(emailHistoryModule, 'retrieveEmailSendingHistoryByDateRange').mockResolvedValue([]);
 
-    const mockEmailHistory: EmailHistorySummary[] = [];
-
-    const mockSubmissionStatusSummary: SubmissionStatusSummary = {
-      totalReporters: 3,
-      submittedCount: 0,
-      nonSubmittedCount: 3,
-      reminderSentCount: 0,
-      submissionRate: 0,
-    };
-
-    jest.spyOn(userAuth, 'authenticateAndAuthorizeLeaderAccess').mockResolvedValue(undefined);
-    jest.spyOn(businessDayJudge, 'judgeBusinessDayAndDeadline').mockResolvedValue(undefined);
-    jest.spyOn(dailyReportPersistence, 'retrieveDailyReportsForLeaderReview').mockResolvedValue(mockSubmittedReports);
-    jest.spyOn(dailyReportPersistence, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue(mockDetectionLogs);
-    jest.spyOn(userMasterPersistence, 'retrieveEmailSendingHistoryByDateRange').mockResolvedValue(mockEmailHistory);
-
-    const input: RetrieveLeaderDashboardDataInput = {
+    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData({
       leaderId,
       targetDate,
-    };
+    });
 
-    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
-
-    expect(result.detectionLogs.length).toBe(3);
-    expect(result.detectionLogs).toEqual(mockDetectionLogs);
+    expect(result.detectionLogs).toHaveLength(3);
     expect(result.submittedReports).toEqual([]);
-    expect(result.nonSubmittedReporters).toEqual(mockNonSubmittedReporters);
     expect(result.emailSendingHistory).toEqual([]);
+    expect(result.detectionLogs[0]).toHaveProperty('detectionLogId', 'DL-001');
+    expect(result.detectionLogs[1]).toHaveProperty('detectionLogId', 'DL-002');
+    expect(result.detectionLogs[2]).toHaveProperty('detectionLogId', 'DL-003');
   });
 });

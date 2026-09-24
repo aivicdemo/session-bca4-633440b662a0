@@ -1,9 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  DashboardDataRetrievalFailed,
-  Tx2Imp1AgentInput,
-  Tx2Imp1AgentOutput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -64,19 +59,20 @@ describe("SCEN-023: 管理画面表示用ダッシュボードデータ取得に
       sentTimestamp: executionTimestamp,
     });
 
-    (retrieveLeaderDashboardData as jest.Mock).mockRejectedValue(
-      new DashboardDataRetrievalFailed("管理画面データの取得に失敗しました。")
-    );
+    const error = new Error("管理画面データの取得に失敗しました。");
+    (error as any).name = "DashboardDataRetrievalFailed";
+    (retrieveLeaderDashboardData as jest.Mock).mockRejectedValue(error);
   });
 
   it("ダッシュボードデータ取得が失敗し、executionStatusがpartial_failureとなりdashboardDataがnullまたはundefinedになる", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
-    const result: Tx2Imp1AgentOutput = await runTx2Imp1Agent(input);
+    const mockAiClient = {};
+    const result = await runTx2Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("partial_failure");
     expect(result.dashboardData == null).toBe(true);
@@ -94,6 +90,6 @@ describe("SCEN-023: 管理画面表示用ダッシュボードデータ取得に
 
     // 設計上の Tx2Imp1AgentOutput にはエラー名（DashboardDataRetrievalFailed）・
     // エラー文言（管理画面データの取得に失敗しました。）を格納するフィールドが定義されて
-    // いないため、戻り値からこれらの値そのものは検証できない（.aivic/batches/30/unresolved.md 参照）。
+    // いないため、戻り値からこれらの値そのものは検証できない（.aivic/batches/29/unresolved.md 参照）。
   });
 });

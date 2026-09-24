@@ -111,7 +111,7 @@ describe("SCEN-060: リーダーへの検知結果通知が正常に送信され
     const result = await runTx5Imp1Agent({
       targetDate,
       executionContext,
-    });
+    }, {} as any);
 
     expect(result.leaderNotificationSent).toBe(true);
 

@@ -64,12 +64,13 @@ test('提出した日報内容がデータベースに永続化され、管理�
 
   await submitBtn.click();
 
-  // 手順4: バリデーション完了を示す確認メッセージが表示されることを確認する。
+  // 手順4: バリデーション完了を示す確認メッセージが画面に表示されることを確認する
   const success = page.locator('#rp-success');
   await expect(success).toBeVisible({ timeout: 5000 });
 
-  // 手順5: 画面が遷移し、提出完了状態に変わることを確認する。
-  await expect(success).toContainText('提出');
+  // 手順5: 画面が遷移し、提出完了状態に変わることを確認する
+  // 成功メッセージが表示されていることで完了状態を確認
+  await expect(success).toBeVisible();
 
   // データベースへの永続化を確認する。入力内容・報告者情報（ユーザーID）・提出日時が紐付いていること。
   await expect

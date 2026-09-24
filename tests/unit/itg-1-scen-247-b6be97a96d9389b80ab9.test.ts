@@ -1,81 +1,82 @@
-import { jest } from '@jest/globals';
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
+}));
+
 import {
   detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
+  DeadlineNotReachedError,
 } from '../../src/logic/daily-report-non-submission-detection';
-import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
-import * as reporterModule from '../../src/logic/reporter-master-management';
-import * as dailyReportModule from '../../src/logic/daily-report-persistence';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+import {
+  checkDailyReportExistsForDate,
+  retrieveNonSubmissionDetectionLogsByDate,
+  updateNonSubmissionDetectionLogWithReminderStatus,
+} from '../../src/logic/daily-report-persistence';
+
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
 
 describe('SCEN-247: リーダーのメールアドレスが登録されていない場合は処理を拒否する', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('should reject with appropriate error when team leader email address is not registered', async () => {
-    // Arrange
-    const targetDate = '2024-01-15';
-    const currentDateTime = '2024-01-15T17:30:00Z';
-    const submissionDeadlineTime = '17:00';
-    const teamId = 'team-001';
-
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
-      targetDate,
-      currentDateTime,
-      submissionDeadlineTime,
-      teamId,
+  it('リーダーのメールアドレスが未設定の場合、リーダーメール検証エラーを送出する', async () => {
+    const input = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T17:30:00Z',
+      submissionDeadlineTime: '17:00',
+      teamId: 'team-001',
     };
 
-    // Create 5 reporters: 3 with email, 2 without email
-    // This represents reporters with varying email registration status
-    const reporters = [
-      { userId: 'rep-001', userName: 'Reporter 1', emailAddress: 'rep1@example.com', teamId },
-      { userId: 'rep-002', userName: 'Reporter 2', emailAddress: 'rep2@example.com', teamId },
-      { userId: 'rep-003', userName: 'Reporter 3', emailAddress: 'rep3@example.com', teamId },
-      { userId: 'rep-004', userName: 'Reporter 4', emailAddress: null, teamId },
-      { userId: 'rep-005', userName: 'Reporter 5', emailAddress: null, teamId },
-    ];
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+      shouldExecute: true,
+      isBusinessDay: true,
+      isWithinExecutionWindow: true,
+    });
 
-    // Create submission records for 2 reporters with email
-    const submissionRecords = [
-      { userId: 'rep-001', date: targetDate },
-      { userId: 'rep-002', date: targetDate },
-    ];
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'U001', name: '報告者1', email: 'r001@example.com', department: '営業部', status: 'active' },
+        { userId: 'U002', name: '報告者2', email: 'r002@example.com', department: '営業部', status: 'active' },
+        { userId: 'U003', name: '報告者3', email: 'r003@example.com', department: '営業部', status: 'active' },
+        { userId: 'U004', name: '報告者4', email: null, department: '営業部', status: 'active' },
+        { userId: 'U005', name: '報告者5', email: null, department: '営業部', status: 'active' },
+      ],
+      totalCount: 5,
+    });
 
-    // Mock judgeSchedulerExecutionTiming to pass deadline check
-    jest
-      .spyOn(businessDayModule, 'judgeSchedulerExecutionTiming' as any)
-      .mockResolvedValue(true);
+    mockedCheckDailyReportExistsForDate.mockResolvedValue({
+      success: true,
+      submitted: [
+        { userId: 'U001', submittedAt: '2024-01-15T16:30:00Z' },
+        { userId: 'U002', submittedAt: '2024-01-15T16:45:00Z' },
+      ],
+    });
 
-    // Mock getActiveReportersForSubmissionCheck to return 5 reporters
-    jest
-      .spyOn(reporterModule, 'getActiveReportersForSubmissionCheck' as any)
-      .mockResolvedValue(reporters);
+    let error: any = null;
+    try {
+      await detectNonSubmittedReportersAtDeadline(input as any);
+    } catch (err) {
+      error = err;
+    }
 
-    // Mock checkDailyReportExistsForDate to return submission records
-    jest
-      .spyOn(dailyReportModule, 'checkDailyReportExistsForDate' as any)
-      .mockResolvedValue(submissionRecords);
-
-    // Mock downstream functions to track if they are called
-    const retrieveLogSpy = jest
-      .spyOn(dailyReportModule, 'retrieveNonSubmissionDetectionLogsByDate' as any)
-      .mockResolvedValue([]);
-    const updateLogSpy = jest
-      .spyOn(dailyReportModule, 'updateNonSubmissionDetectionLogWithReminderStatus' as any)
-      .mockResolvedValue({});
-
-    // Act & Assert
-    // The function should throw an error because leader email is not registered
-    // The error message should indicate leader email is not set
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input)
-    ).rejects.toThrow(
-      'リーダーのメールアドレスを設定してください'
-    );
-
-    // Verify that downstream functions are NOT called
-    expect(retrieveLogSpy).not.toHaveBeenCalled();
-    expect(updateLogSpy).not.toHaveBeenCalled();
+    expect(error).toBeDefined();
+    expect(error.message).toContain('リーダーのメールアドレスを設定してください');
+    expect(mockedRetrieveNonSubmissionDetectionLogsByDate).not.toHaveBeenCalled();
+    expect(mockedUpdateNonSubmissionDetectionLogWithReminderStatus).not.toHaveBeenCalled();
   });
 });

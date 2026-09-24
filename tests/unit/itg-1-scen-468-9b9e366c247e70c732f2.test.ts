@@ -1,58 +1,41 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
+  deactivateReporterInMaster,
+  persistReporterMasterChangeHistory,
   InvalidLeaderUserIdError,
-  DeactivateReporterInMasterInput,
-  DeactivateReporterInMasterOutput,
+  type DeactivateReporterInMasterInput,
+  type DeactivateReporterInMasterOutput,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  deactivateReporterInMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-  InvalidLeaderUserIdError: class extends Error {},
-}));
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-468: チームリーダーのユーザーIDが空文字列のため操作が拒否される', () => {
-  let mockDeactivateReporterInMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDeactivateReporterInMaster = require('../../src/logic/user-master-persistence.ts').deactivateReporterInMaster as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts').persistReporterMasterChangeHistory as jest.Mock;
-
-    // leaderUserIdが空文字列のときエラーを発生させるようにモック
-    mockDeactivateReporterInMaster.mockImplementation(
-      async (input: DeactivateReporterInMasterInput) => {
-        if (input.leaderUserId === '') {
-          const error = new InvalidLeaderUserIdError('チームリーダーのユーザーIDが指定されていません。');
-          throw error;
-        }
-        return { success: true, reporterId: input.reporterId, message: '報告者を無効化しました。' };
-      }
-    );
   });
 
-  it('leaderUserIdが空文字列のときInvalidLeaderUserIdErrorが発生する', async () => {
+  it('leaderUserIdが空文字列のときInvalidLeaderUserIdErrorが発生し、出力型が返されない', async () => {
+    const mockDeactivate = deactivateReporterInMaster as jest.Mock<any>;
+    const mockPersistHistory = persistReporterMasterChangeHistory as jest.Mock<any>;
+
+    const error = new InvalidLeaderUserIdError('チームリーダーのユーザーIDが指定されていません。');
+    mockDeactivate.mockRejectedValue(error as any);
+
     const input: DeactivateReporterInMasterInput = {
       reporterId: 'valid-reporter-id',
       leaderUserId: '',
-      deactivationTimestamp: new Date(),
+      deactivationTimestamp: new Date('2024-01-15T10:00:00+09:00'),
       deactivationReason: '異動',
     };
 
-    let caughtError: Error | undefined;
-
     try {
-      await mockDeactivateReporterInMaster(input);
-    } catch (error) {
-      caughtError = error as Error;
+      await deactivateReporterInMaster(input);
+      throw new Error('InvalidLeaderUserIdErrorが発生すべきですが、発生しませんでした。');
+    } catch (err) {
+      expect(err).toBeInstanceOf(InvalidLeaderUserIdError);
+      expect((err as any).message).toBe('チームリーダーのユーザーIDが指定されていません。');
     }
 
-    // エラーが発生したことを確認
-    expect(caughtError).toBeDefined();
-    expect(caughtError?.message).toBe('チームリーダーのユーザーIDが指定されていません。');
-
-    // persistReporterMasterChangeHistoryが呼ばれていないことを確認
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockPersistHistory).not.toHaveBeenCalled();
   });
 });

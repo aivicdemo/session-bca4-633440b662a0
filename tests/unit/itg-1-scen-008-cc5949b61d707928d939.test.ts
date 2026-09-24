@@ -1,121 +1,69 @@
-import {
-  runTx1Imp1Agent,
-  NonSubmissionPromptError,
-  Tx1Imp1AgentInput,
-  Tx1Imp1AgentOutput,
-  SystemExecutionContext,
-} from "../../src/agents/tx-1-imp-1/orchestrator";
-import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
-import { authenticateAndAuthorizeReporterAccess } from "../../src/logic/user-authentication-authorization";
-import { getActiveReportersForSubmissionCheck } from "../../src/logic/reporter-master-management";
-import { submitDailyReport } from "../../src/logic/daily-report-submission";
-import {
-  sendLeaderSubmissionNotification,
-  sendLeaderNonSubmissionPromptNotification,
-} from "../../src/logic/daily-report-reminder-notification";
-import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
+import { runTx1Imp1Agent, Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
 
-jest.mock("../../src/logic/business-day-deadline-judgment", () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
-}));
-jest.mock("../../src/logic/user-authentication-authorization", () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
-}));
-jest.mock("../../src/logic/reporter-master-management", () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
-}));
-jest.mock("../../src/logic/daily-report-submission", () => ({
-  submitDailyReport: jest.fn(),
-}));
-jest.mock("../../src/logic/daily-report-reminder-notification", () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
-}));
-jest.mock("../../src/logic/daily-report-non-submission-detection", () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
-}));
-
-describe("SCEN-008: 未提出者への催促メール送信に失敗し、催促が送信されず、催促エラーが記録される", () => {
-  const systemContext: SystemExecutionContext = {
-    timezone: "Asia/Tokyo",
-    locale: "ja-JP",
-  };
-  const targetDate = new Date("2024-01-15T00:00:00+09:00");
-  const executionTimestamp = new Date("2024-01-15T17:00:00+09:00");
-
-  const activeReporters = [
-    { id: "reporter1", name: "報告者1" },
-    { id: "reporter2", name: "報告者2" },
-    { id: "reporter3", name: "報告者3" },
-    { id: "reporter4", name: "報告者4" },
-    { id: "reporter5", name: "報告者5" },
-  ];
-
-  const nonSubmittedReporters = [
-    {
-      reporterId: "reporter4",
-      reporterName: "報告者4",
-      lastSubmittedDate: "2024-01-12",
-    },
-    {
-      reporterId: "reporter5",
-      reporterName: "報告者5",
-      lastSubmittedDate: "2024-01-11",
-    },
-  ];
+describe('SCEN-008: 催促メール送信失敗', () => {
+  let mockAiClient: Tx1Imp1AiClient;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(undefined);
-    (authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue(
-      undefined
-    );
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue(
-      activeReporters
-    );
-    (submitDailyReport as jest.Mock).mockResolvedValue(undefined);
-    (sendLeaderSubmissionNotification as jest.Mock).mockResolvedValue(
-      undefined
-    );
-    (detectNonSubmittedReportersAtDeadline as jest.Mock).mockResolvedValue(
-      nonSubmittedReporters
-    );
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockRejectedValue(
-      new NonSubmissionPromptError(
-        "未提出者への催促送信に失敗しました。メール送信状態を確認してください。"
-      )
-    );
+    mockAiClient = {
+      judgeSchedulerExecutionTiming: jest.fn().mockResolvedValue(true),
+      authenticateAndAuthorizeReporterAccess: jest.fn().mockResolvedValue({ isAuthenticated: true }),
+      getActiveReportersForSubmissionCheck: jest.fn().mockResolvedValue([
+        { id: 'reporter1', name: 'Reporter 1' },
+        { id: 'reporter2', name: 'Reporter 2' },
+        { id: 'reporter3', name: 'Reporter 3' },
+        { id: 'reporter4', name: 'Reporter 4' },
+        { id: 'reporter5', name: 'Reporter 5' },
+      ]),
+      submitDailyReport: jest.fn().mockImplementation((reporterId: string) => {
+        if (['reporter1', 'reporter2', 'reporter3'].includes(reporterId)) {
+          return Promise.resolve({ success: true, submittedAt: new Date() });
+        }
+        return Promise.resolve({ success: false });
+      }),
+      sendLeaderSubmissionNotification: jest.fn().mockResolvedValue({ success: true }),
+      detectNonSubmittedReportersAtDeadline: jest.fn().mockResolvedValue({
+        nonSubmittedReporters: [
+          { reporterId: 'reporter4', reporterName: 'Reporter 4', lastSubmittedDate: null },
+          { reporterId: 'reporter5', reporterName: 'Reporter 5', lastSubmittedDate: null },
+        ],
+      }),
+      sendLeaderNonSubmissionPromptNotification: jest.fn().mockRejectedValue(
+        new Error('未提出者への催促送信に失敗しました。メール送信状態を確認してください。')
+      ),
+    };
   });
 
-  test("催促メール送信に失敗し、promptsSent が 0 で partial_success となる", async () => {
-    const input: Tx1Imp1AgentInput = {
-      executionTimestamp,
-      targetDate,
-      systemContext,
+  it('未提出者への催促メール送信に失敗し、催促が送信されず、催促エラーが記録される', async () => {
+    const systemContext = {
+      userId: 'system-user',
+      timezone: 'Asia/Tokyo',
+      locale: 'ja_JP',
     };
 
-    const result: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input);
+    const executionTimestamp = new Date('2024-01-15T17:00:00Z');
+    const targetDate = '2024-01-15';
 
-    expect(result.executionStatus).toBe("partial_success");
+    const result = await runTx1Imp1Agent(
+      {
+        executionTimestamp,
+        targetDate,
+        systemContext,
+      },
+      mockAiClient
+    );
+
+    expect(result.executionStatus).toBe('partial_success');
     expect(result.promptsSent).toBe(0);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        name: 'NonSubmissionPromptError',
+        message: '未提出者への催促送信に失敗しました。メール送信状態を確認してください。',
+      })
+    );
+    expect(result.executionSummary).toContain('催促メール送信失敗');
     expect(result.reportersPrompted).toBe(5);
     expect(result.reportsSubmitted).toBe(3);
     expect(result.nonSubmittedReporters).toHaveLength(2);
     expect(result.leaderNotificationsSent).toBe(3);
-
-    expect(
-      result.errors.some(
-        (error: any) =>
-          error.errorCode === "NonSubmissionPromptError" &&
-          error.errorMessage ===
-            "未提出者への催促送信に失敗しました。メール送信状態を確認してください。"
-      )
-    ).toBe(true);
-
-    expect(typeof result.executionSummary).toBe("string");
-    expect(result.executionSummary.length).toBeGreaterThan(0);
-    expect(result.executionSummary).toMatch(/催促/);
-    expect(result.executionSummary).toMatch(/失敗/);
   });
 });

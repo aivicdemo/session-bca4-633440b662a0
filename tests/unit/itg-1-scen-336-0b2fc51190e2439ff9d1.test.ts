@@ -1,95 +1,52 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  registerReporter,
-  RegistrationFailed,
-} from '../../src/logic/reporter-master-management';
-import type {
-  RegisterReporterInput,
-  RegisterReporterOutput,
-} from '../../src/logic/reporter-master-management';
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-authentication-authorization');
+jest.mock('../../src/logic/user-master-persistence');
 
-jest.mock('../../src/logic/input-validation-formatting.ts', () => ({
-  validateReporterNameFormat: jest.fn(),
-  validateEmailAddress: jest.fn(),
-  detectDuplicateEmailAddress: jest.fn(),
-}));
+import { registerReporter, RegistrationFailed } from '../../src/logic/reporter-master-management';
+import { validateReporterNameFormat, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
+import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
+import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  validateUserAccountActiveStatus: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  registerReporterToMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.Mock;
+const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
+const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
+const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
 
 describe('SCEN-336: データベースへの保存処理に失敗した場合、RegistrationFailedエラーを返す', () => {
-  let mockValidateReporterNameFormat: jest.Mock;
-  let mockValidateEmailAddress: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockValidateUserAccountActiveStatus: jest.Mock;
-  let mockRegisterReporterToMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
+  const userId = 'U001';
+  const reporterName = '山田太郎';
+  const emailAddress = 'yamada@example.com';
+  const teamLeaderId = 'TL001';
+  const executionTimestamp = new Date();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    mockValidateReporterNameFormat = require('../../src/logic/input-validation-formatting.ts')
-      .validateReporterNameFormat as jest.Mock;
-    mockValidateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .validateEmailAddress as jest.Mock;
-    mockDetectDuplicateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .detectDuplicateEmailAddress as jest.Mock;
-    mockValidateUserAccountActiveStatus = require('../../src/logic/user-authentication-authorization.ts')
-      .validateUserAccountActiveStatus as jest.Mock;
-    mockRegisterReporterToMaster = require('../../src/logic/user-master-persistence.ts')
-      .registerReporterToMaster as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts')
-      .persistReporterMasterChangeHistory as jest.Mock;
-
-    // スタブ設定：検証は成功
-    // @ts-ignore
-    mockValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    // @ts-ignore
-    mockValidateEmailAddress.mockResolvedValue({ isValid: true });
-    // @ts-ignore
-    mockDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    // @ts-ignore
-    mockValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
-
-    // registerReporterToMasterは失敗状態で設定（データベース保存エラー）
-    // @ts-ignore
-    mockRegisterReporterToMaster.mockImplementation(() => {
-      throw new RegistrationFailed(
-        '報告者の登録に失敗しました。システム管理者に連絡してください。'
-      );
-    });
+    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true });
+    mockedValidateEmailAddress.mockResolvedValue({ isValid: true });
+    mockedDetectDuplicateEmailAddress.mockResolvedValue(false);
+    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
+    mockedRegisterReporterToMaster.mockRejectedValue(new RegistrationFailed('Database save error'));
   });
 
-  it('データベースへの保存処理に失敗した場合、RegistrationFailedエラーを返す', async () => {
-    const executionTimestamp = new Date();
-    const input: RegisterReporterInput = {
-      userId: 'U001',
-      reporterName: '山田太郎',
-      emailAddress: 'yamada@example.com',
-      teamLeaderId: 'TL001',
+  it('データベース保存失敗時、success=false、reporterId=null、適切なmessageとchangeHistoryId=nullを返す', async () => {
+    const input = {
+      userId,
+      reporterName,
+      emailAddress,
+      teamLeaderId,
       executionTimestamp,
     };
 
-    // @ts-ignore
-    const result: RegisterReporterOutput = await registerReporter(input);
+    const result = await registerReporter(input);
 
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
-    expect(result.message).toBe(
-      '報告者の登録に失敗しました。システム管理者に連絡してください。'
-    );
+    expect(result.message).toBe('報告者の登録に失敗しました。システム管理者に連絡してください。');
     expect(result.changeHistoryId).toBeNull();
-
-    // registerReporterToMasterが呼び出されたことを確認
-    expect(mockRegisterReporterToMaster).toHaveBeenCalled();
-
-    // persistReporterMasterChangeHistoryは呼び出されない（保存失敗時は変更履歴を記録しない）
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockedRegisterReporterToMaster).toHaveBeenCalled();
+    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

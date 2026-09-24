@@ -26,7 +26,7 @@ jest.mock('../../src/logic/notification-delivery.ts', () => ({
   validateAndDeliverLeaderNotification: jest.fn(),
 }));
 
-describe('SCEN-570: メールアドレスがシステムで無効化されている場合、警告が記録される', () => {
+describe('SCEN-570: リーダーメールアドレスがシステムで無効化されている場合、警告が記録される', () => {
   let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock;
   let mockJudgeBusinessDayAndDeadline: jest.Mock;
   let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
@@ -50,9 +50,13 @@ describe('SCEN-570: メールアドレスがシステムで無効化されてい
     mockValidateAndDeliverLeaderNotification = require('../../src/logic/notification-delivery.ts')
       .validateAndDeliverLeaderNotification as jest.Mock;
 
-    // Setup successful stubs for other operations
+    // Setup successful stubs for authentication and business day judgment
     // @ts-ignore
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ isAuthorized: true });
+    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+      leaderId: 'leader-001',
+      leaderEmail: 'leader@example.com',
+      isAuthorized: true,
+    });
     // @ts-ignore
     mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
     // @ts-ignore
@@ -60,15 +64,27 @@ describe('SCEN-570: メールアドレスがシステムで無効化されてい
       {
         reportId: 'report-001',
         reporterName: 'テスト太郎',
-        submissionDateTime: '2025-01-15T14:30:00Z',
+        submissionDateTime: '2026-09-24T14:30:00Z',
         reportContent: 'テスト業務内容',
-        reportDate: '2025-01-15',
+        reportDate: '2026-09-24',
       },
     ]);
     // @ts-ignore
     mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+
+    // Setup retrieveEmailSendingHistoryByDateRange to return sending history with disabled email warning
     // @ts-ignore
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([
+      {
+        sentAt: '2026-09-24T10:00:00Z',
+        type: 'submit_notification',
+        to: 'leader@example.com',
+        subject: '日報提出通知',
+        deliveryStatus: 'failed',
+        failureReason: 'このメールアドレスは無効化されています。配信できません。',
+        isValid: false,
+      },
+    ]);
 
     // Setup validateAndDeliverLeaderNotification to return warning for disabled email
     // @ts-ignore
@@ -79,18 +95,29 @@ describe('SCEN-570: メールアドレスがシステムで無効化されてい
     });
   });
 
-  it('メールアドレスがシステムで無効化されている場合、警告が記録される', async () => {
+  it('メールアドレスがシステムで無効化されている場合、処理は正常に完了し、警告が記録されること', async () => {
     const input: RetrieveLeaderDashboardDataInput = {
       leaderId: 'leader-001',
-      targetDate: '2025-01-15',
+      targetDate: '2026-09-24',
     };
 
+    // 関数呼び出しが正常に完了することを確認
     // @ts-ignore
     const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
 
     expect(result).toBeDefined();
     expect(result.emailSendingHistory).toBeDefined();
     expect(Array.isArray(result.emailSendingHistory)).toBe(true);
+  });
+
+  it('emailSendingHistory に無効化メッセージが含まれていること', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
+      leaderId: 'leader-001',
+      targetDate: '2026-09-24',
+    };
+
+    // @ts-ignore
+    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
 
     const failureEntry = result.emailSendingHistory.find(
       (entry: any) => entry.failureReason && entry.failureReason.includes('無効化')
@@ -99,6 +126,16 @@ describe('SCEN-570: メールアドレスがシステムで無効化されてい
     expect(failureEntry.failureReason).toBe('このメールアドレスは無効化されています。配信できません。');
     expect(failureEntry.deliveryStatus).toBe('failed');
     expect(failureEntry.isValid).toBe(false);
+  });
+
+  it('他のフィールド（submittedReports、nonSubmittedReporters、detectionLogs、submissionStatusSummary）も返されること', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
+      leaderId: 'leader-001',
+      targetDate: '2026-09-24',
+    };
+
+    // @ts-ignore
+    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
 
     expect(result.submittedReports).toBeDefined();
     expect(result.nonSubmittedReporters).toBeDefined();

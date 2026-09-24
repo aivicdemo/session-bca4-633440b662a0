@@ -1,74 +1,84 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: jest.fn(),
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: jest.fn(),
+}));
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  detectDuplicateEmailAddress: jest.fn(),
+}));
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  registerReporterToMaster: jest.fn(),
+}));
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendUserInformationApprovalNotification: jest.fn(),
+}));
+
 import {
   confirmAndApproveUserInformation,
   LeaderAuthorizationError,
 } from '../../src/logic/user-information-input-confirmation';
+import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
+import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
+import { registerReporterToMaster } from '../../src/logic/user-master-persistence';
+import { sendUserInformationApprovalNotification } from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  authenticateAndAuthorizeLeaderAccess: jest.fn(),
-}));
+const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.Mock;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
+const mockedSendUserInformationApprovalNotification = sendUserInformationApprovalNotification as jest.Mock;
 
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
-}));
-
-jest.mock('../../src/logic/input-validation-formatting.ts', () => ({
-  detectDuplicateEmailAddress: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  registerReporterToMaster: jest.fn(),
-}));
-
-jest.mock('../../src/logic/email-notification-management.ts', () => ({
-  sendUserInformationApprovalNotification: jest.fn(),
-}));
-
-describe('SCEN-410: チームリーダーが当該ユーザー情報の承認権限を持たない場合、LeaderAuthorizationErrorが発生する', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock;
-  let mockJudgeBusinessDayAndDeadline: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockRegisterReporterToMaster: jest.Mock;
-  let mockSendUserInformationApprovalNotification: jest.Mock;
-
+describe('SCEN-410: LeaderAuthorizationError when leader lacks approval authority', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization.ts').authenticateAndAuthorizeLeaderAccess;
-    mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment.ts').judgeBusinessDayAndDeadline;
-    mockDetectDuplicateEmailAddress = require('../../src/logic/input-validation-formatting.ts').detectDuplicateEmailAddress;
-    mockRegisterReporterToMaster = require('../../src/logic/user-master-persistence.ts').registerReporterToMaster;
-    mockSendUserInformationApprovalNotification = require('../../src/logic/email-notification-management.ts').sendUserInformationApprovalNotification;
   });
 
-  it('チームリーダーが当該ユーザー情報の承認権限を持たない場合、LeaderAuthorizationErrorが発生する', async () => {
+  it('should throw LeaderAuthorizationError with correct message when leader lacks approval authority', async () => {
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockRejectedValue(
+      new LeaderAuthorizationError('このユーザー情報を承認する権限がありません。')
+    );
+
     const input = {
       leaderUserId: 'leader-001',
       userInformationId: 'user-info-123',
-      approvalDecision: 'approve',
+      approvalDecision: 'approve' as const,
       rejectionReason: null,
       approvalTimestamp: new Date(),
     };
 
-    // リーダー権限がない場合のエラーを発生させる
-    mockAuthenticateAndAuthorizeLeaderAccess.mockImplementation(() => {
-      throw new LeaderAuthorizationError('このユーザー情報を承認する権限がありません。');
-    });
-
-    // @ts-ignore
-    await expect(confirmAndApproveUserInformation(input)).rejects.toThrow(LeaderAuthorizationError);
-
-    // エラーメッセージを確認
     try {
-      // @ts-ignore
       await confirmAndApproveUserInformation(input);
-    } catch (error: any) {
-      expect(error.message).toBe('このユーザー情報を承認する権限がありません。');
+      fail('Should have thrown LeaderAuthorizationError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LeaderAuthorizationError);
+      expect((error as Error).message).toBe('このユーザー情報を承認する権限がありません。');
+    }
+  });
+
+  it('should not call downstream functions when LeaderAuthorizationError is thrown', async () => {
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockRejectedValue(
+      new LeaderAuthorizationError('このユーザー情報を承認する権限がありません。')
+    );
+
+    const input = {
+      leaderUserId: 'leader-001',
+      userInformationId: 'user-info-123',
+      approvalDecision: 'approve' as const,
+      rejectionReason: null,
+      approvalTimestamp: new Date(),
+    };
+
+    try {
+      await confirmAndApproveUserInformation(input);
+    } catch (e) {
+      // Expected
     }
 
-    // 呼び出し先が実行されていないことを確認
-    expect(mockJudgeBusinessDayAndDeadline).not.toHaveBeenCalled();
-    expect(mockDetectDuplicateEmailAddress).not.toHaveBeenCalled();
-    expect(mockRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockSendUserInformationApprovalNotification).not.toHaveBeenCalled();
+    expect(mockedJudgeBusinessDayAndDeadline).not.toHaveBeenCalled();
+    expect(mockedDetectDuplicateEmailAddress).not.toHaveBeenCalled();
+    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
+    expect(mockedSendUserInformationApprovalNotification).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,20 @@
-import { describe, it, expect } from '@jest/globals';
+jest.mock('../../src/logic/email-notification-management', () => ({
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
 import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-486: 報告者IDが空の場合、「報告者IDが指定されていません」のエラーが発生', () => {
-  it('reporterId が空文字列の場合、エラーがスローされる', async () => {
+describe('SCEN-486: 報告者IDが空の場合、validateReporterValidity で『報告者IDが指定されていません』のエラーが発生する', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('reporterId が空文字列の場合、エラーが発生すること', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: '',
       dailyReportId: 'daily-001',
@@ -19,7 +28,7 @@ describe('SCEN-486: 報告者IDが空の場合、「報告者IDが指定され�
 
     try {
       await sendDailyReportSubmissionNotification(input);
-      fail('Error should have been thrown for empty reporterId');
+      expect(true).toBe(false);
     } catch (error) {
       expect((error as Error).message).toBe('報告者IDが指定されていません');
     }

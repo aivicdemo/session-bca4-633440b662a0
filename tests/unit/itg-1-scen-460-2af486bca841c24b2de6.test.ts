@@ -4,6 +4,7 @@ import {
   UpdateReporterInMasterInput,
   UpdateReporterInMasterOutput,
   InvalidReporterStatusError,
+  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
@@ -24,17 +25,11 @@ describe('SCEN-460: 無効なステータス値を指定して更新しようと
       updateTimestamp: new Date(),
     };
 
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '無効なステータス値です。',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
-
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('無効なステータス値です。');
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

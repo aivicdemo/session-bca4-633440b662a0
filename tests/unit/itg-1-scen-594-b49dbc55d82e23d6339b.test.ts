@@ -1,68 +1,49 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
+
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
-  RetrieveEmailSendingHistoryDetailsInput,
-  RetrieveEmailSendingHistoryDetailsOutput,
-  EmailHistoryDetail,
 } from '../../src/logic/daily-report-management-view';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
-import * as dailyReportManagementView from '../../src/logic/daily-report-management-view';
+import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/daily-report-management-view');
-
-describe('SCEN-594: 次ページが存在する場合、hasNextPageがtrueとなり、ページネーション情報が正確に返される', () => {
+describe('SCEN-594: 次ページが存在する場合、hasNextPage がtrue となり、ページネーション情報が正確に返される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return hasNextPage as true when next page exists', async () => {
-    const mockEmailHistories = Array.from({ length: 150 }, (_, i) => ({
-      historyId: `history-${i + 1}`,
-      recipientId: `user-${i + 1}`,
-      recipientEmail: `user${i + 1}@example.com`,
-      recipientName: `User ${i + 1}`,
+  it('次ページが存在する場合、hasNextPageがtrueとなる', async () => {
+    const leaderId = 'leader-001';
+    const startDate = '2024-01-01';
+    const endDate = '2024-01-31';
+    const pageNumber = 1;
+    const pageSize = 10;
+
+    const mockHistoryRecords = Array.from({ length: 150 }, (_, i) => ({
+      historyId: `EH-${String(i + 1).padStart(3, '0')}`,
+      recipientId: `USER-${String((i % 5) + 1).padStart(3, '0')}`,
+      recipientEmail: `user${(i % 5) + 1}@company.com`,
       emailType: 'daily_report_submission',
-      subject: `Subject ${i + 1}`,
-      sentTime: '2024-01-15T10:00:00Z',
+      sentTime: `2024-01-${String(Math.floor(i / 30) + 1).padStart(2, '0')}T09:30:00Z`,
       sendingStatus: 'success',
       errorMessage: null,
     }));
 
-    (userMasterPersistence.retrieveEmailSendingHistoryByDateRange as any).mockResolvedValue(
-      mockEmailHistories
-    );
+    (retrieveEmailSendingHistoryByDateRange as jest.Mock).mockResolvedValue(mockHistoryRecords);
 
-    const mockFormattedHistories: EmailHistoryDetail[] = mockEmailHistories.slice(0, 10).map((h) => ({
-      historyId: h.historyId,
-      recipientId: h.recipientId,
-      recipientEmail: h.recipientEmail,
-      recipientName: h.recipientName,
-      emailType: h.emailType,
-      subject: h.subject,
-      sentTime: h.sentTime,
-      sendingStatus: h.sendingStatus,
-      errorMessage: h.errorMessage,
-    }));
-
-    (dailyReportManagementView.formatEmailHistoryForDisplay as any).mockReturnValue(
-      mockFormattedHistories
-    );
-
-    const input: RetrieveEmailSendingHistoryDetailsInput = {
-      leaderId: 'leader-001',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
+    const result = await retrieveEmailSendingHistoryDetails({
+      leaderId,
+      startDate,
+      endDate,
       emailType: null,
       sendingStatus: null,
       recipientEmail: null,
-      pageNumber: 1,
-      pageSize: 10,
-    };
+      pageNumber,
+      pageSize,
+    });
 
-    const result = (await retrieveEmailSendingHistoryDetails(input)) as RetrieveEmailSendingHistoryDetailsOutput;
-
-    expect(result.emailHistoryList.length).toBe(10);
+    expect(result.emailHistoryList).toHaveLength(10);
     expect(result.totalCount).toBe(150);
     expect(result.pageNumber).toBe(1);
     expect(result.pageSize).toBe(10);

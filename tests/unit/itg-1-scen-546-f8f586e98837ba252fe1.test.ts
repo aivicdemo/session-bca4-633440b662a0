@@ -24,14 +24,14 @@ describe('SCEN-546: failureCount がメール送信に失敗した対象者の�
       .mockResolvedValueOnce('hist-005');
   });
 
-  it('5名のうち3名の送信成功、2名の送信失敗により、failureCount が 2 と一致すること', async () => {
+  it('催促対象者5名のうち、3名送信成功、2名送信失敗の場合、failureCount が 2 と一致する', async () => {
     jest.mocked(sendNonSubmissionPromptNotification).mockResolvedValueOnce({
       success: false,
       totalTargets: 5,
       successCount: 3,
       failureCount: 2,
-      sentAt: new Date().toISOString(),
-      failedReporterIds: ['user-004', 'user-005'],
+      sentAt: '2024-01-15T17:00:00.000Z',
+      failedReporterIds: ['U004', 'U005'],
       errorMessage: '一部の催促メール送信に失敗しました。成功件数: 3, 失敗件数: 2。',
       emailSendingHistoryIds: ['hist-001', 'hist-002', 'hist-003', 'hist-004', 'hist-005'],
     });
@@ -39,40 +39,40 @@ describe('SCEN-546: failureCount がメール送信に失敗した対象者の�
     const input: SendNonSubmissionPromptNotificationInput = {
       nonSubmittedReporters: [
         {
-          userId: 'user-001',
-          userName: '報告者1',
-          userEmailAddress: 'reporter1@example.com',
+          userId: 'U001',
+          userName: '田中太郎',
+          userEmailAddress: 'tanaka@example.com',
           targetDate: '2024-01-15',
         },
         {
-          userId: 'user-002',
-          userName: '報告者2',
-          userEmailAddress: 'reporter2@example.com',
+          userId: 'U002',
+          userName: '鈴木次郎',
+          userEmailAddress: 'suzuki@example.com',
           targetDate: '2024-01-15',
         },
         {
-          userId: 'user-003',
-          userName: '報告者3',
-          userEmailAddress: 'reporter3@example.com',
+          userId: 'U003',
+          userName: '佐藤三郎',
+          userEmailAddress: 'sato@example.com',
           targetDate: '2024-01-15',
         },
         {
-          userId: 'user-004',
-          userName: '報告者4',
-          userEmailAddress: 'reporter4@example.com',
+          userId: 'U004',
+          userName: '伊藤四郎',
+          userEmailAddress: 'ito@example.com',
           targetDate: '2024-01-15',
         },
         {
-          userId: 'user-005',
-          userName: '報告者5',
-          userEmailAddress: 'reporter5@example.com',
+          userId: 'U005',
+          userName: '渡辺五郎',
+          userEmailAddress: 'watanabe@example.com',
           targetDate: '2024-01-15',
         },
       ],
-      leaderUserId: 'leader-001',
+      leaderUserId: 'L001',
       leaderEmailAddress: 'leader@example.com',
-      detectionLogId: 'log-12345',
-      promptReason: '定時リマインダー',
+      detectionLogId: 'LOG-001',
+      promptReason: '定時催促',
       targetDate: '2024-01-15',
     };
 
@@ -83,8 +83,9 @@ describe('SCEN-546: failureCount がメール送信に失敗した対象者の�
     expect(result.successCount).toBe(3);
     expect(result.failureCount).toBe(2);
     expect(result.emailSendingHistoryIds).toHaveLength(5);
-    expect(result.sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/);
-    expect(result.failedReporterIds).toEqual(['user-004', 'user-005']);
+    expect(result.emailSendingHistoryIds).toEqual(['hist-001', 'hist-002', 'hist-003', 'hist-004', 'hist-005']);
+    expect(result.sentAt).toBe('2024-01-15T17:00:00.000Z');
+    expect(result.failedReporterIds).toEqual(['U004', 'U005']);
     expect(result.errorMessage).toBe('一部の催促メール送信に失敗しました。成功件数: 3, 失敗件数: 2。');
   });
 });

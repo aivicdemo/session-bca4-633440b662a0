@@ -4,6 +4,7 @@ import {
   UpdateReporterInMasterInput,
   UpdateReporterInMasterOutput,
   UnauthorizedUpdateError,
+  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
@@ -24,17 +25,11 @@ describe('SCEN-461: チームリーダーではないユーザーが他チーム
       updateTimestamp: new Date(),
     };
 
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: 'この報告者を更新する権限がありません。',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
-
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('この報告者を更新する権限がありません。');
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

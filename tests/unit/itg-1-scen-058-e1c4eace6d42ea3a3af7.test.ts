@@ -62,7 +62,7 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
   });
 
   it('未提出者・遅延提出者ともに存在せず、リーダーには検知結果が常に通知される', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+    const result = await runTx5Imp1Agent({ targetDate, executionContext }, {} as any);
 
     expect(result.executionStatus).toBe('success');
     expect(result.nonSubmittedReporters).toEqual([]);

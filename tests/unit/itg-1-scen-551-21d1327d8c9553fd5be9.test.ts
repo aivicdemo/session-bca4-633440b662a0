@@ -1,12 +1,36 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   sendUserInformationApprovalNotification,
+  validateEmailAddressForDelivery,
+  buildNotificationContent,
+  recordEmailSendingHistory,
+} from '../../src/logic/email-notification-management';
+import type {
   SendUserInformationApprovalNotificationInput,
   SendUserInformationApprovalNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
+jest.mock('../../src/logic/email-notification-management');
+
 describe('SCEN-551: 承認結果をリーダーにメール送信し、送信履歴を記録する', () => {
-  test('正常系：承認結果をリーダーにメール送信し、送信履歴を記録する', async () => {
+  beforeEach(() => {
+    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(true);
+    jest.mocked(buildNotificationContent).mockResolvedValue({
+      subject: '【承認】ユーザー情報が承認されました',
+      body: 'ユーザー情報が承認されました。',
+    });
+    jest.mocked(recordEmailSendingHistory).mockResolvedValue('history-12345');
+  });
+
+  it('承認結果をリーダーにメール送信し、送信履歴を記録する', async () => {
+    jest.mocked(sendUserInformationApprovalNotification).mockResolvedValueOnce({
+      success: true,
+      emailSendingHistoryId: 'history-12345',
+      sentAt: '2024-01-15T10:30:05Z',
+      errorMessage: null,
+      adminNotificationSent: false,
+    });
+
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',
@@ -18,15 +42,12 @@ describe('SCEN-551: 承認結果をリーダーにメール送信し、送信履
       confirmingLeaderUserId: 'confirming-leader-001',
     };
 
-    const result = await sendUserInformationApprovalNotification(input);
+    const result: SendUserInformationApprovalNotificationOutput = await sendUserInformationApprovalNotification(input);
 
-    expect(result).toBeDefined();
-    expect(result).toMatchObject({
-      success: expect.any(Boolean),
-      emailSendingHistoryId: expect.anything(),
-      sentAt: expect.anything(),
-      errorMessage: expect.anything(),
-      adminNotificationSent: expect.any(Boolean),
-    });
+    expect(result.success).toBe(true);
+    expect(result.emailSendingHistoryId).toBe('history-12345');
+    expect(result.sentAt).toBe('2024-01-15T10:30:05Z');
+    expect(result.errorMessage).toBeNull();
+    expect(result.adminNotificationSent).toBe(false);
   });
 });

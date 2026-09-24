@@ -1,82 +1,62 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/user-authentication-authorization');
+
 import {
   registerReporter,
   InvalidEmailAddressFormat,
+  type RegisterReporterInput,
+  type RegisterReporterOutput,
 } from '../../src/logic/reporter-master-management';
-import type {
-  RegisterReporterInput,
-  RegisterReporterOutput,
-} from '../../src/logic/reporter-master-management';
+import {
+  validateReporterNameFormat,
+  validateEmailAddress,
+  detectDuplicateEmailAddress,
+} from '../../src/logic/input-validation-formatting';
+import {
+  registerReporterToMaster,
+  persistReporterMasterChangeHistory,
+} from '../../src/logic/user-master-persistence';
+import {
+  validateUserAccountActiveStatus,
+} from '../../src/logic/user-authentication-authorization';
 
-jest.mock('../../src/logic/input-validation-formatting.ts', () => ({
-  validateReporterNameFormat: jest.fn(),
-  validateEmailAddress: jest.fn(),
-  detectDuplicateEmailAddress: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  validateUserAccountActiveStatus: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  registerReporterToMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
+const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.Mock;
+const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
+const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
 
 describe('SCEN-331: メールアドレスが空文字列の場合、InvalidEmailAddressFormatエラーを返す', () => {
-  let mockValidateReporterNameFormat: jest.Mock;
-  let mockValidateEmailAddress: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockValidateUserAccountActiveStatus: jest.Mock;
-  let mockRegisterReporterToMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockValidateReporterNameFormat = require('../../src/logic/input-validation-formatting.ts')
-      .validateReporterNameFormat as jest.Mock;
-    mockValidateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .validateEmailAddress as jest.Mock;
-    mockDetectDuplicateEmailAddress = require('../../src/logic/input-validation-formatting.ts')
-      .detectDuplicateEmailAddress as jest.Mock;
-    mockValidateUserAccountActiveStatus = require('../../src/logic/user-authentication-authorization.ts')
-      .validateUserAccountActiveStatus as jest.Mock;
-    mockRegisterReporterToMaster = require('../../src/logic/user-master-persistence.ts')
-      .registerReporterToMaster as jest.Mock;
-    mockPersistReporterMasterChangeHistory = require('../../src/logic/user-master-persistence.ts')
-      .persistReporterMasterChangeHistory as jest.Mock;
+    // 4. スタブ validateUserAccountActiveStatus を 'valid' を返すようセットアップして、userId が有効であることを前提とする
+    mockedValidateUserAccountActiveStatus.mockReturnValue({ isValid: true });
 
-    // スタブ設定
-    // @ts-ignore
-    mockValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
-    // @ts-ignore
-    mockValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    // @ts-ignore
-    mockValidateEmailAddress.mockImplementation((input: any) => {
-      if (input.emailAddress === '') {
-        throw new InvalidEmailAddressFormat(
-          'メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。'
-        );
-      }
-      // @ts-ignore
-      return Promise.resolve({ isValid: true });
-    });
+    // 5. スタブ validateReporterNameFormat を成功（有効）を返すようセットアップして、reporterName が形式要件を満たしていることを前提とする
+    mockedValidateReporterNameFormat.mockReturnValue({ isValid: true });
   });
 
-  it('メールアドレスが空文字列の場合、InvalidEmailAddressFormatエラーを返す', async () => {
-    const executionTimestamp = new Date();
+  it('メールアドレスが空文字列の場合、InvalidEmailAddressFormatエラーを返す', () => {
+    // 1. テスト対象関数 registerReporter を呼び出す準備として、RegisterReporterInput 型の入力値を構築する
+    // 2. RegisterReporterInput の emailAddress フィールドに空文字列 '' を設定する
     const input: RegisterReporterInput = {
       userId: 'USER001',
       reporterName: '有効な報告者名',
       emailAddress: '',
       teamLeaderId: 'LEADER001',
-      executionTimestamp,
+      executionTimestamp: new Date('2026-09-24T10:00:00Z'),
     };
 
-    // @ts-ignore
-    const result: RegisterReporterOutput = await registerReporter(input);
+    // 3. その他の必須フィールド（userId、reporterName、teamLeaderId、executionTimestamp）には有効な値を設定する（上記で設定済み）
 
+    // 6. registerReporter(input) を同期呼び出しする
+    const result: RegisterReporterOutput = registerReporter(input);
+
+    // 7. 返却された RegisterReporterOutput 型の出力値を検証する
+    // 期待結果: registerReporter 関数は InvalidEmailAddressFormat エラーを発生させ、以下の状態の RegisterReporterOutput を返す
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe(
@@ -86,8 +66,9 @@ describe('SCEN-331: メールアドレスが空文字列の場合、InvalidEmail
 
     // validateEmailAddress、detectDuplicateEmailAddress、registerReporterToMaster、
     // persistReporterMasterChangeHistoryは呼び出されない
-    expect(mockDetectDuplicateEmailAddress).not.toHaveBeenCalled();
-    expect(mockRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockedValidateEmailAddress).not.toHaveBeenCalled();
+    expect(mockedDetectDuplicateEmailAddress).not.toHaveBeenCalled();
+    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
+    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

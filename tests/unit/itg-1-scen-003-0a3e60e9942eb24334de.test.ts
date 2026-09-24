@@ -67,11 +67,12 @@ describe('SCEN-003: 報告者の認証・認可に失敗し、入力促通知が
   });
 
   it('認証失敗した報告者へは入力促通知が送信されず、認証エラーが記録される', async () => {
+    const mockAiClient: any = {};
     const result = await runTx1Imp1Agent({
       executionTimestamp,
       targetDate,
       systemContext,
-    });
+    }, mockAiClient);
 
     expect(['partial_success', 'failure']).toContain(result.executionStatus);
     expect(result.errors).toEqual(

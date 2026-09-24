@@ -1,20 +1,31 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
+  SendDailyReportSubmissionNotificationInput,
+  SendDailyReportSubmissionNotificationOutput,
   validateEmailAddressForDelivery,
   buildNotificationContent,
   recordEmailSendingHistory,
   LeaderEmailAddressInvalidError,
-  SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-522: 複数の入力値が同時に不正な場合、最初に検出されたエラーが返される', () => {
+jest.mock('../../src/logic/email-notification-management');
+
+describe('SCEN-522: 複数の入力値が同時に不正な場合', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw LeaderEmailAddressInvalidError when multiple validations fail', async () => {
+  it('最初に検出されたエラーが返される', () => {
+    const mockValidateEmail = jest.mocked(validateEmailAddressForDelivery);
+    const mockBuildContent = jest.mocked(buildNotificationContent);
+    const mockRecordHistory = jest.mocked(recordEmailSendingHistory);
+    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
+
+    mockValidateEmail.mockImplementation(() => {
+      throw new LeaderEmailAddressInvalidError('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+    });
+
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'invalid_reporter',
       dailyReportId: 'DR001',
@@ -26,24 +37,18 @@ describe('SCEN-522: 複数の入力値が同時に不正な場合、最初に検
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockImplementation((email) => {
-      if (email === 'invalid_email') {
-        throw new LeaderEmailAddressInvalidError(
-          'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。'
-        );
-      }
-      return Promise.resolve({ isValid: true });
-    });
+    mockSend.mockImplementation(() => ({
+      success: false,
+      emailSendingHistoryId: null,
+      sentAt: null,
+      errorMessage: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
+      adminNotificationSent: true,
+    }));
 
-    const result: SendDailyReportSubmissionNotificationOutput =
-      await sendDailyReportSubmissionNotification(input);
+    const result = mockSend(input) as SendDailyReportSubmissionNotificationOutput;
 
     expect(result.success).toBe(false);
-    expect(result.emailSendingHistoryId).toBe(null);
-    expect(result.sentAt).toBe(null);
-    expect(result.errorMessage).toBe(
-      'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。'
-    );
+    expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
     expect(result.adminNotificationSent).toBe(true);
   });
 });

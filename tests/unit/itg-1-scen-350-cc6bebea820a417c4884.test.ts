@@ -1,38 +1,40 @@
-import { jest } from '@jest/globals';
-import { registerReporter, InvalidEmailAddressFormat } from '../../src/logic/reporter-master-management';
+import {
+  registerReporter,
+  RegisterReporterInput,
+  RegisterReporterOutput,
+  InvalidEmailAddressFormat,
+} from '../../src/logic/reporter-master-management';
+import {
+  validateReporterNameFormat,
+  validateEmailAddress,
+} from '../../src/logic/input-validation-formatting';
 
-// スタブの設定と検証用のモック
-jest.mock('../../src/logic/input-validation-formatting.ts');
-jest.mock('../../src/logic/user-authentication-authorization.ts');
-jest.mock('../../src/logic/user-master-persistence.ts');
+jest.mock('../../src/logic/input-validation-formatting');
 
-import * as validationModule from '../../src/logic/input-validation-formatting';
-import * as authModule from '../../src/logic/user-authentication-authorization';
-import * as persistenceModule from '../../src/logic/user-master-persistence';
-
-describe('SCEN-350: メールアドレス形式エラー検証', () => {
+describe('SCEN-350: メールアドレスが@を含まないか、ドメイン部分がない場合、br-tx_7-003の制約3により「正しいメールアドレス形式で入力してください」エラーメッセージが返される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('メールアドレスが@を含まない場合、InvalidEmailAddressFormatエラーを返す', async () => {
-    // スタブ設定：validateEmailAddress が InvalidEmailAddressFormat エラーをスロー
-    (validationModule.validateEmailAddress as any).mockImplementation(() => {
-      const err = new Error('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');
-      (err as any).name = 'InvalidEmailAddressFormat';
-      throw err;
+  test('メールアドレスが@を含まない不正な形式の場合、InvalidEmailAddressFormatエラーが発生', () => {
+    // スタブ化: validateReporterNameFormatは成功
+    (validateReporterNameFormat as jest.Mock).mockReturnValue(true);
+    // validateEmailAddressが不正な形式でエラーを返す
+    (validateEmailAddress as jest.Mock).mockImplementation(() => {
+      throw new InvalidEmailAddressFormat('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');
     });
 
-    const input = {
+    const input: RegisterReporterInput = {
       userId: 'U001',
       reporterName: '山田太郎',
-      emailAddress: 'test', // @を含まない不正な形式
+      emailAddress: 'test',
       teamLeaderId: 'TL001',
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: new Date(),
     };
 
-    const result = await registerReporter(input);
+    const result: RegisterReporterOutput = registerReporter(input);
 
+    // 期待結果の検証
     expect(result.success).toBe(false);
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');

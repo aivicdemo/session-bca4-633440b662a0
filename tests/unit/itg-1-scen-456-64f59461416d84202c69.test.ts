@@ -4,9 +4,17 @@ import {
   RegisterReporterToMasterInput,
   RegisterReporterToMasterOutput,
   ReporterRegistrationFailedError,
+  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
+jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-master-persistence');
+
+import {
+  validateUserInformationRequired,
+  validateEmailAddress,
+  detectDuplicateEmailAddress,
+} from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-456: データベース障害により登録処理が失敗した場合、登録失敗を返す', () => {
   beforeEach(() => {
@@ -22,12 +30,12 @@ describe('SCEN-456: データベース障害により登録処理が失敗した
       registrationTimestamp: new Date(),
     };
 
-    const mockResult: RegisterReporterToMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者の登録に失敗しました。システム管理者に連絡してください。',
-    };
-    jest.mocked(registerReporterToMaster).mockResolvedValue(mockResult);
+    (validateUserInformationRequired as any).mockReturnValue(true) as any;
+    (validateEmailAddress as any).mockReturnValue(true) as any;
+    (detectDuplicateEmailAddress as any).mockReturnValue(false) as any;
+    (persistReporterMasterChangeHistory as any).mockRejectedValue(
+      new ReporterRegistrationFailedError('Database error') as any
+    );
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

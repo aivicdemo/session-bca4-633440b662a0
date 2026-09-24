@@ -1,14 +1,9 @@
-import { jest } from '@jest/globals';
-import {
-  submitDailyReport,
-  SubmitDailyReportInput,
-  DuplicateSubmissionForDateException,
-} from '../../src/logic/daily-report-submission';
-import * as userAuth from '../../src/logic/user-authentication-authorization';
-import * as validation from '../../src/logic/input-validation-formatting';
-import * as judgment from '../../src/logic/business-day-deadline-judgment';
-import * as persistence from '../../src/logic/daily-report-persistence';
-import * as notification from '../../src/logic/email-notification-management';
+import { submitDailyReport, DuplicateSubmissionForDateException } from '../../src/logic/daily-report-submission';
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/input-validation-formatting');
@@ -20,41 +15,97 @@ describe('SCEN-206: 同一報告者が同一報告日に既に提出済みの場
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (userAuth.authenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
-      isAuthenticated: true,
-      isEligible: true,
-    });
-
-    (validation.validateDailyReportContent as jest.Mock<any>).mockResolvedValue({
-      isValid: true,
-    });
-
-    (judgment.judgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      isWithinDeadline: true,
-    });
-
-    (persistence.checkDailyReportExistsForDate as jest.Mock<any>).mockRejectedValue(
-      new DuplicateSubmissionForDateException('本日の日報は既に提出済みです。')
-    );
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(true);
   });
 
-  it('同一報告者が同一報告日に既に提出済みの場合、DuplicateSubmissionForDateException例外をスロー', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
+  it('同一報告者が同一報告日に既に提出済みの場合、DuplicateSubmissionForDateException が発生する', async () => {
+    const input = {
+      userId: 'reporter-test-001',
       reportDate: '2024-01-15',
       businessContent: '有効な業務内容テキスト',
       achievements: null,
       challenges: null,
       tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
+      submissionTimestamp: '2024-01-15T14:00:00Z',
     };
 
     await expect(submitDailyReport(input)).rejects.toThrow(DuplicateSubmissionForDateException);
-    await expect(submitDailyReport(input)).rejects.toThrow('本日の日報は既に提出済みです。');
+  });
 
-    // 重複提出チェック以降の処理は呼び出されていない
-    expect(persistence.saveDailyReport).not.toHaveBeenCalled();
-    expect(persistence.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
-    expect(notification.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
+  it('エラーメッセージが「本日の日報は既に提出済みです。」と一致する', async () => {
+    const input = {
+      userId: 'reporter-test-001',
+      reportDate: '2024-01-15',
+      businessContent: '有効な業務内容テキスト',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:00:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+      fail('should have thrown DuplicateSubmissionForDateException');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DuplicateSubmissionForDateException);
+      expect((error as Error).message).toBe('本日の日報は既に提出済みです。');
+    }
+  });
+
+  it('重複提出検出時に saveDailyReport は呼び出されない', async () => {
+    const input = {
+      userId: 'reporter-test-001',
+      reportDate: '2024-01-15',
+      businessContent: '有効な業務内容テキスト',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:00:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+    } catch {}
+
+    expect(persistenceModule.saveDailyReport).not.toHaveBeenCalled();
+  });
+
+  it('重複提出検出時に updateDailyReportSubmissionTimestamp は呼び出されない', async () => {
+    const input = {
+      userId: 'reporter-test-001',
+      reportDate: '2024-01-15',
+      businessContent: '有効な業務内容テキスト',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:00:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+    } catch {}
+
+    expect(persistenceModule.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
+  });
+
+  it('重複提出検出時に sendDailyReportSubmissionNotification は呼び出されない', async () => {
+    const input = {
+      userId: 'reporter-test-001',
+      reportDate: '2024-01-15',
+      businessContent: '有効な業務内容テキスト',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:00:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+    } catch {}
+
+    expect(notificationModule.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
   });
 });

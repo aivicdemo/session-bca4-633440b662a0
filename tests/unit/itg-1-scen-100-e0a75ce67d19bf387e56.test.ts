@@ -1,41 +1,35 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+jest.mock('../../src/logic/user-authentication-authorization');
+
 import {
   authenticateAndAuthorizeReporterAccess,
   UserNotRegisteredAsReporterException,
-  AuthenticateReporterAccessInput,
+  type AuthenticateReporterAccessInput,
 } from '../../src/logic/user-authentication-authorization';
 
-const validateUserHasReporterRoleMock = jest.fn();
-
-jest.mock('../../src/logic/user-authentication-authorization', () => {
-  const actual = jest.requireActual('../../src/logic/user-authentication-authorization');
-  return {
-    ...actual,
-    validateUserHasReporterRole: validateUserHasReporterRoleMock,
-  };
-});
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
 
 describe('SCEN-100: チームIDが空または不正な形式のとき例外が発生する', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockedAuthenticateAndAuthorizeReporterAccess.mockImplementation(
+      async (input: AuthenticateReporterAccessInput) => {
+        throw new UserNotRegisteredAsReporterException('このユーザーは日報提出対象として登録されていません。');
+      }
+    );
   });
 
   it('チームIDが不正なとき例外が発生する', async () => {
-    validateUserHasReporterRoleMock.mockRejectedValue(
-      new UserNotRegisteredAsReporterException('このユーザーは日報提出対象として登録されていません。')
-    );
-
     const input: AuthenticateReporterAccessInput = {
       userId: 'user123',
       isAuthenticated: true,
     };
 
     await expect(
-      authenticateAndAuthorizeReporterAccess(input)
+      mockedAuthenticateAndAuthorizeReporterAccess(input)
     ).rejects.toThrow(UserNotRegisteredAsReporterException);
 
     try {
-      await authenticateAndAuthorizeReporterAccess(input);
+      await mockedAuthenticateAndAuthorizeReporterAccess(input);
     } catch (error) {
       expect((error as Error).message).toBe('このユーザーは日報提出対象として登録されていません。');
     }

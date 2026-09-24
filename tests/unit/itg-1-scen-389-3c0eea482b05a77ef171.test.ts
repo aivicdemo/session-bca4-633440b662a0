@@ -1,74 +1,59 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  deactivateReporter,
-  DeactivateReporterInput,
-  isReporterActiveAndValid,
-} from '../../src/logic/reporter-master-management';
-import {
-  archivePastDailyReports,
-} from '../../src/logic/daily-report-persistence';
-import { ArchiveFailureError } from '../../src/logic/reporter-master-management';
-import {
-  deactivateReporterInMaster,
-  persistReporterMasterChangeHistory,
-} from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/reporter-master-management.ts', () => ({
+jest.mock('../../src/logic/reporter-master-management', () => ({
   isReporterActiveAndValid: jest.fn(),
   recordReporterMasterChangeHistory: jest.fn(),
 }));
-
-jest.mock('../../src/logic/daily-report-persistence.ts', () => ({
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  deactivateReporterInMaster: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
   archivePastDailyReports: jest.fn(),
 }));
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  deactivateReporterInMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+import {
+  isReporterActiveAndValid,
+  recordReporterMasterChangeHistory,
+  deactivateReporter,
+  ArchiveFailureError,
+} from '../../src/logic/reporter-master-management';
+import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
+import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
+
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
+const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.Mock;
+const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.Mock;
+const mockedArchivePastDailyReports = archivePastDailyReports as jest.Mock;
 
 describe('SCEN-389: アーカイブテーブルへの書き込みに失敗した場合、エラーで拒否される', () => {
-  let mockIsReporterActiveAndValid: jest.Mock;
-  let mockRecordReporterMasterChangeHistory: jest.Mock;
-  let mockArchivePastDailyReports: jest.Mock;
-  let mockDeactivateReporterInMaster: jest.Mock;
+  const reporterId = 'reporter-001';
+  const teamLeaderId = 'leader-001';
+  const deactivationReason = '異動';
+  const executionTimestamp = new Date('2024-01-15T10:00:00Z');
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    mockIsReporterActiveAndValid = require('../../src/logic/reporter-master-management.ts').isReporterActiveAndValid as jest.Mock;
-    mockRecordReporterMasterChangeHistory = require('../../src/logic/reporter-master-management.ts').recordReporterMasterChangeHistory as jest.Mock;
-    mockArchivePastDailyReports = require('../../src/logic/daily-report-persistence.ts').archivePastDailyReports as jest.Mock;
-    mockDeactivateReporterInMaster = require('../../src/logic/user-master-persistence.ts').deactivateReporterInMaster as jest.Mock;
-
-    // @ts-ignore
-    mockIsReporterActiveAndValid.mockResolvedValue(true);
-    // @ts-ignore
-    mockRecordReporterMasterChangeHistory.mockResolvedValue({ changeHistoryId: 'history-001' });
-    // @ts-ignore
-    mockArchivePastDailyReports.mockRejectedValue(
-      // @ts-ignore
+    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    mockedRecordReporterMasterChangeHistory.mockResolvedValue({
+      changeHistoryId: 'history-001',
+    });
+    mockedArchivePastDailyReports.mockRejectedValue(
       new ArchiveFailureError('過去日報のアーカイブに失敗しました。')
     );
   });
 
-  it('archivePastDailyReportsでArchiveFailureErrorが発生した場合、deactivateReporterInMasterは呼び出されない', async () => {
-    const input: DeactivateReporterInput = {
-      reporterId: 'reporter-001',
-      teamLeaderId: 'leader-001',
-      deactivationReason: '異動',
-      executionTimestamp: new Date(),
-    };
+  it('ArchiveFailureError がスローされ、deactivateReporterInMaster と recordReporterMasterChangeHistory は呼び出されない', async () => {
+    await expect(
+      deactivateReporter({
+        reporterId,
+        teamLeaderId,
+        deactivationReason,
+        executionTimestamp,
+      })
+    ).rejects.toThrow(ArchiveFailureError);
 
-    try {
-      await deactivateReporter(input);
-      fail('ArchiveFailureError should be thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(ArchiveFailureError);
-      expect((error as Error).message).toContain('過去日報のアーカイブに失敗しました。');
-    }
-
-    expect(mockDeactivateReporterInMaster).not.toHaveBeenCalled();
-    expect(mockRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockedIsReporterActiveAndValid).toHaveBeenCalled();
+    expect(mockedArchivePastDailyReports).toHaveBeenCalled();
+    expect(mockedDeactivateReporterInMaster).not.toHaveBeenCalled();
+    expect(mockedRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

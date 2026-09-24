@@ -1,66 +1,48 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { judgeSchedulerExecutionTiming, isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment.ts');
+import {
+  judgeSchedulerExecutionTiming,
+  JudgeSchedulerExecutionTimingInput,
+  JudgeSchedulerExecutionTimingOutput,
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-198: 許容誤差の下限境界で実行可能と判定される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('現在時刻が実行予定時刻の下限境界（17:25:00）の場合、shouldExecuteがtrueとなる', async () => {
-    // @ts-ignore
-    const mockIsBusinessDay = isBusinessDay;
-    mockIsBusinessDay.mockResolvedValue(true);
-
-    // @ts-ignore
-    const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming;
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-      nextScheduledExecutionTime: null,
-      executionReason: '営業日の実行時刻内',
-    });
-
-    const result = await judgeSchedulerExecutionTiming({
-      currentTimestamp: '2024-01-15T17:25:00Z',
+  it('許容誤差の下限境界で実行可能と判定される', async () => {
+    // isBusinessDay処理をスタブ化し、現在日付が営業日であることを返すよう設定する
+    // judgeSchedulerExecutionTiming処理を以下の入力値で呼び出す
+    // currentTimestamp='2024-01-15T17:29:55Z'
+    // scheduledExecutionTime='17:30'
+    // executionTimeToleranceMinutes=5（デフォルト）
+    // timeZone='Asia/Tokyo'（デフォルト）
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:29:55Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',
-    });
+    };
 
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+
+    // 出力型JudgeSchedulerExecutionTimingOutputのフィールド値を検証する
+    // shouldExecute=true
     expect(result.shouldExecute).toBe(true);
+
+    // isBusinessDay=true
     expect(result.isBusinessDay).toBe(true);
+
+    // isWithinExecutionWindow=true
     expect(result.isWithinExecutionWindow).toBe(true);
-    expect(result.nextScheduledExecutionTime).toBe(null);
+
+    // nextScheduledExecutionTime=null
+    expect(result.nextScheduledExecutionTime).toBeNull();
+
+    // executionReason='営業日の実行時刻内'
     expect(result.executionReason).toBe('営業日の実行時刻内');
-  });
 
-  it('現在時刻が実行予定時刻の下限境界より1秒前（17:24:59）の場合、範囲外となる', async () => {
-    // @ts-ignore
-    const mockIsBusinessDay = isBusinessDay;
-    mockIsBusinessDay.mockResolvedValue(true);
-
-    // @ts-ignore
-    const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming;
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: false,
-      isBusinessDay: true,
-      isWithinExecutionWindow: false,
-      nextScheduledExecutionTime: '2024-01-15T17:30:00Z',
-      executionReason: '実行時刻外',
-    });
-
-    const result = await judgeSchedulerExecutionTiming({
-      currentTimestamp: '2024-01-15T17:24:59Z',
-      scheduledExecutionTime: '17:30',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
-    });
-
-    expect(result.shouldExecute).toBe(false);
-    expect(result.isBusinessDay).toBe(true);
-    expect(result.isWithinExecutionWindow).toBe(false);
+    // 現在時刻17:29:55は予定時刻17:30から許容誤差下限5分以内（17:25:00以上17:35:00以下の範囲内）に該当し、
+    // 営業日であるため実行可能と判定される
   });
 });

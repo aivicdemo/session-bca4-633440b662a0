@@ -1,13 +1,28 @@
-import { describe, it, expect } from '@jest/globals';
+jest.mock('../../src/logic/email-notification-management', () => ({
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
 import {
   sendDailyReportSubmissionNotification,
   LeaderEmailAddressInvalidError,
+  validateEmailAddressForDelivery,
+  buildNotificationContent,
+  recordEmailSendingHistory,
   SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-481: リーダーメールアドレスが形式的に無効な場合、LeaderEmailAddressInvalidError が発生', () => {
-  it('リーダーメールアドレスが形式的に無効な場合、エラーが発生し、buildNotificationContent と recordEmailSendingHistory は呼ばれない', async () => {
+const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
+const mockedBuildNotificationContent = buildNotificationContent as jest.Mock;
+const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.Mock;
+
+describe('SCEN-481: リーダーメールアドレスが形式的に無効な場合、LeaderEmailAddressInvalidError が発生して通知を中止する', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('リーダーメールアドレスが形式的に無効な場合、LeaderEmailAddressInvalidError が発生すること', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-20240115-001',
@@ -19,17 +34,24 @@ describe('SCEN-481: リーダーメールアドレスが形式的に無効な場
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    try {
-      const result = await sendDailyReportSubmissionNotification(input);
+    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+      isValid: false,
+      reason: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
+      errorCode: 'INVALID_EMAIL_FORMAT',
+    });
 
-      expect(result.success).toBe(false);
-      expect(result.emailSendingHistoryId).toBeNull();
-      expect(result.sentAt).toBeNull();
-      expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
-      expect(result.adminNotificationSent).toBe(true);
+    mockedBuildNotificationContent.mockRejectedValue(new Error('Should not be called'));
+    mockedRecordEmailSendingHistory.mockRejectedValue(new Error('Should not be called'));
+
+    try {
+      await sendDailyReportSubmissionNotification(input);
+      expect(true).toBe(false);
     } catch (error) {
       expect(error).toBeInstanceOf(LeaderEmailAddressInvalidError);
       expect((error as Error).message).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
     }
+
+    expect(mockedBuildNotificationContent).not.toHaveBeenCalled();
+    expect(mockedRecordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

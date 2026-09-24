@@ -1,36 +1,22 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 import {
+  judgeSchedulerExecutionTiming,
   JudgeSchedulerExecutionTimingInput,
   JudgeSchedulerExecutionTimingOutput,
 } from '../../src/logic/business-day-deadline-judgment';
 
-describe('SCEN-727: 検知ログと未提出者情報がシステムに記録される', () => {
-  it('判定結果が正常に返却される', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '17:30',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
-    };
-
-    // 実装仕様に従い、judgeSchedulerExecutionTiming関数が以下の出力を返すことを検証
-    const expectedResult: JudgeSchedulerExecutionTimingOutput = {
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-      nextScheduledExecutionTime: null,
-      executionReason: '営業日の実行時刻内',
-    };
-
-    // 仕様の期待結果を検証
-    expect(expectedResult.shouldExecute).toBe(true);
-    expect(expectedResult.isBusinessDay).toBe(true);
-    expect(expectedResult.isWithinExecutionWindow).toBe(true);
-    expect(expectedResult.nextScheduledExecutionTime).toBeNull();
-    expect(expectedResult.executionReason).toBe('営業日の実行時刻内');
+describe('SCEN-727: 検知ログと未提出者情報がシステムに記録され、後続の監査・分析・リマインダー送信の基盤データとして永続化される', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(businessDayModule, 'isBusinessDay').mockResolvedValue(true);
   });
 
-  it('営業日の実行時刻内であることが確認される', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('検知ログ記録の基盤となる実行判定が正常に実行される', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -38,10 +24,12 @@ describe('SCEN-727: 検知ログと未提出者情報がシステムに記録さ
       timeZone: 'Asia/Tokyo',
     };
 
-    // 入力値が仕様に従っていることを確認
-    expect(input.currentTimestamp).toBe('2024-01-15T17:30:00Z');
-    expect(input.scheduledExecutionTime).toBe('17:30');
-    expect(input.executionTimeToleranceMinutes).toBe(5);
-    expect(input.timeZone).toBe('Asia/Tokyo');
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+
+    expect(result.shouldExecute).toBe(true);
+    expect(result.isBusinessDay).toBe(true);
+    expect(result.isWithinExecutionWindow).toBe(true);
+    expect(result.nextScheduledExecutionTime).toBeNull();
+    expect(result.executionReason).toBe('営業日の実行時刻内');
   });
 });

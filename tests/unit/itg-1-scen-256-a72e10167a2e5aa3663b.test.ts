@@ -1,110 +1,78 @@
-import { jest } from '@jest/globals';
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
+}));
+
 import {
   detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
-  DetectNonSubmittedReportersAtDeadlineOutput,
 } from '../../src/logic/daily-report-non-submission-detection';
-import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
-import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
-import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+import {
+  checkDailyReportExistsForDate,
+  retrieveNonSubmissionDetectionLogsByDate,
+  updateNonSubmissionDetectionLogWithReminderStatus,
+} from '../../src/logic/daily-report-persistence';
 
-describe('SCEN-256: detectNonSubmittedReportersAtDeadline - 制約8 5名中2名が未提出', () => {
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
+
+describe('SCEN-256: 業務ルール br-tx_1-005 の制約 8 が設計どおりに働く', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('期限到達時刻に5名中2名が未提出の場合、正確に2名の情報を返す', async () => {
-    const targetDate = '2024-01-15';
-    const currentDateTime = '2024-01-15T17:00:00Z';
-    const submissionDeadlineTime = '17:00';
-    const teamId = 'team-001';
-
-    const mockReporters = [
-      {
-        userId: 'reporter-001',
-        userName: '報告者1',
-        emailAddress: 'reporter-001@example.com',
-        departmentId: 'dept-001',
-      },
-      {
-        userId: 'reporter-002',
-        userName: '報告者2',
-        emailAddress: 'reporter-002@example.com',
-        departmentId: 'dept-001',
-      },
-      {
-        userId: 'reporter-003',
-        userName: '報告者3',
-        emailAddress: 'reporter-003@example.com',
-        departmentId: 'dept-001',
-      },
-      {
-        userId: 'reporter-004',
-        userName: '報告者4',
-        emailAddress: 'reporter-004@example.com',
-        departmentId: 'dept-001',
-      },
-      {
-        userId: 'reporter-005',
-        userName: '報告者5',
-        emailAddress: 'reporter-005@example.com',
-        departmentId: 'dept-001',
-      },
-    ];
-
-    jest
-      .spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming')
-      .mockResolvedValue(true);
-
-    jest
-      .spyOn(reporterMasterManagement, 'getActiveReportersForSubmissionCheck')
-      .mockResolvedValue(mockReporters);
-
-    jest
-      .spyOn(dailyReportPersistence, 'checkDailyReportExistsForDate')
-      .mockImplementation((userId: string) => {
-        // reporter-001, 002, 003が提出済み、004, 005が未提出
-        return Promise.resolve(['reporter-001', 'reporter-002', 'reporter-003'].includes(userId));
-      });
-
-    jest
-      .spyOn(dailyReportPersistence, 'retrieveNonSubmissionDetectionLogsByDate')
-      .mockResolvedValue([]);
-
-    jest
-      .spyOn(dailyReportPersistence, 'updateNonSubmissionDetectionLogWithReminderStatus')
-      .mockResolvedValue({
-        detectionLogId: 'log-001',
-        targetDate,
-        detectionDateTime: currentDateTime,
-        totalReportersCount: 5,
-        nonSubmittedCount: 2,
-        submittedCount: 3,
-      });
-
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
-      targetDate,
-      currentDateTime,
-      submissionDeadlineTime,
-      teamId,
+  it('制約8: 報告者2名と3名が未提出で、全フィールドが検知ログに記録される', async () => {
+    const input = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T17:00:00Z',
+      submissionDeadlineTime: '17:00',
+      teamId: 'team-001',
     };
 
-    const result: DetectNonSubmittedReportersAtDeadlineOutput =
-      await detectNonSubmittedReportersAtDeadline(input);
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'reporter-001', name: '報告者1', email: 'r001@example.com', department: '営業部', status: 'active' },
+        { userId: 'reporter-002', name: '報告者2', email: 'r002@example.com', department: '営業部', status: 'active' },
+        { userId: 'reporter-003', name: '報告者3', email: 'r003@example.com', department: '営業部', status: 'active' },
+        { userId: 'reporter-004', name: '報告者4', email: 'r004@example.com', department: '営業部', status: 'active' },
+        { userId: 'reporter-005', name: '報告者5', email: 'r005@example.com', department: '営業部', status: 'active' },
+      ],
+      totalCount: 5,
+    });
+
+    mockedCheckDailyReportExistsForDate.mockResolvedValue({
+      success: true,
+      submitted: [
+        { userId: 'reporter-001', submittedAt: '2024-01-15T16:30:00Z' },
+        { userId: 'reporter-002', submittedAt: '2024-01-15T16:40:00Z' },
+        { userId: 'reporter-003', submittedAt: '2024-01-15T16:50:00Z' },
+      ],
+    });
+
+    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+
+    const result = await detectNonSubmittedReportersAtDeadline(input as any);
 
     expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters[0].userId).toBe('reporter-004');
-    expect(result.nonSubmittedReporters[0].userName).toBe('報告者4');
-    expect(result.nonSubmittedReporters[0].emailAddress).toBe('reporter-004@example.com');
-    expect(result.nonSubmittedReporters[1].userId).toBe('reporter-005');
-    expect(result.nonSubmittedReporters[1].userName).toBe('報告者5');
-    expect(result.nonSubmittedReporters[1].emailAddress).toBe('reporter-005@example.com');
-
-    expect(result.detectionLog.detectionDateTime).toBe(currentDateTime);
-    expect(result.detectionLog.targetDate).toBe(targetDate);
+    expect(result.nonSubmittedReporters.map((r: any) => r.userId)).toEqual(expect.arrayContaining(['reporter-004', 'reporter-005']));
+    expect(result.detectionLog.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
+    expect(result.detectionLog.targetDate).toBe('2024-01-15');
     expect(result.detectionLog.totalReportersCount).toBe(5);
     expect(result.detectionLog.nonSubmittedCount).toBe(2);
-
-    expect(result.detectionTimestamp).toBe(currentDateTime);
+    expect(result.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
   });
 });

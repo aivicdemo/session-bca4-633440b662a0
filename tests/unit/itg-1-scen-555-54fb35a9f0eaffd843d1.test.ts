@@ -1,12 +1,29 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   sendUserInformationApprovalNotification,
+  validateEmailAddressForDelivery,
   EmailSendingFailureError,
+} from '../../src/logic/email-notification-management';
+import type {
   SendUserInformationApprovalNotificationInput,
 } from '../../src/logic/email-notification-management';
 
+jest.mock('../../src/logic/email-notification-management');
+
 describe('SCEN-555: メール送信サービスが一時的に利用不可の場合、EmailSendingFailureErrorが発生する', () => {
-  test('エラー系：メール送信サービスが一時的に利用不可の場合、EmailSendingFailureErrorが発生する', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('メール送信サービスが503エラーで利用不可の場合、EmailSendingFailureErrorが発生する', async () => {
+    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(true);
+
+    jest.mocked(sendUserInformationApprovalNotification).mockImplementation(async () => {
+      throw new EmailSendingFailureError(
+        'メール送信に失敗しました。後で再試行してください。'
+      );
+    });
+
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',
@@ -18,15 +35,11 @@ describe('SCEN-555: メール送信サービスが一時的に利用不可の場
       confirmingLeaderUserId: 'confirming-leader-001',
     };
 
-    const error = await sendUserInformationApprovalNotification(input).catch(
-      (err) => err
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      EmailSendingFailureError
     );
-
-    expect(error).toBeInstanceOf(EmailSendingFailureError);
-    if (error instanceof EmailSendingFailureError) {
-      expect(error.message).toBe(
-        'メール送信に失敗しました。後で再試行してください。'
-      );
-    }
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      'メール送信に失敗しました。後で再試行してください。'
+    );
   });
 });

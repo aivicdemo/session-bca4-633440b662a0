@@ -1,34 +1,28 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  judgePromptNecessityAndMethod,
-  JudgePromptNecessityAndMethodInput,
-  JudgePromptNecessityAndMethodOutput,
-} from '../../src/logic/non-submission-prompt-decision';
-
-// 依存先のモック
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   isWithinSubmissionDeadline: jest.fn(),
 }));
 
-describe('SCEN-294: 超過時間がマイナス値（期限前）の場合、overdueDurationMinutesに負の値が設定される', () => {
-  let mockIsWithinSubmissionDeadline: jest.Mock;
+import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-prompt-decision';
 
+const mockedIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.Mock;
+
+describe('SCEN-294: 超過時間がマイナス値（期限前）の場合、overdueDurationMinutesに負の値が設定される', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockIsWithinSubmissionDeadline = require('../../src/logic/business-day-deadline-judgment.ts')
-      .isWithinSubmissionDeadline as jest.Mock;
+    jest.resetAllMocks();
   });
 
-  it('期限の30分前の検知時点で、overdueDurationMinutesに-30が設定される', async () => {
-    // detectionDateTime: 2024-01-15T16:30:00Z（UTC）
-    // submissionDeadlineTime: '17:00'
-    // 期限17:00から検知時刻16:30を引くと -30 分
+  it('期限前（-30分）の場合、overdueDurationMinutesに-30が設定される', async () => {
+    // 呼び出し先 isWithinSubmissionDeadline をスタブ化し、期限前判定を返す
+    // 検知時刻16:30、期限17:00 => -30分
+    mockedIsWithinSubmissionDeadline.mockResolvedValue({
+      isWithinDeadline: true,
+      overdueDurationMinutes: -30,
+      deadlineTime: '17:00',
+      detectionTime: '16:30',
+    });
 
-    // isWithinSubmissionDeadline をスタブ化し、期限前判定を返す
-    mockIsWithinSubmissionDeadline.mockReturnValue(true);
-
-    // 入力値を構築
-    const input: JudgePromptNecessityAndMethodInput = {
+    const input = {
       userId: 'user-001',
       targetDate: '2024-01-15',
       detectionDateTime: '2024-01-15T16:30:00Z',
@@ -37,23 +31,25 @@ describe('SCEN-294: 超過時間がマイナス値（期限前）の場合、ove
       previousReminderSentDateTime: null,
     };
 
-    // judgePromptNecessityAndMethod を呼び出す
-    // @ts-ignore
-    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+    const result = await judgePromptNecessityAndMethod(input);
 
-    // overdueDurationMinutes に負の値（-30）が設定されることを検証
+    // overdueDurationMinutes に負の値（-30）が設定される
+    // 業務ルール br-tx_3-003 の計算式：minutesOverdue = (currentTime - reportDeadline) / 60
+    // 検知時刻（16:30）から期限時刻（17:00）を引くと -30 分となり、期限前の状態を正確に表現する
     expect(result.overdueDurationMinutes).toBe(-30);
 
-    // 期限前を前提とした出力フィールドを検証
+    // 期限前を前提とした値
     expect(result.isPromptNecessary).toBe(false);
     expect(result.promptPriority).toBe('low');
     expect(result.estimatedNonSubmissionReason).toBe('unknown');
 
-    // その他のフィールドが存在することを確認
-    expect(result.promptMethod).toBeDefined();
-    expect(result.suggestedPromptMessage).toBeDefined();
-
-    // 設計済みエラーが発生していないことを確認
-    expect(() => {}).not.toThrow();
+    // 呼び出し確認
+    expect(mockedIsWithinSubmissionDeadline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetDate: '2024-01-15',
+        detectionDateTime: '2024-01-15T16:30:00Z',
+        submissionDeadlineTime: '17:00',
+      })
+    );
   });
 });

@@ -1,31 +1,34 @@
-import { describe, it, expect } from '@jest/globals';
+jest.mock('../../src/logic/email-notification-management', () => ({
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
 import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-describe('SCEN-488: チームリーダーのチームIDが不正な場合、「チーム情報の取得に失敗しました」のエラーが発生', () => {
-  it('leaderUserIdのチームIDが不正な場合、エラーがスローされ、出力が返される', async () => {
+describe('SCEN-488: チームリーダーのチームIDが不正な場合、validateReporterValidity で『チーム情報の取得に失敗しました』のエラーが発生する', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('チームリーダーのチームIDが不正な場合、エラーが発生すること', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'daily-001',
-      reportContent: '本日は顧客対応を実施した',
+      reportContent: '本日は営業活動を実施',
       reportDate: '2024-01-15',
-      leaderUserId: 'leader-with-invalid-team-id',
+      leaderUserId: 'leader-invalid-id',
       leaderEmailAddress: 'leader@example.com',
-      reporterName: '太郎',
+      reporterName: '報告者',
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
     try {
-      const result = await sendDailyReportSubmissionNotification(input);
-
-      expect(result.success).toBe(false);
-      expect(result.emailSendingHistoryId).toBeNull();
-      expect(result.sentAt).toBeNull();
-      expect(result.errorMessage).toBe('チーム情報の取得に失敗しました');
-      expect(result.adminNotificationSent).toBe(true);
+      await sendDailyReportSubmissionNotification(input);
+      expect(true).toBe(false);
     } catch (error) {
       expect((error as Error).message).toBe('チーム情報の取得に失敗しました');
     }

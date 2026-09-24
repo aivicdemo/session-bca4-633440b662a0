@@ -17,7 +17,7 @@ jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
 
-import { runTx5Imp1Agent, DetectionLogRecordingFailure } from '../../src/agents/tx-5-imp-1/orchestrator';
+import { runTx5Imp1Agent } from '../../src/agents/tx-5-imp-1/orchestrator';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
@@ -25,79 +25,220 @@ import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-pr
 import { sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
 import { retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.Mock;
-const mockedJudgePromptNecessityAndMethod = judgePromptNecessityAndMethod as jest.Mock;
-const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.Mock;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming =
+  judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck =
+  getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedDetectNonSubmittedReportersAtDeadline =
+  detectNonSubmittedReportersAtDeadline as jest.Mock;
+const mockedJudgePromptNecessityAndMethod =
+  judgePromptNecessityAndMethod as jest.Mock;
+const mockedSendLeaderNonSubmissionPromptNotification =
+  sendLeaderNonSubmissionPromptNotification as jest.Mock;
+const mockedRetrieveNonSubmissionDetectionLogsByDate =
+  retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
 
-describe('SCEN-056: 検知ログ記録に失敗してリーダーへの通知送信が途絶する', () => {
-  const targetDate = '2024-01-15';
-  const executionContext = { scheduledAt: '09:00:00', executedBy: 'scheduler-service' };
-
-  const NON_SUBMITTED = [
-    { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A', targetDate: '2024-01-15', detectionTime: '2024-01-15T09:00:30Z' },
-    { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B', targetDate: '2024-01-15', detectionTime: '2024-01-15T09:00:30Z' },
-  ];
-
+describe('SCEN-056: 検知ログ記録に失敗してリーダーへの通知送信が途断する', () => {
   beforeEach(() => {
     jest.resetAllMocks();
 
     mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
 
     mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([
-      { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
-      { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
-      { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
+      {
+        userId: 'user1',
+        userName: 'User 1',
+        reporterName: 'Reporter 1',
+      },
+      {
+        userId: 'user2',
+        userName: 'User 2',
+        reporterName: 'Reporter 2',
+      },
+      {
+        userId: 'user3',
+        userName: 'User 3',
+        reporterName: 'Reporter 3',
+      },
     ]);
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
-      nonSubmittedReporters: NON_SUBMITTED,
-      delayedReporters: [],
-    });
-
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue([
-      { userId: 'U001', notificationType: 'non_submission_alert' },
-      { userId: 'U002', notificationType: 'non_submission_alert' },
+    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue([
+      {
+        userId: 'user1',
+        userName: 'User 1',
+        reporterName: 'Reporter 1',
+        targetDate: '2024-01-15',
+        detectionTime: '09:00:00',
+      },
+      {
+        userId: 'user2',
+        userName: 'User 2',
+        reporterName: 'Reporter 2',
+        targetDate: '2024-01-15',
+        detectionTime: '09:00:00',
+      },
     ]);
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
-      promptNotificationsSent: [
-        { userId: 'U001', notificationType: 'non_submission_alert', sentAt: '2024-01-15T09:01:00Z', status: 'sent' },
-        { userId: 'U002', notificationType: 'non_submission_alert', sentAt: '2024-01-15T09:01:01Z', status: 'sent' },
+    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+      shouldPrompt: true,
+      targetReporters: [
+        {
+          userId: 'user1',
+          notificationType: 'email',
+        },
+        {
+          userId: 'user2',
+          notificationType: 'email',
+        },
       ],
     });
 
+    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      userId: 'user1',
+      notificationType: 'email',
+      sentAt: '2024-01-15T09:00:00Z',
+      status: 'sent',
+    });
+
+    const detectionLogRecordingError = new Error(
+      '検知ログの記録に失敗しました。永続化層を確認してください。'
+    );
+    (detectionLogRecordingError as any).errorCode = 'DETECTION_LOG_RECORDING_FAILED';
     mockedRetrieveNonSubmissionDetectionLogsByDate.mockRejectedValue(
-      new DetectionLogRecordingFailure('検知ログの記録に失敗しました。永続化層を確認してください。')
+      detectionLogRecordingError
     );
   });
 
-  it('executionStatusがpartial_failureとなり、検知ログ記録失敗によりリーダー通知は送信されない', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+  it('executionStatusは partial_failure である', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
+    );
 
     expect(result.executionStatus).toBe('partial_failure');
+  });
+
+  it('nonSubmittedReportersは2名の未提出者データを含む', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
+    );
+
     expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'U001' }),
-        expect.objectContaining({ userId: 'U002' }),
-      ])
+    expect(result.nonSubmittedReporters[0]).toMatchObject({
+      userId: 'user1',
+      userName: 'User 1',
+      reporterName: 'Reporter 1',
+      targetDate: '2024-01-15',
+    });
+    expect(result.nonSubmittedReporters[0].detectionTime).toBeDefined();
+    expect(result.nonSubmittedReporters[1]).toMatchObject({
+      userId: 'user2',
+      userName: 'User 2',
+      reporterName: 'Reporter 2',
+      targetDate: '2024-01-15',
+    });
+    expect(result.nonSubmittedReporters[1].detectionTime).toBeDefined();
+  });
+
+  it('delayedReportersは空配列', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
     );
+
     expect(result.delayedReporters).toEqual([]);
-    expect(Array.isArray(result.promptNotificationsSent)).toBe(true);
-    result.promptNotificationsSent.forEach((n: { status: string }) => expect(n).toHaveProperty('status'));
-    expect(result.detectionLogId ?? null).toBeNull();
-    expect(result.leaderNotificationSent).toBe(false);
-    expect(result.errorDetails).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          step: '検知ログ記録',
-          errorCode: 'DETECTION_LOG_RECORDING_FAILED',
-          errorMessage: '検知ログの記録に失敗しました。永続化層を確認してください。',
-        }),
-      ])
+  });
+
+  it('promptNotificationsSentは催促メール送信結果の配列を含む', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
     );
+
+    expect(result.promptNotificationsSent).toBeDefined();
+    expect(Array.isArray(result.promptNotificationsSent)).toBe(true);
+  });
+
+  it('detectionLogIdはnullまたはundefined', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
+    );
+
+    expect(result.detectionLogId == null).toBe(true);
+  });
+
+  it('leaderNotificationSentはfalse', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
+    );
+
+    expect(result.leaderNotificationSent).toBe(false);
+  });
+
+  it('errorDetailsは検知ログ記録エラーを含む', async () => {
+    const mockAiClient: any = {};
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        executionContext: {
+          scheduledAt: '09:00:00',
+          executedBy: 'scheduler-service',
+        },
+      },
+      mockAiClient
+    );
+
+    expect(result.errorDetails).toBeDefined();
+    expect(Array.isArray(result.errorDetails)).toBe(true);
+    expect(result.errorDetails).toContainEqual({
+      step: '検知ログ記録',
+      errorCode: 'DETECTION_LOG_RECORDING_FAILED',
+      errorMessage: '検知ログの記録に失敗しました。永続化層を確認してください。',
+    });
   });
 });

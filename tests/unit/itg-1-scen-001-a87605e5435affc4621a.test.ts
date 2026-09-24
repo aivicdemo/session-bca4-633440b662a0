@@ -94,11 +94,12 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
   });
 
   it('報告者5名全員が入力を促され、提出・通知が完結し、催促が発生しない', async () => {
+    const mockAiClient: any = {};
     const result = await runTx1Imp1Agent({
       executionTimestamp,
       targetDate,
       systemContext,
-    });
+    }, mockAiClient);
 
     expect(result.executionStatus).toBe('success');
     expect(result.reportersPrompted).toBe(5);

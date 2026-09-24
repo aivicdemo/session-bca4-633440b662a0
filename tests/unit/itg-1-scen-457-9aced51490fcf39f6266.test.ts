@@ -14,6 +14,7 @@ describe('SCEN-457: チームリーダーが報告者の名前とメールアド
   });
 
   it('should update reporter name and email successfully', async () => {
+    const timestamp = new Date();
     const input: UpdateReporterInMasterInput = {
       reporterId: 'reporter-001',
       reporterName: '新しい報告者名',
@@ -21,21 +22,17 @@ describe('SCEN-457: チームリーダーが報告者の名前とメールアド
       department: undefined,
       status: undefined,
       leaderUserId: 'leader-user-001',
-      updateTimestamp: new Date(),
+      updateTimestamp: timestamp,
     };
 
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: true,
-      reporterId: 'reporter-001',
-      message: '報告者情報が正常に更新されました',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
-    jest.mocked(persistReporterMasterChangeHistory).mockResolvedValue({});
+    (persistReporterMasterChangeHistory as any).mockResolvedValue({ success: true }) as any;
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('reporter-001');
     expect(result.message).toMatch(/更新/);
+
+    expect(persistReporterMasterChangeHistory).toHaveBeenCalled();
   });
 });

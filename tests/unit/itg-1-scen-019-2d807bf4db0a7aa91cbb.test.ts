@@ -1,9 +1,4 @@
-import {
-  runTx2Imp1Agent,
-  DetectionLogRecordingFailed,
-  Tx2Imp1AgentInput,
-  Tx2Imp1AgentOutput,
-} from "../../src/agents/tx-2-imp-1/orchestrator";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
 import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
@@ -40,9 +35,10 @@ describe("SCEN-019: 未提出者検知ログ記録に失敗した場合、Detect
     // detectNonSubmittedReportersAtDeadline は複数の未提出者を検知した上で、
     // その内部処理である検知ログの記録に失敗した状態を、DetectionLogRecordingFailed
     // エラー（検知済みの未提出者情報を保持したまま）として再現する。
-    const detectionError = new DetectionLogRecordingFailed(
+    const detectionError = new Error(
       "未提出者検知ログの記録に失敗しました。"
     );
+    (detectionError as any).name = "DetectionLogRecordingFailed";
     (detectionError as any).nonSubmittedReporterIds = nonSubmittedReporterIds;
     (detectionError as any).detectionCount = nonSubmittedReporterIds.length;
     (detectNonSubmittedReportersAtDeadline as jest.Mock).mockRejectedValue(
@@ -74,13 +70,14 @@ describe("SCEN-019: 未提出者検知ログ記録に失敗した場合、Detect
   });
 
   it("executionStatusがpartial_failureとなり、検知済みの未提出者情報を保持したまま処理を継続する", async () => {
-    const input: Tx2Imp1AgentInput = {
+    const input = {
       targetDate,
       executionTimestamp,
       leaderUserIds,
     };
 
-    const result: Tx2Imp1AgentOutput = await runTx2Imp1Agent(input);
+    const mockAiClient = {};
+    const result = await runTx2Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("partial_failure");
     expect(result.targetDate).toBe("2024-01-15");
@@ -100,6 +97,6 @@ describe("SCEN-019: 未提出者検知ログ記録に失敗した場合、Detect
 
     // 設計上の Tx2Imp1AgentOutput にはエラー名・エラー文言を格納するフィールドが定義されて
     // いないため、DetectionLogRecordingFailed のエラー名・文言そのものは戻り値からは検証できない
-    // （.aivic/batches/30/unresolved.md 参照）。
+    // （.aivic/batches/29/unresolved.md 参照）。
   });
 });

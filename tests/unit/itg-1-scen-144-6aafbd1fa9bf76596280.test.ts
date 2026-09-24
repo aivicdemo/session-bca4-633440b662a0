@@ -17,7 +17,7 @@ jest.mock('../../src/logic/input-validation-formatting', () => {
 });
 
 describe('SCEN-144: メールアドレスフィールドがnull・undefined・空白のみの場合、UserEmailAddressEmptyErrorが発生してメールアドレスの確定値がnullになる', () => {
-  test('should return UserEmailAddressEmptyError when emailAddress is null', () => {
+  test('emailAddress=nullを設定した場合、UserEmailAddressEmptyErrorが発生してメールアドレスの確定値がnullになる', () => {
     const input: ValidateUserInformationRequiredInput = {
       userName: '田中太郎',
       emailAddress: null,
@@ -28,11 +28,13 @@ describe('SCEN-144: メールアドレスフィールドがnull・undefined・�
 
     const result: ValidateUserInformationRequiredOutput = validateUserInformationRequired(input);
 
+    // 関数が以下の値を返すこと
     expect(result.isValid).toBe(false);
     expect(result.validatedUserName).toBe('田中太郎');
     expect(result.validatedEmailAddress).toBeNull();
     expect(result.validatedDepartment).toBe('営業部');
     expect(result.errorCode).toBe('UserEmailAddressEmptyError');
+    // errorDetails配列に{field:'emailAddress', errorCode:'UserEmailAddressEmptyError'}が含まれること
     expect(result.errorDetails).toContainEqual({
       field: 'emailAddress',
       errorCode: 'UserEmailAddressEmptyError',

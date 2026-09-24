@@ -1,41 +1,36 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: jest.fn(),
+}));
+
 import {
   retrieveUserInformationConfirmationStatus,
   LeaderAuthorizationError,
 } from '../../src/logic/user-information-input-confirmation';
+import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
 
-jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  authenticateAndAuthorizeLeaderAccess: jest.fn(),
-}));
+const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.Mock;
 
-describe('SCEN-416: チームリーダーの権限がない、またはアカウントが無効な場合、LeaderAuthorizationErrorが発生する', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock;
-
+describe('SCEN-416: LeaderAuthorizationError when leader lacks authority', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization.ts').authenticateAndAuthorizeLeaderAccess;
   });
 
-  it('チームリーダーの権限がない、またはアカウントが無効な場合、LeaderAuthorizationErrorが発生する', async () => {
+  it('should throw LeaderAuthorizationError with correct message when leader lacks authority', async () => {
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockRejectedValue(
+      new LeaderAuthorizationError('チームリーダーの権限確認に失敗しました。')
+    );
+
     const input = {
-      leaderUserId: 'invalid-leader',
+      leaderUserId: 'invalid-leader-id',
       retrievalTimestamp: new Date(),
     };
 
-    // リーダー権限がない状態を模擬する
-    mockAuthenticateAndAuthorizeLeaderAccess.mockImplementation(() => {
-      throw new LeaderAuthorizationError('チームリーダーの権限確認に失敗しました。');
-    });
-
-    // @ts-ignore
-    await expect(retrieveUserInformationConfirmationStatus(input)).rejects.toThrow(LeaderAuthorizationError);
-
-    // エラーメッセージを確認
     try {
-      // @ts-ignore
       await retrieveUserInformationConfirmationStatus(input);
-    } catch (error: any) {
-      expect(error.message).toBe('チームリーダーの権限確認に失敗しました。');
+      fail('Should have thrown LeaderAuthorizationError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LeaderAuthorizationError);
+      expect((error as Error).message).toBe('チームリーダーの権限確認に失敗しました。');
     }
   });
 });

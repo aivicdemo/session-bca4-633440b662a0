@@ -1,37 +1,39 @@
-import { judgeSchedulerExecutionTiming, NonBusinessDayError } from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  ...jest.requireActual('../../src/logic/business-day-deadline-judgment'),
-  isBusinessDay: jest.fn(),
-}));
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import {
+  judgeSchedulerExecutionTiming,
+  JudgeSchedulerExecutionTimingInput,
+  NonBusinessDayError,
+  isBusinessDay,
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-188: 営業日ではないとき、非営業日エラーが発生する', () => {
   beforeEach(() => {
-    const { isBusinessDay } = require('../../src/logic/business-day-deadline-judgment');
-    isBusinessDay.mockReturnValue(false);
+    jest.clearAllMocks();
   });
 
-  it('非営業日のとき、NonBusinessDayErrorが発生し、エラーメッセージが正確である', () => {
-    expect(() =>
-      judgeSchedulerExecutionTiming({
-        currentTimestamp: '2024-01-13T17:30:00Z',
-        scheduledExecutionTime: '17:30',
-        executionTimeToleranceMinutes: 5,
-        timeZone: 'Asia/Tokyo',
-      })
-    ).toThrow(NonBusinessDayError);
+  it('非営業日の場合、NonBusinessDayError を発生させる', async () => {
+    jest.mocked(isBusinessDay).mockResolvedValue({
+      targetDate: '2024-01-13',
+      isBusinessDay: false,
+      timeZone: 'Asia/Tokyo',
+    } as any);
 
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-13T17:30:00Z',
+      scheduledExecutionTime: '17:30',
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'Asia/Tokyo',
+    };
+
+    await expect(judgeSchedulerExecutionTiming(input)).rejects.toThrow(NonBusinessDayError);
     try {
-      judgeSchedulerExecutionTiming({
-        currentTimestamp: '2024-01-13T17:30:00Z',
-        scheduledExecutionTime: '17:30',
-        executionTimeToleranceMinutes: 5,
-        timeZone: 'Asia/Tokyo',
-      });
-      fail('NonBusinessDayError should have been thrown');
+      await judgeSchedulerExecutionTiming(input);
+      fail('NonBusinessDayError should be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(NonBusinessDayError);
-      expect((error as NonBusinessDayError).message).toBe('本日は営業日ではないため、スケジューラは実行されません。');
+      expect((error as NonBusinessDayError).message).toBe(
+        '本日は営業日ではないため、スケジューラは実行されません。'
+      );
     }
   });
 });

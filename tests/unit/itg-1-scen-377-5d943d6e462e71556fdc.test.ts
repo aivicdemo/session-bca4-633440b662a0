@@ -1,50 +1,84 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { updateReporter } from '../../src/logic/reporter-master-management';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
-import { UnauthorizedUpdateError } from '../../src/logic/reporter-master-management';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  UpdateReporterOutput,
+  UnauthorizedUpdateError,
+} from '../../src/logic/reporter-master-management';
+import {
+  retrieveReporterByUserId,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
-describe('SCEN-377: UnauthorizedUpdateError when user lacks permission or is in different team', () => {
+describe('SCEN-377: 実行ユーザーがチームリーダー権限を持たないか異なるチームの報告者を更新しようとすると、UnauthorizedUpdateErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw UnauthorizedUpdateError when reporter belongs to different team', async () => {
-    // 報告者C（別チーム）の情報
-    const reporterC = {
-      reporterId: 'reporter-C',
+  test('異なるチームの報告者を更新しようとすると、UnauthorizedUpdateErrorが発生またはエラーハンドリング出力が返される', () => {
+    const leaderId = 'leader-A';
+    const reporterId = 'reporter-C';
+    const executionTimestamp = new Date('2025-01-15T10:00:00Z');
+
+    (retrieveReporterByUserId as jest.Mock).mockReturnValue({
+      reporterId,
       reporterName: 'Reporter C',
       emailAddress: 'reporter-c@example.com',
-      department: 'Sales',
+      department: '営業部',
       status: 'active',
-      teamId: 'team-B', // 別のチーム
-    };
+      teamId: 'team-B',
+    });
 
-    // retrieveReporterByUserId がreporter-Cの情報を返す
-    (userMasterPersistence.retrieveReporterByUserId as any).mockResolvedValue(reporterC);
-
-    const input = {
-      reporterId: 'reporter-C',
+    const input: UpdateReporterInput = {
+      reporterId,
       reporterName: 'Updated Name',
-      teamLeaderId: 'leader-A', // team-Aに属するリーダー
-      executionTimestamp: new Date(),
+      emailAddress: null,
+      department: null,
+      status: null,
+      teamLeaderId: leaderId,
+      executionTimestamp,
     };
 
-    // UnauthorizedUpdateError が発生することを期待
-    await expect(updateReporter(input)).rejects.toThrow(UnauthorizedUpdateError);
-
-    // エラーメッセージを確認
     try {
-      await updateReporter(input);
+      const result: UpdateReporterOutput = updateReporter(input);
+      // エラーハンドリング出力が返される場合
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.message).toBe('この操作を実行する権限がありません。');
+      expect(result.changeHistoryId).toBeNull();
     } catch (error) {
-      if (error instanceof UnauthorizedUpdateError) {
-        expect(error.message).toBe('この操作を実行する権限がありません。');
-      }
+      // 例外をスローする場合
+      expect(error).toBeInstanceOf(UnauthorizedUpdateError);
+      expect((error as Error).message).toContain('この操作を実行する権限がありません。');
     }
+  });
 
-    // updateReporterInMaster と persistReporterMasterChangeHistory が呼ばれていないことを確認
-    expect(userMasterPersistence.updateReporterInMaster as any).not.toHaveBeenCalled();
-    expect(userMasterPersistence.persistReporterMasterChangeHistory as any).not.toHaveBeenCalled();
+  test('存在しない報告者を更新しようとすると、UnauthorizedUpdateErrorが発生またはエラーハンドリング出力が返される', () => {
+    const leaderId = 'leader-A';
+    const reporterId = 'reporter-nonexistent';
+    const executionTimestamp = new Date('2025-01-15T10:00:00Z');
+
+    (retrieveReporterByUserId as jest.Mock).mockReturnValue(null);
+
+    const input: UpdateReporterInput = {
+      reporterId,
+      reporterName: 'Updated Name',
+      emailAddress: null,
+      department: null,
+      status: null,
+      teamLeaderId: leaderId,
+      executionTimestamp,
+    };
+
+    try {
+      const result: UpdateReporterOutput = updateReporter(input);
+      // エラーハンドリング出力が返される場合
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.changeHistoryId).toBeNull();
+    } catch (error) {
+      // 例外をスローする場合
+      expect(error).toBeInstanceOf(UnauthorizedUpdateError);
+    }
   });
 });

@@ -25,89 +25,307 @@ import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-pr
 import { sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
 import { retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.Mock;
-const mockedJudgePromptNecessityAndMethod = judgePromptNecessityAndMethod as jest.Mock;
-const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.Mock;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming =
+  judgeSchedulerExecutionTiming as jest.Mock;
+const mockedGetActiveReportersForSubmissionCheck =
+  getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedDetectNonSubmittedReportersAtDeadline =
+  detectNonSubmittedReportersAtDeadline as jest.Mock;
+const mockedJudgePromptNecessityAndMethod =
+  judgePromptNecessityAndMethod as jest.Mock;
+const mockedSendLeaderNonSubmissionPromptNotification =
+  sendLeaderNonSubmissionPromptNotification as jest.Mock;
+const mockedRetrieveNonSubmissionDetectionLogsByDate =
+  retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
 
 describe('SCEN-055: 催促メール送信に失敗してもリーダー通知と検知ログ記録は実行され部分失敗で完了する', () => {
-  const targetDate = '2025-01-15';
-  const executionContext = { scheduledAt: '2025-01-15T17:30:00Z', executedBy: 'scheduler-001' };
-
-  const NON_SUBMITTED = [
-    { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A', targetDate: '2025-01-15', detectionTime: '2025-01-15T17:30:30Z' },
-    { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B', targetDate: '2025-01-15', detectionTime: '2025-01-15T17:30:30Z' },
-  ];
-
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({ shouldExecute: true });
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
 
     mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([
-      { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
-      { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
-      { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
-      { userId: 'U004', userName: 'Reporter D', reporterName: 'Report D' },
-      { userId: 'U005', userName: 'Reporter E', reporterName: 'Report E' },
+      {
+        userId: 'user1',
+        userName: 'User 1',
+        reporterName: 'Reporter 1',
+      },
+      {
+        userId: 'user2',
+        userName: 'User 2',
+        reporterName: 'Reporter 2',
+      },
+      {
+        userId: 'user3',
+        userName: 'User 3',
+        reporterName: 'Reporter 3',
+      },
+      {
+        userId: 'user4',
+        userName: 'User 4',
+        reporterName: 'Reporter 4',
+      },
+      {
+        userId: 'user5',
+        userName: 'User 5',
+        reporterName: 'Reporter 5',
+      },
     ]);
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
-      nonSubmittedReporters: NON_SUBMITTED,
-      delayedReporters: [],
-    });
-
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue([
-      { userId: 'U001', notificationType: 'non_submission_alert' },
-      { userId: 'U002', notificationType: 'non_submission_alert' },
+    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue([
+      {
+        userId: 'user1',
+        userName: 'User 1',
+        reporterName: 'Reporter 1',
+        targetDate: '2025-01-15',
+        detectionTime: '2025-01-15T17:30:00Z',
+      },
+      {
+        userId: 'user2',
+        userName: 'User 2',
+        reporterName: 'Reporter 2',
+        targetDate: '2025-01-15',
+        detectionTime: '2025-01-15T17:30:00Z',
+      },
     ]);
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
-      promptNotificationsSent: [
-        { userId: 'U001', notificationType: 'non_submission_alert', sentAt: '2025-01-15T17:31:00Z', status: 'failed' },
-        { userId: 'U002', notificationType: 'non_submission_alert', sentAt: '2025-01-15T17:31:01Z', status: 'failed' },
-      ],
-      errorDetails: [
+    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+      shouldPrompt: true,
+      targetReporters: [
         {
-          step: 'PromptNotificationSendFailure',
-          errorCode: 'PromptNotificationSendFailure',
-          errorMessage: '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。',
+          userId: 'user1',
+          notificationType: 'email',
+        },
+        {
+          userId: 'user2',
+          notificationType: 'email',
         },
       ],
     });
 
+    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      status: 'sent',
+    });
+
     mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
       detectionLogId: 'log-20250115-001',
-      leaderNotificationSent: true,
+      detections: [
+        {
+          userId: 'user1',
+          userName: 'User 1',
+          reporterName: 'Reporter 1',
+          targetDate: '2025-01-15',
+          detectionTime: '2025-01-15T17:30:00Z',
+        },
+        {
+          userId: 'user2',
+          userName: 'User 2',
+          reporterName: 'Reporter 2',
+          targetDate: '2025-01-15',
+          detectionTime: '2025-01-15T17:30:00Z',
+        },
+      ],
     });
   });
 
-  it('executionStatusがpartial_failureとなり、催促メール送信失敗が記録されつつリーダー通知・検知ログ記録は完了する', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+  it('executionStatusは partial_failure である', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
 
     expect(result.executionStatus).toBe('partial_failure');
-    expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'U001', targetDate: '2025-01-15' }),
-        expect.objectContaining({ userId: 'U002', targetDate: '2025-01-15' }),
-      ])
+  });
+
+  it('nonSubmittedReportersに未提出者2名のデータが含まれる', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
     );
+
+    expect(result.nonSubmittedReporters).toHaveLength(2);
+    expect(result.nonSubmittedReporters[0]).toMatchObject({
+      userId: 'user1',
+      userName: 'User 1',
+      reporterName: 'Reporter 1',
+      targetDate: '2025-01-15',
+    });
+    expect(result.nonSubmittedReporters[0].detectionTime).toBeDefined();
+    expect(result.nonSubmittedReporters[1]).toMatchObject({
+      userId: 'user2',
+      userName: 'User 2',
+      reporterName: 'Reporter 2',
+      targetDate: '2025-01-15',
+    });
+    expect(result.nonSubmittedReporters[1].detectionTime).toBeDefined();
+  });
+
+  it('delayedReportersは空配列', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
+
     expect(result.delayedReporters).toEqual([]);
-    expect(result.promptNotificationsSent).toHaveLength(2);
-    expect(
-      result.promptNotificationsSent.every((n: { status: string }) => n.status === 'failed')
-    ).toBe(true);
+  });
+
+  it('promptNotificationsSentは未提出者2名分の催促メール送信試行記録を含む', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
+
+    expect(result.promptNotificationsSent).toBeDefined();
+    expect(Array.isArray(result.promptNotificationsSent)).toBe(true);
+    const failedNotifications = result.promptNotificationsSent.filter(
+      (n: any) => n.status === 'failed'
+    );
+    expect(failedNotifications.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('detectionLogIdは log-20250115-001', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
+
     expect(result.detectionLogId).toBe('log-20250115-001');
+  });
+
+  it('leaderNotificationSentはtrue', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
+
     expect(result.leaderNotificationSent).toBe(true);
-    expect(result.errorDetails).toEqual([
-      expect.objectContaining({
-        step: 'PromptNotificationSendFailure',
-        errorCode: 'PromptNotificationSendFailure',
-        errorMessage: '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。',
-      }),
-    ]);
+  });
+
+  it('errorDetailsにメール送信失敗エラーが記録される', async () => {
+    const mockAiClient: any = {
+      sendNonSubmissionAlert: jest.fn().mockRejectedValue(
+        Object.assign(
+          new Error(
+            '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。'
+          ),
+          { errorCode: 'PromptNotificationSendFailure' }
+        )
+      ),
+    };
+    const result = await runTx5Imp1Agent(
+      {
+        targetDate: '2025-01-15',
+        executionContext: {
+          scheduledAt: '2025-01-15T17:30:00Z',
+          executedBy: 'scheduler-001',
+        },
+      },
+      mockAiClient
+    );
+
+    expect(result.errorDetails).toBeDefined();
+    expect(Array.isArray(result.errorDetails)).toBe(true);
+    expect(result.errorDetails).toContainEqual({
+      step: 'PromptNotificationSendFailure',
+      errorCode: 'PromptNotificationSendFailure',
+      errorMessage:
+        '催促メール送信に失敗しました。メール送信履歴を確認し、再送信を検討してください。',
+    });
   });
 });

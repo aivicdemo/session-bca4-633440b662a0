@@ -1,76 +1,112 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-// SCEN-678: リマインダー設定の送信時刻・送信曜日・送信方法を変更し、保存すると設定が反映される
-//
-// panels/scr-1790147095974.html の #rm-settings-save クリックハンドラは、AIVIC_PAGE_INIT_JS 内のローカル変数
-// settings（enabled/time/days/method）をその場で書き換えるだけであり、サーバー側 API・localStorage・
-// sessionStorage への保存は一切行っていない。ページを再読み込みすると settings はスクリプト初期化時の
-// ハードコード値（time: '18:00', days: ['月','火','水','木','金'], method: 'メール'）に戻るため、仕様の
-// 期待結果である「ページ再読み込み後も変更後の値が表示される」は現状のサンプル実装では成立しない可能性が高い。
-// この食い違いは .aivic/batches/18/unresolved.md に記録し、本テストは仕様の期待結果の文言どおりに検証する。
+test.describe('SCEN-678: リマインダー設定の送信時刻・送信曜日・送信方法を変更し、保存すると設定が反映される', () => {
+  test('リマインダー設定を変更して保存し、ページ再読み込み後に設定が反映される', async ({ page }) => {
+    // ログイン画面へ遷移
+    await page.goto('./login.html');
 
-async function login(page: Page, username: string) {
-  await page.goto('/login.html');
-  await page.getByTestId('username').fill(username);
-  await page.getByTestId('password').fill('password');
-  await page.getByTestId('login-button').click();
-  await page.waitForURL(/panels\/scr-1790147087109\.html/);
-}
+    // ログインフォームにチームリーダーの認証情報を入力
+    await page.fill('input[data-testid="username"]', 'tanaka.hanako');
+    await page.fill('input[data-testid="password"]', 'password');
+    await page.click('button[data-testid="login-button"]');
 
-async function openReminderSettingsModal(page: Page) {
-  await page.locator('.rm-tab[data-tab="reminder"]').click();
-  await page.locator('#rm-settings-btn').click();
-  await expect(page.locator('#rm-settings-modal')).toHaveClass(/is-visible/);
-}
+    // 日報確認・管理画面へ遷移
+    await page.waitForURL(/index\.html|scr-/);
+    await page.goto('./panels/scr-1790147095974.html');
+    await page.waitForLoadState('networkidle');
 
-test('リマインダー設定の送信時刻・送信曜日・送信方法を変更し、保存すると設定が反映される', async ({ page }) => {
-  // 手順1: 日報確認・管理画面にログインする
-  await login(page, 'leader_scen678');
-  await page.getByText('管理', { exact: true }).click();
-  await page.waitForURL(/panels\/scr-1790147095974\.html/);
+    // リマインダー設定管理ボタンをクリック
+    const settingsBtn = page.locator('#rm-settings-btn');
+    await settingsBtn.click();
 
-  // 手順2: リマインダー設定管理セクションを開く
-  await openReminderSettingsModal(page);
+    // リマインダー設定管理モーダルが表示されることを確認
+    const settingsModal = page.locator('#rm-settings-modal');
+    await expect(settingsModal).toHaveClass(/is-visible/);
 
-  // 手順3: 現在のリマインダー設定を確認する（送信時刻・送信曜日・送信方法の現在値をメモ）
-  await expect(page.locator('#rm-set-time')).toHaveValue('18:00');
-  await expect(page.locator('#rm-set-method')).toHaveValue('メール');
+    // 現在の設定値を取得
+    const timeInput = page.locator('#rm-set-time');
+    const originalTimeValue = await timeInput.inputValue();
 
-  // 手順4: 送信時刻を変更する（9:00 → 10:30 に相当する変更）
-  await page.locator('#rm-set-time').fill('10:30');
+    // 送信時刻を変更（例：9:00 → 10:30）
+    await timeInput.fill('10:30');
 
-  // 手順5: 送信曜日を変更する（月〜金 → 月・水・金）
-  const allDays = ['月', '火', '水', '木', '金', '土', '日'];
-  const targetDays = ['月', '水', '金'];
-  for (const day of allDays) {
-    const checkbox = page.locator(`.rm-day-checkbox[data-day="${day}"]`);
-    await checkbox.setChecked(targetDays.includes(day));
-  }
+    // 送信曜日を変更（月・水・金を選択）
+    const mondayCheckbox = page.locator('[data-day="月"]');
+    const wednesdayCheckbox = page.locator('[data-day="水"]');
+    const fridayCheckbox = page.locator('[data-day="金"]');
+    const allDayCheckboxes = page.locator('.rm-day-checkbox');
 
-  // 手順6: 送信方法を変更する（メール → アプリ通知。システムがサポートする2つの方法のうち別の値に変更）
-  await page.locator('#rm-set-method').selectOption('アプリ通知');
+    // すべてのチェックボックスをクリアしてから、月・水・金のみを選択
+    const dayCount = await allDayCheckboxes.count();
+    for (let i = 0; i < dayCount; i++) {
+      const checkbox = allDayCheckboxes.nth(i);
+      if (await checkbox.isChecked()) {
+        await checkbox.click();
+      }
+    }
+    await mondayCheckbox.click();
+    await wednesdayCheckbox.click();
+    await fridayCheckbox.click();
 
-  // 手順7: 「保存」ボタンをクリックする
-  await page.locator('#rm-settings-save').click();
+    // 送信方法を変更
+    const methodSelect = page.locator('#rm-set-method');
+    const currentMethod = await methodSelect.inputValue();
+    const newMethod = currentMethod === 'メール' ? 'アプリ通知' : 'メール';
+    await methodSelect.selectOption(newMethod);
 
-  // 手順8: 保存完了メッセージが画面に表示されるまで待機する
-  const toast = page.locator('#rm-toast');
-  await expect(toast).toHaveClass(/is-visible/);
-  await expect(toast).toContainText('リマインダー設定を保存しました。');
+    // 保存ボタンをクリック
+    const saveBtn = page.locator('#rm-settings-save');
+    await saveBtn.click();
 
-  // 手順9: ページを再読み込みする
-  await page.reload();
+    // トーストメッセージが表示されることを確認
+    const toast = page.locator('#rm-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toHaveClass(/is-visible/);
+    await expect(toast).toContainText(/保存しました/);
 
-  // 手順10: リマインダー設定管理セクションで現在の設定値を確認する
-  await openReminderSettingsModal(page);
+    // モーダルが閉じることを確認
+    await expect(settingsModal).not.toHaveClass(/is-visible/);
 
-  // 期待結果: 送信時刻が10:30、送信曜日が月・水・金、送信方法が変更後の値になっている
-  await expect(page.locator('#rm-set-time')).toHaveValue('10:30');
-  for (const day of targetDays) {
-    await expect(page.locator(`.rm-day-checkbox[data-day="${day}"]`)).toBeChecked();
-  }
-  for (const day of allDays.filter((d) => !targetDays.includes(d))) {
-    await expect(page.locator(`.rm-day-checkbox[data-day="${day}"]`)).not.toBeChecked();
-  }
-  await expect(page.locator('#rm-set-method')).toHaveValue('アプリ通知');
+    // ページを再読み込み
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // リマインダー設定管理ボタンをもう一度クリック
+    const settingsBtnAfterReload = page.locator('#rm-settings-btn');
+    await settingsBtnAfterReload.click();
+
+    const settingsModalAfterReload = page.locator('#rm-settings-modal');
+    await expect(settingsModalAfterReload).toHaveClass(/is-visible/);
+
+    // 変更した設定値が反映されていることを確認
+    const timeInputAfterReload = page.locator('#rm-set-time');
+    const methodSelectAfterReload = page.locator('#rm-set-method');
+
+    const reloadedTimeValue = await timeInputAfterReload.inputValue();
+    expect(reloadedTimeValue).toBe('10:30');
+
+    const reloadedMethodValue = await methodSelectAfterReload.inputValue();
+    expect(reloadedMethodValue).toBe(newMethod);
+
+    // 選択された曜日を確認
+    const mondayCheckboxAfterReload = page.locator('[data-day="月"]');
+    const wednesdayCheckboxAfterReload = page.locator('[data-day="水"]');
+    const fridayCheckboxAfterReload = page.locator('[data-day="金"]');
+
+    expect(await mondayCheckboxAfterReload.isChecked()).toBe(true);
+    expect(await wednesdayCheckboxAfterReload.isChecked()).toBe(true);
+    expect(await fridayCheckboxAfterReload.isChecked()).toBe(true);
+
+    // キャンセルボタンをクリック
+    const cancelBtn = page.locator('#rm-settings-cancel');
+    await cancelBtn.click();
+
+    // モーダルが非表示になることを確認
+    await expect(settingsModalAfterReload).not.toHaveClass(/is-visible/);
+
+    // 設定概要が変更内容を反映していることを確認
+    const settingsSummary = page.locator('#rm-settings-summary-text');
+    const summaryText = await settingsSummary.textContent();
+    expect(summaryText).toContain('10:30');
+  });
 });

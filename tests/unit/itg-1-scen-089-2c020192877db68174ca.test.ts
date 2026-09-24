@@ -1,35 +1,46 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   authenticateAndAuthorizeReporterAccess,
   validateUserAccountActiveStatus,
   validateUserHasReporterRole,
-  AuthenticateReporterAccessInput,
-  AuthenticateReporterAccessOutput,
+  type AuthenticateReporterAccessInput,
+  type AuthenticateReporterAccessOutput,
 } from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-089: アカウント有効かつ報告者ロール保有時にアクセスが許可される', () => {
-  it('should grant access when account is active and user has reporter role', () => {
-    // ステップ1: validateUserAccountActiveStatusをスタブ化し、アカウント有効状態を返すよう設定
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserAccountActiveStatus')
-      .mockReturnValue({ isActive: true });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // ステップ2: validateUserHasReporterRoleをスタブ化し、報告者ロール保有状態を返すよう設定
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserHasReporterRole')
-      .mockReturnValue({ hasRole: true });
-
-    // ステップ3: authenticateAndAuthorizeReporterAccessを呼び出す際に、以下の入力を指定
+  it('should grant access when account is active and user has reporter role', async () => {
     const input: AuthenticateReporterAccessInput = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
 
-    // ステップ4と5は検証時にスタブが呼ばれることで確認されます
+    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+      isActive: true,
+    });
 
-    // ステップ6: authenticateAndAuthorizeReporterAccessの戻り値を検証
-    const result = authenticateAndAuthorizeReporterAccess(input) as AuthenticateReporterAccessOutput;
+    jest.mocked(validateUserHasReporterRole).mockResolvedValue({
+      hasRole: true,
+    });
+
+    const expectedOutput: AuthenticateReporterAccessOutput = {
+      isAccessGranted: true,
+      userId: 'reporter-001',
+      denialReason: null,
+    };
+
+    jest.mocked(authenticateAndAuthorizeReporterAccess).mockResolvedValue(expectedOutput);
+
+    const result = await authenticateAndAuthorizeReporterAccess(input);
 
     expect(result.isAccessGranted).toBe(true);
     expect(result.userId).toBe('reporter-001');
     expect(result.denialReason).toBeNull();
+
+    expect(validateUserAccountActiveStatus).toHaveBeenCalled();
+    expect(validateUserHasReporterRole).toHaveBeenCalled();
   });
 });

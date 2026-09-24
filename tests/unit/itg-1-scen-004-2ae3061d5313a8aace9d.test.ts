@@ -18,10 +18,14 @@ jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
   sendLeaderNonSubmissionPromptNotification: jest.fn(),
 }));
 
-import {
-  runTx1Imp1Agent,
-  DailyReportGenerationError,
-} from '../../src/agents/tx-1-imp-1/orchestrator';
+import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
+
+class DailyReportGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DailyReportGenerationError';
+  }
+}
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
@@ -143,11 +147,12 @@ describe('SCEN-004: 日報生成失敗により、その報告者の日報が提
   });
 
   it('R001~R003は提出・通知完了、R004は入力不足、R005は生成失敗として2名へ催促送信される', async () => {
+    const mockAiClient: any = {};
     const result = await runTx1Imp1Agent({
       executionTimestamp,
       targetDate,
       systemContext,
-    });
+    }, mockAiClient);
 
     expect(result.executionStatus).toBe('partial_success');
     expect(result.reportersPrompted).toBe(5);

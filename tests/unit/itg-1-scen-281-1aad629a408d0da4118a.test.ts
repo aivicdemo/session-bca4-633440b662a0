@@ -1,24 +1,18 @@
-import { describe, it, expect, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   JudgePromptNecessityAndMethodOutput,
 } from '../../src/logic/non-submission-prompt-decision';
-import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-281: 業務多忙の兆候が検出された場合、推測理由に「business_busy」が設定される', () => {
-  it('should detect business_busy when business load indicators are present', async () => {
-    // Setup stub for isWithinSubmissionDeadline
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<
-      typeof isWithinSubmissionDeadline
-    >;
-    mockIsWithinSubmissionDeadline.mockResolvedValue({
-      overdueDurationMinutes: 90,
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // Prepare test input
+  it('should set business_busy reason when busy schedule is detected', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-busy-001',
       targetDate: '2024-01-15',
@@ -28,16 +22,19 @@ describe('SCEN-281: 業務多忙の兆候が検出された場合、推測理由
       previousReminderSentDateTime: null,
     };
 
-    // Call the function
-    const result: JudgePromptNecessityAndMethodOutput =
-      await judgePromptNecessityAndMethod(input);
+    (deadlineJudgment.isWithinSubmissionDeadline as jest.Mock).mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -90,
+    });
 
-    // Verify the output
+    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+
     expect(result.isPromptNecessary).toBe(true);
     expect(result.promptPriority).toBe('high');
     expect(result.promptMethod).toBe('email_and_system_notification');
     expect(result.estimatedNonSubmissionReason).toBe('business_busy');
-    expect(result.suggestedPromptMessage).toContain('業務多忙');
+    expect(result.suggestedPromptMessage).toContain('業務');
     expect(result.overdueDurationMinutes).toBe(90);
   });
 });

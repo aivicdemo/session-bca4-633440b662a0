@@ -1,24 +1,18 @@
-import { describe, it, expect, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   JudgePromptNecessityAndMethodOutput,
 } from '../../src/logic/non-submission-prompt-decision';
-import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
 
-describe('SCEN-273: 期限超過30分以上1時間未満の場合、中優先度で催促が必要と判定される', () => {
-  it('should return medium priority with email_and_system_notification when overdue 45 minutes', async () => {
-    // Setup stub for isWithinSubmissionDeadline
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<
-      typeof isWithinSubmissionDeadline
-    >;
-    mockIsWithinSubmissionDeadline.mockResolvedValue({
-      overdueDurationMinutes: 45,
-    });
+describe('SCEN-273: 期限超過30分以上1時間未満の場合、中優先度で催促が必要と判定され、メール+システム通知方法を提案する', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // Prepare test input
+  it('should return medium priority with email+system notification when overdue 30-60 minutes', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',
@@ -28,11 +22,14 @@ describe('SCEN-273: 期限超過30分以上1時間未満の場合、中優先度
       previousReminderSentDateTime: null,
     };
 
-    // Call the function
-    const result: JudgePromptNecessityAndMethodOutput =
-      await judgePromptNecessityAndMethod(input);
+    (deadlineJudgment.isWithinSubmissionDeadline as jest.Mock).mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -45,
+    });
 
-    // Verify the output
+    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+
     expect(result.isPromptNecessary).toBe(true);
     expect(result.promptPriority).toBe('medium');
     expect(result.promptMethod).toBe('email_and_system_notification');

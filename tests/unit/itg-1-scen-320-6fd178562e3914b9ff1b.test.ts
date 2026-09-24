@@ -1,38 +1,47 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  saveReminderNotificationSettings: jest.fn(),
+  retrieveReminderNotificationSettingsByUserId: jest.fn(),
+}));
+
 import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
 } from '../../src/logic/daily-report-reminder-notification';
+import {
+  saveReminderNotificationSettings,
+  retrieveReminderNotificationSettingsByUserId,
+} from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReminderNotificationSettingsByUserId: jest.fn(),
-}));
+const mockedSaveReminderNotificationSettings = saveReminderNotificationSettings as jest.Mock;
+const mockedRetrieveReminderNotificationSettingsByUserId = retrieveReminderNotificationSettingsByUserId as jest.Mock;
 
 describe('SCEN-320: チームリーダーが報告者のリマインダー設定を削除し、設定が削除される', () => {
-  let mockSaveReminderNotificationSettings: jest.Mock;
-  let mockRetrieveReminderNotificationSettingsByUserId: jest.Mock;
+  const reporterId = 'valid-reporter-001';
+  const reminderSettingId = 'reminder-setting-uuid-001';
+  const executionTimestamp = new Date('2026-09-24T10:00:00Z');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSaveReminderNotificationSettings = require('../../src/logic/user-master-persistence.ts')
-      .saveReminderNotificationSettings as jest.Mock;
-    mockRetrieveReminderNotificationSettingsByUserId = require('../../src/logic/user-master-persistence.ts')
-      .retrieveReminderNotificationSettingsByUserId as jest.Mock;
   });
 
   it('既存のリマインダー設定を削除し、削除後は該当IDが検索結果に含まれない', async () => {
-    const reporterId = 'valid-reporter-001';
-    const reminderSettingId = 'reminder-setting-uuid-001';
-    const executionTimestamp = new Date();
+    // Arrange: manageReminderNotificationSettingsの削除操作が成功し、
+    // success=true, operation='delete', reminderSettingId=null, appliedAt=実行時刻, errorDetails=nullを返す
+    mockedSaveReminderNotificationSettings.mockResolvedValueOnce({
+      success: true,
+      reminderSettingId: null,
+      operation: 'delete',
+      appliedAt: executionTimestamp,
+      errorDetails: null,
+    });
 
-    // 削除後：該当IDが返されない
-    // @ts-ignore
-    mockRetrieveReminderNotificationSettingsByUserId.mockResolvedValue([]);
-
-    // @ts-ignore
-    mockSaveReminderNotificationSettings.mockResolvedValue({ success: true });
+    // 削除後、retrieveReminderNotificationSettingsByUserIdで同じreporterIdを検索して
+    // 削除されたreminderSettingIdは結果に含まれない
+    mockedRetrieveReminderNotificationSettingsByUserId.mockResolvedValueOnce({
+      success: true,
+      settings: [],
+    });
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'delete',
@@ -45,19 +54,32 @@ describe('SCEN-320: チームリーダーが報告者のリマインダー設定
       executionTimestamp,
     };
 
-    // @ts-ignore
+    // Act: manageReminderNotificationSettingsを呼び出す
     const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
 
+    // Assert: 戻り値のsuccessフィールドがtrueであることを確認する
     expect(result.success).toBe(true);
-    expect(result.operation).toBe('delete');
-    expect(result.reminderSettingId).toBe(null);
-    expect(result.appliedAt).toEqual(executionTimestamp);
-    expect(result.errorDetails).toBe(null);
 
-    // 削除後、同じreporterIdで検索しても削除されたreminderSettingIdは返されないことを確認
-    const searchResult = await mockRetrieveReminderNotificationSettingsByUserId();
-    expect(searchResult).toEqual([]);
-    expect(searchResult).not.toContainEqual(
+    // Assert: 戻り値のoperationフィールドが'delete'であることを確認する
+    expect(result.operation).toBe('delete');
+
+    // Assert: 戻り値のreminderSettingIdフィールドがnullであることを確認する
+    expect(result.reminderSettingId).toBeNull();
+
+    // Assert: 戻り値のappliedAtフィールドが削除実行時刻の日時オブジェクトであることを確認する
+    expect(result.appliedAt).toEqual(executionTimestamp);
+
+    // Assert: 戻り値のerrorDetailsフィールドがnullであることを確認する
+    expect(result.errorDetails).toBeNull();
+
+    // Assert: retrieveReminderNotificationSettingsByUserIdをスタブ経由で呼び出し、
+    // 同じreporterIdに対して該当するreminderSettingIdが返されないことを確認する
+    const searchResult = await retrieveReminderNotificationSettingsByUserId({
+      userId: reporterId,
+    });
+
+    expect(searchResult.settings).toHaveLength(0);
+    expect(searchResult.settings).not.toContainEqual(
       expect.objectContaining({ id: reminderSettingId })
     );
   });

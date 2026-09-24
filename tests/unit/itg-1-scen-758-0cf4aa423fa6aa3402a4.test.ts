@@ -2,10 +2,9 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   judgeSchedulerExecutionTiming,
   isBusinessDay,
-  InvalidSchedulerConfigurationError,
-  InvalidCurrentTimestampError,
-  NonBusinessDayError,
 } from '../../src/logic/business-day-deadline-judgment';
+
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-758: 前日の日報データが取得できないとき、処理が中断されエラーが発生する', () => {
   beforeEach(() => {
@@ -14,7 +13,7 @@ describe('SCEN-758: 前日の日報データが取得できないとき、処理
 
   it('前日の日報データ取得が失敗するとき、「前日の日報データが読み込めません。システム管理者に連絡してください」エラーが発生する', async () => {
     // 前日の日報データ取得が失敗する状態をモック設定
-    jest.mocked(isBusinessDay).mockImplementation(() => {
+    (isBusinessDay as jest.Mock).mockImplementationOnce(() => {
       throw new Error('前日の日報データが読み込めません。システム管理者に連絡してください');
     });
 
@@ -27,8 +26,8 @@ describe('SCEN-758: 前日の日報データが取得できないとき、処理
     };
 
     // 関数の戻り値またはスローされた例外を検証する
-    await expect(async () => {
-      await judgeSchedulerExecutionTiming(input);
-    }).rejects.toThrow('前日の日報データが読み込めません。システム管理者に連絡してください');
+    await expect(judgeSchedulerExecutionTiming(input)).rejects.toThrow(
+      '前日の日報データが読み込めません。システム管理者に連絡してください'
+    );
   });
 });

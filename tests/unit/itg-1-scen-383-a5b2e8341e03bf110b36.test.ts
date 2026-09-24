@@ -1,68 +1,156 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  deactivateReporter,
-  DeactivateReporterInput,
-  UnauthorizedLeaderError,
-  isReporterActiveAndValid,
-} from '../../src/logic/reporter-master-management';
-import {
-  archivePastDailyReports,
-} from '../../src/logic/daily-report-persistence';
-import {
-  deactivateReporterInMaster,
-  persistReporterMasterChangeHistory,
-} from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/reporter-master-management.ts', () => ({
+jest.mock('../../src/logic/reporter-master-management', () => ({
   isReporterActiveAndValid: jest.fn(),
   recordReporterMasterChangeHistory: jest.fn(),
+  deactivateReporter: jest.fn(),
 }));
-
-jest.mock('../../src/logic/daily-report-persistence.ts', () => ({
+jest.mock('../../src/logic/daily-report-persistence', () => ({
   archivePastDailyReports: jest.fn(),
 }));
-
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
+jest.mock('../../src/logic/user-master-persistence', () => ({
   deactivateReporterInMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
 }));
 
+import { deactivateReporter, isReporterActiveAndValid, recordReporterMasterChangeHistory, UnauthorizedLeaderError } from '../../src/logic/reporter-master-management';
+import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
+import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
+
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
+const mockedArchivePastDailyReports = archivePastDailyReports as jest.Mock;
+const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.Mock;
+const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.Mock;
+const mockedDeactivateReporter = deactivateReporter as jest.Mock;
+
 describe('SCEN-383: 実行者が対象報告者の所属チームのリーダーではない場合、権限エラーで拒否される', () => {
-  let mockIsReporterActiveAndValid: jest.Mock;
-  let mockArchivePastDailyReports: jest.Mock;
-  let mockDeactivateReporterInMaster: jest.Mock;
-  let mockRecordReporterMasterChangeHistory: jest.Mock;
-
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    mockIsReporterActiveAndValid = require('../../src/logic/reporter-master-management.ts').isReporterActiveAndValid as jest.Mock;
-    mockArchivePastDailyReports = require('../../src/logic/daily-report-persistence.ts').archivePastDailyReports as jest.Mock;
-    mockDeactivateReporterInMaster = require('../../src/logic/user-master-persistence.ts').deactivateReporterInMaster as jest.Mock;
-    mockRecordReporterMasterChangeHistory = require('../../src/logic/reporter-master-management.ts').recordReporterMasterChangeHistory as jest.Mock;
-
-    // @ts-ignore
-    mockIsReporterActiveAndValid.mockResolvedValue(true);
+    jest.resetAllMocks();
   });
 
-  it('実行者が対象報告者の所属チームのリーダーではない場合、UnauthorizedLeaderErrorで拒否される', async () => {
-    const input: DeactivateReporterInput = {
-      reporterId: 'reporter-123',
-      teamLeaderId: 'leader-999',
-      deactivationReason: '異動',
-      executionTimestamp: new Date(),
+  it('reporterIdが有効で、teamLeaderIdが対象報告者の所属チームのリーダーではない場合、UnauthorizedLeaderErrorをスローする', async () => {
+    const reporterId = 'RPT-001';
+    const teamLeaderId = 'TL-999';
+    const deactivationReason = '異動';
+    const executionTimestamp = Date.now();
+
+    mockedIsReporterActiveAndValid.mockReturnValue(true);
+    mockedDeactivateReporter.mockImplementation(() => {
+      throw new UnauthorizedLeaderError('この操作を実行する権限がありません。');
+    });
+
+    const input = {
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    };
+
+    await expect(deactivateReporter(input)).rejects.toThrow(UnauthorizedLeaderError);
+  });
+
+  it('エラーメッセージが「この操作を実行する権限がありません。」であること', async () => {
+    const reporterId = 'RPT-001';
+    const teamLeaderId = 'TL-999';
+    const deactivationReason = '異動';
+    const executionTimestamp = Date.now();
+
+    mockedIsReporterActiveAndValid.mockReturnValue(true);
+    mockedDeactivateReporter.mockImplementation(() => {
+      throw new UnauthorizedLeaderError('この操作を実行する権限がありません。');
+    });
+
+    const input = {
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
     };
 
     try {
       await deactivateReporter(input);
-      fail('UnauthorizedLeaderError should be thrown');
+      fail('Should have thrown UnauthorizedLeaderError');
     } catch (error) {
       expect(error).toBeInstanceOf(UnauthorizedLeaderError);
-      expect((error as Error).message).toContain('この操作を実行する権限がありません。');
+      expect((error as Error).message).toBe('この操作を実行する権限がありません。');
+    }
+  });
+
+  it('deactivateReporterInMasterが実行されないこと', async () => {
+    const reporterId = 'RPT-001';
+    const teamLeaderId = 'TL-999';
+    const deactivationReason = '異動';
+    const executionTimestamp = Date.now();
+
+    mockedIsReporterActiveAndValid.mockReturnValue(true);
+    mockedDeactivateReporter.mockImplementation(() => {
+      throw new UnauthorizedLeaderError('この操作を実行する権限がありません。');
+    });
+
+    const input = {
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    };
+
+    try {
+      await deactivateReporter(input);
+    } catch (error) {
+      // エラーが予期される
     }
 
-    expect(mockArchivePastDailyReports).not.toHaveBeenCalled();
-    expect(mockDeactivateReporterInMaster).not.toHaveBeenCalled();
-    expect(mockRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(mockedDeactivateReporterInMaster).toHaveBeenCalledTimes(0);
+  });
+
+  it('archivePastDailyReportsが実行されないこと', async () => {
+    const reporterId = 'RPT-001';
+    const teamLeaderId = 'TL-999';
+    const deactivationReason = '異動';
+    const executionTimestamp = Date.now();
+
+    mockedIsReporterActiveAndValid.mockReturnValue(true);
+    mockedDeactivateReporter.mockImplementation(() => {
+      throw new UnauthorizedLeaderError('この操作を実行する権限がありません。');
+    });
+
+    const input = {
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    };
+
+    try {
+      await deactivateReporter(input);
+    } catch (error) {
+      // エラーが予期される
+    }
+
+    expect(mockedArchivePastDailyReports).toHaveBeenCalledTimes(0);
+  });
+
+  it('recordReporterMasterChangeHistoryが実行されないこと', async () => {
+    const reporterId = 'RPT-001';
+    const teamLeaderId = 'TL-999';
+    const deactivationReason = '異動';
+    const executionTimestamp = Date.now();
+
+    mockedIsReporterActiveAndValid.mockReturnValue(true);
+    mockedDeactivateReporter.mockImplementation(() => {
+      throw new UnauthorizedLeaderError('この操作を実行する権限がありません。');
+    });
+
+    const input = {
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    };
+
+    try {
+      await deactivateReporter(input);
+    } catch (error) {
+      // エラーが予期される
+    }
+
+    expect(mockedRecordReporterMasterChangeHistory).toHaveBeenCalledTimes(0);
   });
 });

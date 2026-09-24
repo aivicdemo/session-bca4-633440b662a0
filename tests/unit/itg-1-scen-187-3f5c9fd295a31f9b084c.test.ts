@@ -1,24 +1,31 @@
-import { judgeSchedulerExecutionTiming, isBusinessDay as isBusinessDayFn } from '../../src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  ...jest.requireActual('../../src/logic/business-day-deadline-judgment'),
-  isBusinessDay: jest.fn(),
-}));
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import {
+  judgeSchedulerExecutionTiming,
+  JudgeSchedulerExecutionTimingInput,
+  JudgeSchedulerExecutionTimingOutput,
+  isBusinessDay,
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-187: 営業日だが指定時刻の許容範囲外のときは、実行不可と判定される', () => {
   beforeEach(() => {
-    const { isBusinessDay } = require('../../src/logic/business-day-deadline-judgment');
-    isBusinessDay.mockReturnValue(true);
+    jest.clearAllMocks();
   });
 
-  it('営業日だが時刻が許容範囲より前のとき、実行不可と判定される', () => {
-    const result: JudgeSchedulerExecutionTimingOutput = judgeSchedulerExecutionTiming({
+  it('営業日だが指定時刻の許容範囲外の場合、実行不可', async () => {
+    jest.mocked(isBusinessDay).mockResolvedValue({
+      targetDate: '2024-01-15',
+      isBusinessDay: true,
+      timeZone: 'Asia/Tokyo',
+    } as any);
+
+    const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:25:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',
-    });
+    };
+
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
 
     expect(result.shouldExecute).toBe(false);
     expect(result.isBusinessDay).toBe(true);

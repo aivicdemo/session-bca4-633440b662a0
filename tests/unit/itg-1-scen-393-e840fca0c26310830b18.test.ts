@@ -1,35 +1,35 @@
-import { getActiveReportersForSubmissionCheck, NoActiveReportersError } from '../../src/logic/reporter-master-management';
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  isBusinessDay: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  isReporterActiveAndValid: jest.fn(),
+}));
+
+import {
+  getActiveReportersForSubmissionCheck,
+  NoActiveReportersError,
+} from '../../src/logic/reporter-master-management';
 import { isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
 
-jest.mock('../../src/logic/business-day-deadline-judgment');
+const mockedIsBusinessDay = isBusinessDay as jest.Mock;
 
-describe('SCEN-393: 指定日付に有効な報告者が1件も存在しない場合、NoActiveReportersErrorを返す', () => {
+describe('SCEN-393: 指定日付に有効な報告者が1件も存在しない場合、NoActiveReportersError を返す', () => {
+  const targetDate = new Date('2024-01-15T00:00:00Z');
+  const teamLeaderId = 'TL001';
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockedIsBusinessDay.mockResolvedValue(true);
   });
 
-  it('should return NoActiveReportersError when no active reporters exist', async () => {
-    // 過去の営業日を設定
-    const pastDate = '2024-01-15'; // 月曜日（営業日）
+  it('NoActiveReportersError をスロー、エラー文言は「指定日付に日報提出対象の有効な報告者が存在しません。」', async () => {
+    await expect(
+      getActiveReportersForSubmissionCheck({
+        targetDate,
+        teamLeaderId,
+      })
+    ).rejects.toThrow(NoActiveReportersError);
 
-    const input = {
-      targetDate: pastDate,
-      teamLeaderId: 'TL001'
-    };
-
-    // isBusinessDay スタブを true を返すように設定（指定日付が営業日であることを模擬）
-    (isBusinessDay as jest.Mock).mockResolvedValue(true);
-
-    // getActiveReportersForSubmissionCheck 処理を呼び出す
-    // すべての報告者マスタレコードが有効でないことを模擬したシナリオで実行
-    const result = await getActiveReportersForSubmissionCheck(input);
-
-    // 期待結果を確認
-    expect(result.success).toBe(false);
-    expect(result.reporters).toEqual([]);
-    expect(result.totalCount).toBe(0);
-    expect(result.message).toBe('指定日付に日報提出対象の有効な報告者が存在しません。');
-    expect(result.error).toBeInstanceOf(NoActiveReportersError);
-    expect(result.errorName).toBe('NoActiveReportersError');
+    expect(mockedIsBusinessDay).toHaveBeenCalledWith(targetDate);
   });
 });

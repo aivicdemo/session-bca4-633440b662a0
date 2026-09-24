@@ -79,7 +79,7 @@ describe('SCEN-059: 催促メール送信に失敗した対象者について出
   });
 
   it('user-002への催促送信が失敗し、executionStatusがpartial_failureとなる', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+    const result = await runTx5Imp1Agent({ targetDate, executionContext }, {} as any);
 
     expect(result.executionStatus).toBe('partial_failure');
     expect(result.promptNotificationsSent).toEqual(

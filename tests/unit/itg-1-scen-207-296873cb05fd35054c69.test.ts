@@ -1,14 +1,9 @@
-import { jest } from '@jest/globals';
-import {
-  submitDailyReport,
-  SubmitDailyReportInput,
-  PersistenceDailyReportFailedException,
-} from '../../src/logic/daily-report-submission';
-import * as userAuth from '../../src/logic/user-authentication-authorization';
-import * as validation from '../../src/logic/input-validation-formatting';
-import * as judgment from '../../src/logic/business-day-deadline-judgment';
-import * as persistence from '../../src/logic/daily-report-persistence';
-import * as notification from '../../src/logic/email-notification-management';
+import { submitDailyReport, PersistenceDailyReportFailedException } from '../../src/logic/daily-report-submission';
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/input-validation-formatting');
@@ -20,30 +15,17 @@ describe('SCEN-207: 日報レコードの保存に失敗した場合、永続化
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (userAuth.authenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
-      isAuthenticated: true,
-      isEligible: true,
-    });
-
-    (validation.validateDailyReportContent as jest.Mock<any>).mockResolvedValue({
-      isValid: true,
-    });
-
-    (judgment.judgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      isWithinDeadline: true,
-    });
-
-    (persistence.checkDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue({
-      exists: false,
-    });
-
-    (persistence.saveDailyReport as jest.Mock<any>).mockRejectedValue(
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(false);
+    (persistenceModule.saveDailyReport as jest.Mock).mockRejectedValue(
       new PersistenceDailyReportFailedException('日報の保存に失敗しました。')
     );
   });
 
-  it('日報レコードの保存に失敗した場合、PersistenceDailyReportFailedException例外をスロー', async () => {
-    const input: SubmitDailyReportInput = {
+  it('日報保存に失敗した場合、PersistenceDailyReportFailedException が発生する', async () => {
+    const input = {
       userId: 'reporter001',
       reportDate: '2024-01-15',
       businessContent: '本日の業務内容',
@@ -54,10 +36,61 @@ describe('SCEN-207: 日報レコードの保存に失敗した場合、永続化
     };
 
     await expect(submitDailyReport(input)).rejects.toThrow(PersistenceDailyReportFailedException);
-    await expect(submitDailyReport(input)).rejects.toThrow('日報の保存に失敗しました。');
+  });
 
-    // 永続化失敗後の処理は呼び出されていない
-    expect(persistence.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
-    expect(notification.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
+  it('エラーメッセージが「日報の保存に失敗しました。」と一致する', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日の業務内容',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:30:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+      fail('should have thrown PersistenceDailyReportFailedException');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PersistenceDailyReportFailedException);
+      expect((error as Error).message).toBe('日報の保存に失敗しました。');
+    }
+  });
+
+  it('永続化失敗時に sendDailyReportSubmissionNotification は呼び出されない', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日の業務内容',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:30:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+    } catch {}
+
+    expect(notificationModule.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
+  });
+
+  it('永続化失敗時に updateDailyReportSubmissionTimestamp は呼び出されない', async () => {
+    const input = {
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
+      businessContent: '本日の業務内容',
+      achievements: null,
+      challenges: null,
+      tomorrowPlan: null,
+      submissionTimestamp: '2024-01-15T14:30:00Z',
+    };
+
+    try {
+      await submitDailyReport(input);
+    } catch {}
+
+    expect(persistenceModule.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
   });
 });

@@ -3,11 +3,9 @@ import {
   retrieveNonSubmissionDetectionDetails,
   DetectionLogNotFound,
 } from '../../src/logic/daily-report-management-view';
-import { retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
+import * as reportPersistenceModule from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../src/logic/daily-report-persistence');
-
-describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionLogNotFound エラーが発生する', () => {
+describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionLogNotFoundエラーが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -16,24 +14,24 @@ describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionL
     const detectionLogId = 'nonexistent-log-id-999';
     const leaderId = 'leader-001';
 
-    // スタブ準備：検知ログが存在しないため空配列を返す
-    jest.mocked(retrieveNonSubmissionDetectionLogsByDate).mockResolvedValue([]);
+    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue([]);
 
-    // 期待動作：DetectionLogNotFound エラーが発生すること
+    await expect(
+      retrieveNonSubmissionDetectionDetails({
+        detectionLogId,
+        leaderId,
+      })
+    ).rejects.toThrow(DetectionLogNotFound);
+
     try {
       await retrieveNonSubmissionDetectionDetails({
         detectionLogId,
         leaderId,
       });
-      // エラーが発生しない場合はテスト失敗
-      throw new Error('DetectionLogNotFoundエラーが発生すべきですが、発生しませんでした。');
     } catch (error) {
-      // エラーが DetectionLogNotFound であることを確認
-      if (!(error instanceof DetectionLogNotFound)) {
-        throw error;
+      if (error instanceof DetectionLogNotFound) {
+        expect(error.message).toContain('検知ログが見つかりません');
       }
-      // エラー文言が『検知ログが見つかりません。』であることを確認
-      expect(error.message).toBe('検知ログが見つかりません。');
     }
   });
 });

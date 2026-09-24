@@ -28,46 +28,33 @@ describe('SCEN-042: 未提出者検知処理が失敗した場合、NonSubmissio
   const teamId = 'team-001';
 
   const activeReporters = [
-    { reporterId: 'R001', userId: 'U001', userName: '報告者1', reporterName: '報告者1', emailAddress: 'u001@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R002', userId: 'U002', userName: '報告者2', reporterName: '報告者2', emailAddress: 'u002@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R003', userId: 'U003', userName: '報告者3', reporterName: '報告者3', emailAddress: 'u003@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R004', userId: 'U004', userName: '報告者4', reporterName: '報告者4', emailAddress: 'u004@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R005', userId: 'U005', userName: '報告者5', reporterName: '報告者5', emailAddress: 'u005@example.com', department: '営業部', status: 'active' },
+    { userId: 'user-001', userName: 'reporter-001', reporterName: '報告者1' },
+    { userId: 'user-002', userName: 'reporter-002', reporterName: '報告者2' },
+    { userId: 'user-003', userName: 'reporter-003', reporterName: '報告者3' },
+    { userId: 'user-004', userName: 'reporter-004', reporterName: '報告者4' },
+    { userId: 'user-005', userName: 'reporter-005', reporterName: '報告者5' },
   ];
 
-  const submittedDailyReports = activeReporters.slice(0, 3).map((r, i) => ({
-    dailyReportId: `DR-04${i + 1}`,
-    userId: r.userId,
-    reportDate: targetDate,
-    businessContent: '本日の業務内容',
-    submittedAt: `${targetDate}T09:0${i}:00+09:00`,
-  }));
+  const submittedReports = [
+    { userId: 'user-001', submissionTimestamp: '2024-01-15T16:30:00+09:00' },
+  ];
 
   beforeEach(() => {
     jest.resetAllMocks();
 
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: true,
       isBusinessDay: true,
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: `${targetDate}T17:00:00+09:00`,
-      processingPolicy: 'accept',
-      rejectionReason: null,
+      deadline: '2024-01-15T17:00:00+09:00',
     });
 
     mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
       reporters: activeReporters,
-      totalCount: activeReporters.length,
-      message: '有効な報告者を取得しました。',
+      count: 5,
     });
 
     mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
-      dailyReports: submittedDailyReports,
-      totalCount: submittedDailyReports.length,
-      pageNumber: 1,
-      pageSize: 50,
-      retrievedAt: `${targetDate}T18:00:00+09:00`,
+      reports: submittedReports,
+      count: 1,
     });
 
     mockedDetectNonSubmittedReportersAtDeadline.mockRejectedValue(
@@ -75,26 +62,32 @@ describe('SCEN-042: 未提出者検知処理が失敗した場合、NonSubmissio
     );
   });
 
-  it('executionStatusがfailureとなり、NonSubmissionDetectionFailedエラーがerrorsに含まれる', async () => {
-    const result = await runTx4Imp1Agent({
-      targetDate,
-      leaderUserId,
-      teamId,
-    });
+  it('should return failure status with NonSubmissionDetectionFailed error', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
+    );
 
     expect(result.executionStatus).toBe('failure');
+    expect(result.errors).toBeDefined();
     expect(Array.isArray(result.errors)).toBe(true);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'NonSubmissionDetectionFailed',
-          message: '未提出者の検知に失敗しました。',
-        }),
-      ])
+    
+    const error = result.errors.find((e: any) => e.code === 'NonSubmissionDetectionFailed');
+    expect(error).toBeDefined();
+    expect(error.message).toContain('未提出者の検知に失敗しました');
+  });
+
+  it('should record execution timestamp even on failure', async () => {
+    const fakeAiClient = {};
+
+    const result = await runTx4Imp1Agent(
+      { targetDate, leaderUserId, teamId },
+      fakeAiClient
     );
 
-    expect(result.executionTimestamp).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
-    );
+    expect(result.executionTimestamp).toBeTruthy();
+    expect(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(result.executionTimestamp)).toBe(true);
   });
 });

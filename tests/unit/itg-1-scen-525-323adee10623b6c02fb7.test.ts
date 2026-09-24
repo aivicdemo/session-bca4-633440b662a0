@@ -14,7 +14,7 @@ describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本
     jest.clearAllMocks();
   });
 
-  it('should return error when reportContent is empty string', async () => {
+  it('reportContent が空文字列の場合、DailyReportContentInvalidError が発生し、管理者への通知が送信される', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter001',
       dailyReportId: 'report-123',
@@ -28,6 +28,8 @@ describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本
 
     jest.mocked(validateEmailAddressForDelivery).mockResolvedValue({
       isValid: true,
+      reason: null,
+      errorCode: null,
     });
 
     jest.mocked(buildNotificationContent).mockImplementation((data) => {
@@ -52,5 +54,8 @@ describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本
       '日報の内容が不完全であるため、通知メールを生成できません。'
     );
     expect(result.adminNotificationSent).toBe(true);
+
+    expect(buildNotificationContent).toHaveBeenCalled();
+    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

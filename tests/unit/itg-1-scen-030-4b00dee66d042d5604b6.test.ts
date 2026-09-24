@@ -1,110 +1,91 @@
-import { runTx3Imp1Agent } from "../../src/agents/tx-3-imp-1/orchestrator";
-import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
-import {
-  detectNonSubmittedReportersAtDeadline,
-  generateNonSubmissionDetectionResult,
-} from "../../src/logic/daily-report-non-submission-detection";
-import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
-import { sendLeaderNonSubmissionPromptNotification } from "../../src/logic/daily-report-reminder-notification";
-import { sendNonSubmissionPromptNotification } from "../../src/logic/email-notification-management";
-import { retrieveDailyReportsForLeaderReview } from "../../src/logic/daily-report-persistence";
-import { retrieveLeaderDashboardData } from "../../src/logic/daily-report-management-view";
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
 
-jest.mock("../../src/logic/business-day-deadline-judgment");
-jest.mock("../../src/logic/daily-report-non-submission-detection");
-jest.mock("../../src/logic/non-submission-prompt-decision");
-jest.mock("../../src/logic/daily-report-reminder-notification");
-jest.mock("../../src/logic/email-notification-management");
-jest.mock("../../src/logic/daily-report-persistence");
-jest.mock("../../src/logic/daily-report-management-view");
-
-// 退職済み社員Aを含む、人事異動が未反映の古い報告者マスタ（本来のチームメンバーはB〜Fの5名）。
-const staleMasterReporterIds = ["A-retired", "B", "C", "D", "E", "F"];
-
-describe("SCEN-030: 報告者マスタの登録・更新・削除が必要な人事異動状況下で、マスタが古い状態のまま未提出者検知が実行される", () => {
-  const targetDate = new Date().toISOString().slice(0, 10);
-  const executionTimestamp = Date.now();
-  const leaderUserIds = ["leader-001"];
+describe('SCEN-030: 古い報告者マスタのまま未提出者検知が実行される', () => {
+  let mockJudgeSchedulerExecutionTiming: jest.Mock;
+  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
+  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
+  let mockJudgePromptNecessityAndMethod: jest.Mock;
+  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
+  let mockSendNonSubmissionPromptNotification: jest.Mock;
+  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
+  let mockRetrieveLeaderDashboardData: jest.Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue({
-      shouldExecute: true,
-      executionReason: "定時実行タイミングとして妥当",
-    });
-
-    // 古いマスタ（退職社員Aを含む6人）に基づいて未提出者検知が実行される。
-    (detectNonSubmittedReportersAtDeadline as jest.Mock).mockResolvedValue({
-      nonSubmittedReporterIds: staleMasterReporterIds,
-      detectionCount: staleMasterReporterIds.length,
-    });
-
-    (generateNonSubmissionDetectionResult as jest.Mock).mockResolvedValue({
-      nonSubmittedReporterIds: staleMasterReporterIds,
-      detectionLogId: "DET-LOG-STALE-MASTER-001",
-      detectionCount: staleMasterReporterIds.length,
-    });
-
-    (judgePromptNecessityAndMethod as jest.Mock).mockResolvedValue({
-      isPromptNecessary: true,
-      promptMethod: "email_notification",
-    });
-
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockResolvedValue(
-      staleMasterReporterIds.map((reporterId) => ({
-        recipientUserId: reporterId,
-        notificationType: "leader_notification",
-        sendStatus: "success",
-        emailSendingHistoryId: `EMAIL-LEADER-${reporterId}`,
-        errorMessage: null,
-      }))
-    );
-
-    (sendNonSubmissionPromptNotification as jest.Mock).mockResolvedValue(
-      staleMasterReporterIds.map((reporterId) => ({
-        recipientUserId: reporterId,
-        notificationType: "prompt_notification",
-        sendStatus: "success",
-        emailSendingHistoryId: `EMAIL-PROMPT-${reporterId}`,
-        errorMessage: null,
-      }))
-    );
-
-    (retrieveDailyReportsForLeaderReview as jest.Mock).mockResolvedValue([]);
-
-    // dashboardData には人事異動不整合の警告フラグ・マスタ更新促進メッセージを含めない
-    // （誤った検知結果がそのまま表示される想定）。
-    (retrieveLeaderDashboardData as jest.Mock).mockResolvedValue({
-      submittedReportCount: 0,
-      nonSubmittedReporterCount: staleMasterReporterIds.length,
-      nonSubmittedReporters: staleMasterReporterIds.map((reporterId) => ({
-        reporterId,
-      })),
-      promptNotificationStatus: {
-        sent: staleMasterReporterIds.length,
-        failed: 0,
-      },
-    });
+    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
+    
+    const retiredEmployeeA = 'user-A';
+    const nonSubmittedReporters = [retiredEmployeeA, 'user-B', 'user-C', 'user-D', 'user-E'];
+    mockDetectNonSubmittedReportersAtDeadline = jest
+      .fn()
+      .mockReturnValue(nonSubmittedReporters);
+    
+    const detectionResult = {
+      detectedReporters: nonSubmittedReporters,
+      detectionLogId: 'log-001',
+      detectionTimestamp: 1705276800000,
+      totalReportersChecked: 6,
+    };
+    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
+    
+    const promptRequirements = [
+      { reporterId: retiredEmployeeA, required: true },
+      { reporterId: 'user-B', required: true },
+      { reporterId: 'user-C', required: true },
+      { reporterId: 'user-D', required: true },
+      { reporterId: 'user-E', required: true },
+    ];
+    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue(promptRequirements);
+    
+    const leaderNotifications = [
+      { leaderId: 'leader-001', status: 'success', timestamp: 1705276800100 },
+      { leaderId: 'leader-002', status: 'success', timestamp: 1705276800200 },
+    ];
+    mockSendLeaderNonSubmissionPromptNotification = jest
+      .fn()
+      .mockReturnValue(leaderNotifications);
+    
+    const promptNotifications = nonSubmittedReporters.map((reporterId) => ({
+      reporterId,
+      status: 'success',
+      timestamp: 1705276800300,
+    }));
+    mockSendNonSubmissionPromptNotification = jest.fn().mockReturnValue(promptNotifications);
+    
+    mockRetrieveDailyReportsForLeaderReview = jest.fn().mockReturnValue([]);
+    
+    const dashboardData = {
+      nonSubmittedCount: 5,
+      detectionLogId: 'log-001',
+      detectionTimestamp: 1705276800000,
+    };
+    mockRetrieveLeaderDashboardData = jest.fn().mockReturnValue(dashboardData);
   });
 
-  it("退職社員Aが誤って未提出者として検知され、executionStatusがpartial_failureとなる", async () => {
-    const result = await runTx3Imp1Agent({
-      targetDate,
-      executionTimestamp,
-      leaderUserIds,
-    });
+  it('古いマスタで未提出者検知が実行され partial_failure になる', async () => {
+    const input = {
+      targetDate: '2024-01-15',
+      executionTimestamp: 1705276800000,
+      leaderUserIds: ['leader-001', 'leader-002'],
+    };
 
-    expect(result.executionStatus).toBe("partial_failure");
+    const aiClient = {
+      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
+      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
+      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
+      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
+      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
+      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
+      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
+      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
+    };
 
-    expect(result.detectionResult.nonSubmittedReporterIds).toContain(
-      "A-retired"
-    );
+    const output = await runTx3Imp1Agent(input, aiClient);
 
-    expect(result.leaderNotificationStatus).toHaveLength(6);
-    expect(result.promptNotificationStatus).toHaveLength(6);
-
-    expect(result.dashboardData.warningFlag).toBeUndefined();
-    expect(result.dashboardData.masterUpdateRequired).toBeUndefined();
+    expect(output.executionStatus).toBe('partial_failure');
+    expect(output.detectionResult.detectedReporters).toHaveLength(6);
+    expect(output.detectionResult.detectedReporters).toContain('user-A');
+    expect(output.leaderNotificationStatus).toHaveLength(6);
+    expect(output.promptNotificationStatus).toHaveLength(6);
   });
 });

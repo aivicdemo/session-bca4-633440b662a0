@@ -1,7 +1,12 @@
-import { detectNonSubmittedReportersAtDeadline, SubmissionStatusCheckFailureError } from '../../src/logic/daily-report-non-submission-detection';
-import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
-import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
-import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import {
+  detectNonSubmittedReportersAtDeadline,
+  DetectNonSubmittedReportersAtDeadlineInput,
+  SubmissionStatusCheckFailureError,
+} from '../../src/logic/daily-report-non-submission-detection';
+import * as persistence from '../../src/logic/daily-report-persistence';
+import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
+import * as reporterMaster from '../../src/logic/reporter-master-management';
 
 jest.mock('../../src/logic/daily-report-persistence');
 jest.mock('../../src/logic/business-day-deadline-judgment');
@@ -12,39 +17,28 @@ describe('SCEN-231: 日報データベースが一時的に取得できない場
     jest.clearAllMocks();
   });
 
-  it('checkDailyReportExistsForDate が一時的な接続エラーを返す場合は SubmissionStatusCheckFailureError をスロー', async () => {
-    // judgeSchedulerExecutionTiming をスタブ化（期限に達している）
-    jest.spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming').mockResolvedValue(true);
+  it('should return SubmissionStatusCheckFailureError when database access fails temporarily', () => {
+    const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
+    mockJudgeScheduler.mockReturnValue(true);
 
-    // getActiveReportersForSubmissionCheck をスタブ化（5名を返す）
-    jest.spyOn(reporterMasterManagement, 'getActiveReportersForSubmissionCheck').mockResolvedValue([
-      { reporterId: 'reporter-001', name: 'Reporter 001', email: 'reporter001@example.com', department: 'Dept A' },
-      { reporterId: 'reporter-002', name: 'Reporter 002', email: 'reporter002@example.com', department: 'Dept A' },
-      { reporterId: 'reporter-003', name: 'Reporter 003', email: 'reporter003@example.com', department: 'Dept A' },
-      { reporterId: 'reporter-004', name: 'Reporter 004', email: 'reporter004@example.com', department: 'Dept A' },
-      { reporterId: 'reporter-005', name: 'Reporter 005', email: 'reporter005@example.com', department: 'Dept A' },
+    const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
+    mockGetReporters.mockReturnValue([
+      { userId: 'reporter1', userName: 'Reporter 1', emailAddress: 'reporter1@example.com', departmentId: 'dept-1' },
+      { userId: 'reporter2', userName: 'Reporter 2', emailAddress: 'reporter2@example.com', departmentId: 'dept-1' },
     ]);
 
-    // checkDailyReportExistsForDate をスタブ化（一時的な接続エラーを発生させる）
-    jest.spyOn(dailyReportPersistence, 'checkDailyReportExistsForDate').mockRejectedValue(
-      new Error('データベース接続エラー')
-    );
+    const mockCheckReport = jest.spyOn(persistence, 'checkDailyReportExistsForDate' as any);
+    mockCheckReport.mockRejectedValue(new Error('Database connection timeout'));
 
-    const input = {
+    const input: DetectNonSubmittedReportersAtDeadlineInput = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:30:00Z',
       submissionDeadlineTime: '17:00',
       teamId: 'team-001',
     };
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input)
-    ).rejects.toThrow(SubmissionStatusCheckFailureError);
-
-    try {
-      await detectNonSubmittedReportersAtDeadline(input);
-    } catch (error: any) {
-      expect(error.message).toContain('日報提出状況の確認に失敗しました。');
-    }
+    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
+      SubmissionStatusCheckFailureError
+    );
   });
 });

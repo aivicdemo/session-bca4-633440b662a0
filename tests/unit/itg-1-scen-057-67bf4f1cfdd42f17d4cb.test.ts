@@ -56,7 +56,7 @@ describe('SCEN-057: 未提出者が存在しない場合、出力に空配列が
   });
 
   it('提出対象者が存在せず、催促・リーダー通知は送信されないまま正常完了する', async () => {
-    const result = await runTx5Imp1Agent({ targetDate, executionContext });
+    const result = await runTx5Imp1Agent({ targetDate, executionContext }, {} as any);
 
     expect(result.executionStatus).toBe('success');
     expect(result.nonSubmittedReporters).toEqual([]);

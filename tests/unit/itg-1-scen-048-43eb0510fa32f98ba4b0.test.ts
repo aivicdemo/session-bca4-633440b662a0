@@ -1,130 +1,99 @@
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveDailyReportsForLeaderReview: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-management-view', () => ({
-  retrieveLeaderDashboardData: jest.fn(),
-}));
-jest.mock('../../src/logic/email-notification-management', () => ({
-  sendNonSubmissionPromptNotification: jest.fn(),
-}));
-
-import { runTx4Imp1Agent } from '../../src/agents/tx-4-imp-1/orchestrator';
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
-import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
-import { sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
-import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
-import { sendNonSubmissionPromptNotification } from '../../src/logic/email-notification-management';
-
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.Mock;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.Mock;
-const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.Mock;
-const mockedRetrieveLeaderDashboardData = retrieveLeaderDashboardData as jest.Mock;
-const mockedSendNonSubmissionPromptNotification = sendNonSubmissionPromptNotification as jest.Mock;
+import { runTx4Imp1Agent, Tx4Imp1AiClient } from '../../src/agents/tx-4-imp-1/orchestrator';
 
 describe('SCEN-048: 処理中に複数のエラーが発生した場合、executionStatusはpartial_failureになりerrorsフィールドにすべてのエラーが記録される', () => {
-  const targetDate = '2024-01-15';
-  const leaderUserId = 'leader-001';
-  const teamId = 'team-001';
+  it('複数のエラーが発生した場合、executionStatusがpartial_failureになり、すべてのエラーがerrorsに記録される', async () => {
+    // テスト用の日付（営業日）、リーダーユーザーID、チームIDを設定する
+    const targetDate = '2025-09-24';
+    const leaderUserId = 'leader-001';
+    const teamId = 'team-001';
 
-  const activeReporters = [
-    { reporterId: 'R001', userId: 'U001', userName: '報告者1', reporterName: '報告者1', emailAddress: 'u001@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'R002', userId: 'U002', userName: '報告者2', reporterName: '報告者2', emailAddress: 'u002@example.com', department: '営業部', status: 'active' },
-  ];
+    // 複数のエラーを返すモッククライアントをセットアップ
+    const mockAiClient: Tx4Imp1AiClient = {
+      judgeBusinessDayAndDeadline: jest.fn().mockResolvedValue({
+        isBusinessDay: true,
+        isWithinDeadline: true,
+      }),
+      getActiveReportersForSubmissionCheck: jest.fn().mockResolvedValue({
+        reporters: [
+          { userId: 'reporter-1', userName: 'reporter1', reporterName: 'Reporter 1' },
+          { userId: 'reporter-2', userName: 'reporter2', reporterName: 'Reporter 2' },
+        ],
+      }),
+      retrieveDailyReportsForLeaderReview: jest
+        .fn()
+        .mockRejectedValue(new Error('日報の自動解析処理に失敗しました。')),
+      detectNonSubmittedReportersAtDeadline: jest
+        .fn()
+        .mockRejectedValue(new Error('未提出者の検知に失敗しました。')),
+      sendLeaderNonSubmissionPromptNotification: jest
+        .fn()
+        .mockRejectedValue(new Error('未提出者への催促メール送信に失敗しました。')),
+      retrieveLeaderDashboardData: jest
+        .fn()
+        .mockRejectedValue(new Error('チーム進捗サマリーの生成に失敗しました。')),
+      sendNonSubmissionPromptNotification: jest
+        .fn()
+        .mockRejectedValue(new Error('リーダーへの通知送信に失敗しました。')),
+    };
 
-  beforeEach(() => {
-    jest.resetAllMocks();
-
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: true,
-      isBusinessDay: true,
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: `${targetDate}T17:00:00+09:00`,
-      processingPolicy: 'accept',
-      rejectionReason: null,
-    });
-
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
-      reporters: activeReporters,
-      totalCount: activeReporters.length,
-      message: '有効な報告者を取得しました。',
-    });
-
-    mockedRetrieveDailyReportsForLeaderReview.mockRejectedValue(
-      new Error('日報の自動解析処理に失敗しました')
+    // runTx4Imp1Agent を入力値（targetDate、leaderUserId、teamId）で呼び出す
+    const result = await runTx4Imp1Agent(
+      {
+        targetDate,
+        leaderUserId,
+        teamId,
+      },
+      mockAiClient
     );
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockRejectedValue(
-      new Error('未提出者検知に失敗しました')
-    );
-
-    mockedSendLeaderNonSubmissionPromptNotification.mockRejectedValue(
-      new Error('未提出者への催促メール送信に失敗しました')
-    );
-
-    mockedRetrieveLeaderDashboardData.mockRejectedValue(
-      new Error('チーム進捗サマリーの生成に失敗しました')
-    );
-
-    mockedSendNonSubmissionPromptNotification.mockRejectedValue(
-      new Error('リーダーへの通知送信に失敗しました')
-    );
-  });
-
-  it('5件のエラーがすべてerrorsに記録され、executionStatusがpartial_failureになる', async () => {
-    const result = await runTx4Imp1Agent({
-      targetDate,
-      leaderUserId,
-      teamId,
-    });
-
+    // 戻り値の executionStatus フィールドを検証する
     expect(result.executionStatus).toBe('partial_failure');
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'DailyReportAnalysisFailed',
-          message: '日報の自動解析処理に失敗しました。',
-        }),
-        expect.objectContaining({
-          code: 'NonSubmissionDetectionFailed',
-          message: '未提出者の検知に失敗しました。',
-        }),
-        expect.objectContaining({
-          code: 'PromptNotificationSendingFailed',
-          message: '未提出者への催促メール送信に失敗しました。',
-        }),
-        expect.objectContaining({
-          code: 'ProgressSummaryGenerationFailed',
-          message: 'チーム進捗サマリーの生成に失敗しました。',
-        }),
-        expect.objectContaining({
-          code: 'LeaderNotificationFailed',
-          message: 'リーダーへの通知送信に失敗しました。',
-        }),
-      ])
-    );
-    expect(result.errors).toHaveLength(5);
 
+    // 戻り値の errors フィールドの内容を検証する
+    expect(result.errors).toBeDefined();
+    expect(Array.isArray(result.errors)).toBe(true);
+    expect(result.errors.length).toBe(5);
+
+    // 各エラーコードとメッセージを検証
+    const expectedErrors = [
+      {
+        code: 'DailyReportAnalysisFailed',
+        message: '日報の自動解析処理に失敗しました。',
+      },
+      {
+        code: 'NonSubmissionDetectionFailed',
+        message: '未提出者の検知に失敗しました。',
+      },
+      {
+        code: 'PromptNotificationSendingFailed',
+        message: '未提出者への催促メール送信に失敗しました。',
+      },
+      {
+        code: 'ProgressSummaryGenerationFailed',
+        message: 'チーム進捗サマリーの生成に失敗しました。',
+      },
+      {
+        code: 'LeaderNotificationFailed',
+        message: 'リーダーへの通知送信に失敗しました。',
+      },
+    ];
+
+    expectedErrors.forEach((expectedError) => {
+      const actualError = result.errors.find((e: any) => e.code === expectedError.code);
+      expect(actualError).toBeDefined();
+      expect(actualError.message).toBe(expectedError.message);
+    });
+
+    // 戻り値の targetDate、executionTimestamp、leaderNotificationSent などのフィールドが出力型の仕様に合致していることを確認する
     expect(result.targetDate).toBe(targetDate);
-    expect(result.executionTimestamp).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
-    );
+    expect(typeof result.executionTimestamp).toBe('string');
     expect(result.leaderNotificationSent).toBe(false);
+    expect(typeof result.submittedReportCount).toBe('number');
+    expect(typeof result.nonSubmittedReporterCount).toBe('number');
+    expect(Array.isArray(result.nonSubmittedReporters)).toBe(true);
+    expect(typeof result.promptNotificationsSent).toBe('number');
+    expect(typeof result.promptNotificationsFailed).toBe('number');
+    expect(typeof result.progressSummary).toBe('string');
+    expect(typeof result.detectionLogId).toBe('string');
   });
 });

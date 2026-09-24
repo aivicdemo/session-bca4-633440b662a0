@@ -1,111 +1,110 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { judgeSchedulerExecutionTiming, isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment.ts');
+import {
+  judgeSchedulerExecutionTiming,
+  JudgeSchedulerExecutionTimingInput,
+  JudgeSchedulerExecutionTimingOutput,
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-195: 指定されたタイムゾーンで正しく判定される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('Asia/Tokyo での判定：営業日かつ実行時刻外の場合、shouldExecuteがfalse', async () => {
-    // @ts-ignore
-    const mockIsBusinessDay = isBusinessDay;
-    mockIsBusinessDay.mockResolvedValue(true);
+  it('Asia/Tokyo で現在時刻 2024-01-15T17:30:00Z（日本時間 2024-01-16 02:30）を入力した場合、実行時刻外と判定される', async () => {
+    // タイムゾーン Asia/Tokyo を指定し、現在時刻を ISO 8601 形式で入力する
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:30:00Z', // 日本時間では翌日 02:30
+      scheduledExecutionTime: '17:30',
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'Asia/Tokyo',
+    };
 
-    // @ts-ignore
-    const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming;
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: false,
-      isBusinessDay: true,
-      isWithinExecutionWindow: false,
-      nextScheduledExecutionTime: '2024-01-16T17:30:00Z',
-      executionReason: '実行時刻外',
-    });
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
 
-    const result = await judgeSchedulerExecutionTiming({
+    // isBusinessDay は true（ローカル日付 2024-01-16 が営業日と仮定）
+    expect(result.isBusinessDay).toBe(true);
+
+    // isWithinExecutionWindow は false（ローカル時刻 02:30 は 17:30 ±5分の範囲外）
+    expect(result.isWithinExecutionWindow).toBe(false);
+
+    // shouldExecute は false
+    expect(result.shouldExecute).toBe(false);
+
+    // executionReason は「実行時刻外」
+    expect(result.executionReason).toBe('実行時刻外');
+
+    // nextScheduledExecutionTime は次営業日の実行予定時刻（ISO 8601 形式）
+    expect(result.nextScheduledExecutionTime).not.toBeNull();
+  });
+
+  it('America/New_York（UTC-5）で同一タイムスタンプを入力した場合、ローカル日付・時刻が異なり実行時刻外と判定される', async () => {
+    // America/New_York タイムゾーン（UTC-5、冬時間）で同一タイムスタンプを入力
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:30:00Z', // NY時間では 2024-01-15 12:30
+      scheduledExecutionTime: '17:30',
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'America/New_York',
+    };
+
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+
+    // ローカル日付は 2024-01-15、ローカル時刻は 12:30 となり
+    // isBusinessDay は true（2024-01-15 が営業日と仮定）
+    expect(result.isBusinessDay).toBe(true);
+
+    // isWithinExecutionWindow は false（12:30 は 17:30 ±5分の範囲外）
+    expect(result.isWithinExecutionWindow).toBe(false);
+
+    // shouldExecute は false
+    expect(result.shouldExecute).toBe(false);
+
+    // executionReason は「実行時刻外」
+    expect(result.executionReason).toBe('実行時刻外');
+
+    // nextScheduledExecutionTime は次営業日の実行予定時刻
+    expect(result.nextScheduledExecutionTime).not.toBeNull();
+  });
+
+  it('複数のタイムゾーン（Asia/Tokyo、UTC、America/Los_Angeles）で同一の ISO 8601 タイムスタンプを入力した場合、各タイムゾーンで正しくローカル時刻に変換される', async () => {
+    // Asia/Tokyo
+    const inputTokyo: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',
-    });
+    };
+    const resultTokyo = await judgeSchedulerExecutionTiming(inputTokyo);
 
-    // Asia/Tokyo: 2024-01-15T17:30:00Z は翌日の 02:30 → 実行時刻 17:30 ±5分の範囲外
-    expect(result.shouldExecute).toBe(false);
-    expect(result.isBusinessDay).toBe(true);
-    expect(result.isWithinExecutionWindow).toBe(false);
-    expect(result.executionReason).toBe('実行時刻外');
-  });
-
-  it('America/New_York での判定：営業日かつ実行時刻外の場合、shouldExecuteがfalse', async () => {
-    // @ts-ignore
-    const mockIsBusinessDay = isBusinessDay;
-    mockIsBusinessDay.mockResolvedValue(true);
-
-    // @ts-ignore
-    const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming;
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: false,
-      isBusinessDay: true,
-      isWithinExecutionWindow: false,
-      nextScheduledExecutionTime: '2024-01-15T17:30:00Z',
-      executionReason: '実行時刻外',
-    });
-
-    const result = await judgeSchedulerExecutionTiming({
-      currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '17:30',
-      executionTimeToleranceMinutes: 5,
-      timeZone: 'America/New_York',
-    });
-
-    // America/New_York (UTC-5): 2024-01-15T17:30:00Z は 2024-01-15 12:30 → 実行時刻 17:30 ±5分の範囲外
-    expect(result.shouldExecute).toBe(false);
-    expect(result.isBusinessDay).toBe(true);
-    expect(result.isWithinExecutionWindow).toBe(false);
-    expect(result.executionReason).toBe('実行時刻外');
-    expect(result.nextScheduledExecutionTime).not.toBe(null);
-  });
-
-  it('複数のタイムゾーンで同一タイムスタンプを処理する場合、各タイムゾーンで独立した判定が行われる', async () => {
-    // @ts-ignore
-    const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming;
-
-    // UTC のテスト結果
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-      nextScheduledExecutionTime: null,
-      executionReason: '営業日の実行時刻内',
-    });
-
-    const resultUTC = await judgeSchedulerExecutionTiming({
+    // UTC
+    const inputUTC: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'UTC',
-    });
+    };
+    const resultUTC = await judgeSchedulerExecutionTiming(inputUTC);
 
-    // Los Angeles (UTC-8) のテスト結果
-    mockJudgeSchedulerExecutionTiming.mockResolvedValueOnce({
-      shouldExecute: false,
-      isBusinessDay: true,
-      isWithinExecutionWindow: false,
-      nextScheduledExecutionTime: '2024-01-15T17:30:00Z',
-      executionReason: '実行時刻外',
-    });
-
-    const resultLA = await judgeSchedulerExecutionTiming({
+    // America/Los_Angeles
+    const inputLA: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'America/Los_Angeles',
-    });
+    };
+    const resultLA = await judgeSchedulerExecutionTiming(inputLA);
 
-    // 各タイムゾーンで異なるローカル時刻に変換されるため、判定が異なる
-    // UTC: 17:30 → 実行時刻17:30の範囲内
-    // Los Angeles: 09:30 → 実行時刻17:30の範囲外
-    expect(resultUTC.isWithinExecutionWindow).not.toBe(resultLA.isWithinExecutionWindow);
+    // Asia/Tokyo: ローカル時刻 02:30 → 実行時刻外
+    expect(resultTokyo.isWithinExecutionWindow).toBe(false);
+
+    // UTC: ローカル時刻 17:30 → 実行時刻内
+    expect(resultUTC.isWithinExecutionWindow).toBe(true);
+
+    // Los Angeles: ローカル時刻 09:30 → 実行時刻外
+    expect(resultLA.isWithinExecutionWindow).toBe(false);
+
+    // スケジューラ実行判定はタイムゾーン指定に応じて変わることを確認
+    expect(resultTokyo.shouldExecute).toBe(false);
+    expect(resultUTC.shouldExecute).toBe(true);
+    expect(resultLA.shouldExecute).toBe(false);
   });
 });

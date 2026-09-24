@@ -1,24 +1,18 @@
-import { describe, it, expect, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   JudgePromptNecessityAndMethodOutput,
 } from '../../src/logic/non-submission-prompt-decision';
-import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-280: システム障害の兆候が検出された場合、推測理由に「system_issue」が設定される', () => {
-  it('should detect system_issue when system failure indicators are present', async () => {
-    // Setup stub for isWithinSubmissionDeadline
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<
-      typeof isWithinSubmissionDeadline
-    >;
-    mockIsWithinSubmissionDeadline.mockResolvedValue({
-      overdueDurationMinutes: 90,
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // Prepare test input
+  it('should set system_issue reason when system failure is detected', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user001',
       targetDate: '2024-01-15',
@@ -28,11 +22,14 @@ describe('SCEN-280: システム障害の兆候が検出された場合、推測
       previousReminderSentDateTime: null,
     };
 
-    // Call the function
-    const result: JudgePromptNecessityAndMethodOutput =
-      await judgePromptNecessityAndMethod(input);
+    (deadlineJudgment.isWithinSubmissionDeadline as jest.Mock).mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -90,
+    });
 
-    // Verify the output
+    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+
     expect(result.isPromptNecessary).toBe(true);
     expect(result.promptPriority).toBe('high');
     expect(result.promptMethod).toBe('escalate_to_leader');

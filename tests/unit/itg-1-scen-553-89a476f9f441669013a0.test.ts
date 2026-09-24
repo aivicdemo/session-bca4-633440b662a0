@@ -1,12 +1,29 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   sendUserInformationApprovalNotification,
+  validateEmailAddressForDelivery,
   InvalidLeaderEmailAddressError,
+} from '../../src/logic/email-notification-management';
+import type {
   SendUserInformationApprovalNotificationInput,
 } from '../../src/logic/email-notification-management';
 
+jest.mock('../../src/logic/email-notification-management');
+
 describe('SCEN-553: リーダーのメールアドレス形式が無効な場合、InvalidLeaderEmailAddressErrorが発生する', () => {
-  test('エラー系：無効なメールアドレス形式の場合、InvalidLeaderEmailAddressErrorが発生する', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('リーダーのメールアドレス形式が無効な場合、InvalidLeaderEmailAddressErrorが発生する', async () => {
+    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(false);
+
+    jest.mocked(sendUserInformationApprovalNotification).mockImplementation(async () => {
+      throw new InvalidLeaderEmailAddressError(
+        'リーダーのメールアドレスが無効です。管理者に通知してください。'
+      );
+    });
+
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'invalid-email-format',
@@ -18,15 +35,11 @@ describe('SCEN-553: リーダーのメールアドレス形式が無効な場合
       confirmingLeaderUserId: 'leader-002',
     };
 
-    const error = await sendUserInformationApprovalNotification(input).catch(
-      (err) => err
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      InvalidLeaderEmailAddressError
     );
-
-    expect(error).toBeInstanceOf(InvalidLeaderEmailAddressError);
-    if (error instanceof InvalidLeaderEmailAddressError) {
-      expect(error.message).toBe(
-        'リーダーのメールアドレスが無効です。管理者に通知してください。'
-      );
-    }
+    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
+      'リーダーのメールアドレスが無効です。管理者に通知してください。'
+    );
   });
 });

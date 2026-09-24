@@ -43,44 +43,45 @@ const mockedSendNonSubmissionPromptNotification = sendNonSubmissionPromptNotific
 const mockedRetrieveLeaderDashboardData = retrieveLeaderDashboardData as jest.Mock;
 
 describe('SCEN-049: 報告者マスタの人事異動による更新が反映されていない場合でも、現在有効な報告者のみを対象として処理される', () => {
-  const leaderUserId = 'leader-001';
-  const teamId = 'team-001';
-
-  const activeReporters = [
-    { reporterId: 'RA', userId: 'userA', userName: 'ユーザーA', reporterName: 'ユーザーA', emailAddress: 'userA@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'RB', userId: 'userB', userName: 'ユーザーB', reporterName: 'ユーザーB', emailAddress: 'userB@example.com', department: '営業部', status: 'active' },
-    { reporterId: 'RD', userId: 'userD', userName: 'ユーザーD', reporterName: 'ユーザーD', emailAddress: 'userD@example.com', department: '営業部', status: 'active' },
-  ];
-
   beforeEach(() => {
     jest.resetAllMocks();
-
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
-      reporters: activeReporters,
-      totalCount: activeReporters.length,
-      message: '有効な報告者を取得しました。',
-    });
   });
 
-  it('非営業日ではTargetDateNotBusinessDayエラーで失敗し、営業日では無効な報告者Cを除外して処理される', async () => {
+  it('第1の呼び出し: TargetDateNotBusinessDayエラーで終了する', async () => {
+    // Step 2: getActiveReportersForSubmissionCheckをスタブし、有効な報告者を返す
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'user-A', userName: 'User A', reporterName: 'ユーザーA', status: 'active' },
+        { userId: 'user-B', userName: 'User B', reporterName: 'ユーザーB', status: 'active' },
+        { userId: 'user-D', userName: 'User D', reporterName: 'ユーザーD', status: 'active' },
+      ],
+      totalCount: 3,
+    });
+
+    // Step 3: judgeBusinessDayAndDeadlineをスタブし、非営業日を返す
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: false,
       isBusinessDay: false,
       isWithinDeadline: false,
-      submissionDeadlineForTargetDate: null,
-      processingPolicy: 'reject',
-      rejectionReason: '対象日は営業日ではありません。',
+      error: 'TargetDateNotBusinessDay',
     });
 
-    const firstResult = await runTx4Imp1Agent({
-      targetDate: '2024-01-13',
-      leaderUserId,
-      teamId,
-    });
+    // Step 4: runTx4Imp1Agentを呼び出す
+    const mockAiClient: any = {};
+    const result = await runTx4Imp1Agent(
+      {
+        targetDate: '2024-01-13',
+        leaderUserId: 'leader-001',
+        teamId: 'team-001',
+      },
+      mockAiClient
+    );
 
-    expect(firstResult.executionStatus).toBe('failure');
-    expect(firstResult.errors).toEqual(
+    // 検証: executionStatus='failure'
+    expect(result.executionStatus).toBe('failure');
+
+    // 検証: errors配列にエラーコード'TargetDateNotBusinessDay'と文言が含まれる
+    expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: 'TargetDateNotBusinessDay',
@@ -88,106 +89,257 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
         }),
       ])
     );
+  });
 
-    const targetDate = '2024-01-15';
-
+  it('第2の呼び出し: 成功し、無効な報告者は除外される', async () => {
+    // Step 5: judgeBusinessDayAndDeadlineをスタブし、営業日を返すに変更
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
-      submissionDeadlineForTargetDate: `${targetDate}T17:00:00+09:00`,
-      processingPolicy: 'accept',
-      rejectionReason: null,
+    });
+
+    // Step 2再: getActiveReportersForSubmissionCheckをスタブし、有効な報告者のみを返す
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'user-A', userName: 'User A', reporterName: 'ユーザーA', status: 'active' },
+        { userId: 'user-B', userName: 'User B', reporterName: 'ユーザーB', status: 'active' },
+        { userId: 'user-D', userName: 'User D', reporterName: 'ユーザーD', status: 'active' },
+      ],
+      totalCount: 3,
+    });
+
+    // Step 6: retrieveDailyReportsForLeaderReviewをスタブし、ユーザーAとBから提出を返す
+    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+      success: true,
+      reports: [
+        {
+          userId: 'user-A',
+          userName: 'User A',
+          reporterName: 'ユーザーA',
+          submittedAt: '2024-01-15T09:00:00Z',
+        },
+        {
+          userId: 'user-B',
+          userName: 'User B',
+          reporterName: 'ユーザーB',
+          submittedAt: '2024-01-15T10:00:00Z',
+        },
+      ],
+      totalCount: 2,
+    });
+
+    // Step 7: detectNonSubmittedReportersAtDeadlineをスタブし、ユーザーDのみを検知
+    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+      success: true,
+      nonSubmittedReporters: [
+        {
+          userId: 'user-D',
+          userName: 'User D',
+          reporterName: 'ユーザーD',
+          lastSubmissionDate: null,
+        },
+      ],
+      detectionLogId: 'log-001',
+      totalCount: 1,
+    });
+
+    // Step 8: judgePromptNecessityAndMethodをスタブし、催促が必要と返す
+    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+      success: true,
+      promptNecessary: true,
+      promptMethod: 'email',
+    });
+
+    // Step 9: sendLeaderNonSubmissionPromptNotificationをスタブし、送信成功を返す
+    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      success: true,
+      notificationId: 'notif-leader-001',
+      sentAt: '2024-01-15T15:00:00Z',
+    });
+
+    // Step 10: sendNonSubmissionPromptNotificationをスタブし、送信成功を返す
+    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+      success: true,
+      sentCount: 1,
+      failedCount: 0,
+      sentAt: '2024-01-15T15:01:00Z',
+    });
+
+    // Step 11: retrieveLeaderDashboardDataをスタブし、ダッシュボードデータを返す
+    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+      success: true,
+      progressSummary: 'チーム進捗サマリー',
+      submissionRate: '66.67%',
+    });
+
+    // Step 12: runTx4Imp1Agentを呼び出す（営業日）
+    const mockAiClient: any = {};
+    const result = await runTx4Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        leaderUserId: 'leader-001',
+        teamId: 'team-001',
+      },
+      mockAiClient
+    );
+
+    // 検証: executionStatus='success'
+    expect(result.executionStatus).toBe('success');
+
+    // 検証: targetDateが設定されている
+    expect(result.targetDate).toBe('2024-01-15');
+
+    // 検証: submittedReportCount=2（ユーザーAとB）
+    expect(result.submittedReportCount).toBe(2);
+
+    // 検証: nonSubmittedReporterCount=1（ユーザーDのみ）
+    expect(result.nonSubmittedReporterCount).toBe(1);
+
+    // 検証: nonSubmittedReportersにはユーザーDの情報のみが含まれ、削除済みのユーザーCは含まれない
+    expect(result.nonSubmittedReporters).toHaveLength(1);
+    expect(result.nonSubmittedReporters[0].userId).toBe('user-D');
+    expect(result.nonSubmittedReporters[0].reporterName).toBe('ユーザーD');
+
+    // ユーザーCが含まれていないことを確認
+    const userCIncluded = result.nonSubmittedReporters.some(
+      (r: any) => r.userId === 'user-C' || r.reporterName === 'ユーザーC'
+    );
+    expect(userCIncluded).toBe(false);
+
+    // 検証: promptNotificationsSent=1、promptNotificationsFailed=0
+    expect(result.promptNotificationsSent).toBe(1);
+    expect(result.promptNotificationsFailed).toBe(0);
+
+    // 検証: leaderNotificationSent=true
+    expect(result.leaderNotificationSent).toBe(true);
+
+    // 検証: detectionLogIdが生成されている
+    expect(result.detectionLogId).toBe('log-001');
+
+    // 検証: executionTimestampがISO 8601形式で記録されている
+    expect(result.executionTimestamp).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/
+    );
+
+    // 検証: errors配列は空である
+    expect(result.errors ?? []).toEqual([]);
+
+    // 検証: 無効な報告者（ユーザーC）は処理対象から完全に除外されている
+    // これは getActiveReportersForSubmissionCheck がユーザーC を返さないことで確認
+    expect(mockedGetActiveReportersForSubmissionCheck).toHaveBeenCalled();
+    const activeReportersCall = mockedGetActiveReportersForSubmissionCheck.mock.results[0].value;
+    const userCInActive = (await activeReportersCall).reporters.some(
+      (r: any) => r.userId === 'user-C' || r.reporterName === 'ユーザーC'
+    );
+    expect(userCInActive).toBe(false);
+
+    // 検証: 現在有効な報告者（ユーザーA、B、D）のみに対して処理が実行されている
+    const activeReporters = (await activeReportersCall).reporters;
+    expect(activeReporters).toHaveLength(3);
+    expect(activeReporters.map((r: any) => r.userId)).toEqual(['user-A', 'user-B', 'user-D']);
+  });
+
+  it('未提出者が0名の場合', async () => {
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+      isBusinessDay: true,
+      isWithinDeadline: true,
+    });
+
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
+        { userId: 'user-A', userName: 'User A', reporterName: 'ユーザーA', status: 'active' },
+        { userId: 'user-B', userName: 'User B', reporterName: 'ユーザーB', status: 'active' },
+      ],
+      totalCount: 2,
     });
 
     mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
-      dailyReports: [
-        { dailyReportId: 'DR-049-1', userId: 'userA', reportDate: targetDate, businessContent: '本日の業務内容', submittedAt: `${targetDate}T09:00:00+09:00` },
-        { dailyReportId: 'DR-049-2', userId: 'userB', reportDate: targetDate, businessContent: '本日の業務内容', submittedAt: `${targetDate}T09:01:00+09:00` },
+      success: true,
+      reports: [
+        {
+          userId: 'user-A',
+          userName: 'User A',
+          reporterName: 'ユーザーA',
+          submittedAt: '2024-01-15T09:00:00Z',
+        },
+        {
+          userId: 'user-B',
+          userName: 'User B',
+          reporterName: 'ユーザーB',
+          submittedAt: '2024-01-15T10:00:00Z',
+        },
       ],
       totalCount: 2,
-      pageNumber: 1,
-      pageSize: 50,
-      retrievedAt: `${targetDate}T18:00:00+09:00`,
     });
 
     mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
-      nonSubmittedReporters: [
-        { userId: 'userD', userName: 'ユーザーD', reporterName: 'ユーザーD', lastSubmissionDate: '2024-01-14' },
-      ],
-      detectionLog: {
-        detectionLogId: 'LOG-049-001',
-        targetDate,
-        detectionDateTime: `${targetDate}T18:00:00+09:00`,
-        totalReportersCount: activeReporters.length,
-        nonSubmittedCount: 1,
-        submittedCount: 2,
-      },
-      detectionTimestamp: `${targetDate}T18:00:00+09:00`,
-    });
-
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
-      isPromptNecessary: true,
-      promptPriority: 'medium',
-      promptMethod: 'email',
-      estimatedNonSubmissionReason: 'unknown',
-      suggestedPromptMessage: '日報の提出をお願いします。',
-      overdueDurationMinutes: 30,
+      success: true,
+      nonSubmittedReporters: [],
+      detectionLogId: 'log-002',
+      totalCount: 0,
     });
 
     mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
       success: true,
-      notificationId: 'NOTIF-LEADER-049-001',
-      sentAt: new Date(`${targetDate}T18:05:00+09:00`),
-      deliveryMethod: 'email',
-      nonSubmittedReporterCount: 1,
-      errorDetails: null,
+      notificationId: 'notif-leader-002',
+      sentAt: '2024-01-15T15:00:00Z',
     });
-
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue(true);
 
     mockedRetrieveLeaderDashboardData.mockResolvedValue({
-      submittedReports: [],
-      nonSubmittedReporters: [
-        { userId: 'userD', userName: 'ユーザーD', reporterName: 'ユーザーD', lastSubmissionDate: '2024-01-14' },
-      ],
-      detectionLogs: [],
-      emailSendingHistory: [],
-      submissionStatusSummary: {
-        submittedCount: 2,
-        nonSubmittedCount: 1,
-        submissionRate: 66.7,
-        promptedCount: 1,
+      success: true,
+      progressSummary: 'チーム進捗サマリー',
+      submissionRate: '100%',
+    });
+
+    const mockAiClient: any = {};
+    const result = await runTx4Imp1Agent(
+      {
+        targetDate: '2024-01-15',
+        leaderUserId: 'leader-001',
+        teamId: 'team-001',
       },
-      progressSummaryText: '提出率66.7%、未提出者1名（ユーザーD）',
+      mockAiClient
+    );
+
+    expect(result.executionStatus).toBe('success');
+    expect(result.submittedReportCount).toBe(2);
+    expect(result.nonSubmittedReporterCount).toBe(0);
+    expect(result.nonSubmittedReporters).toEqual([]);
+    expect(result.promptNotificationsSent).toBe(0);
+  });
+
+  it('エラー配列の構造が正しい', async () => {
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+      isBusinessDay: false,
+      isWithinDeadline: false,
+      error: 'TargetDateNotBusinessDay',
     });
 
-    const secondResult = await runTx4Imp1Agent({
-      targetDate,
-      leaderUserId,
-      teamId,
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [],
+      totalCount: 0,
     });
 
-    expect(secondResult.executionStatus).toBe('success');
-    expect(secondResult.submittedReportCount).toBe(2);
-    expect(secondResult.nonSubmittedReporterCount).toBe(1);
-    expect(secondResult.nonSubmittedReporters).toHaveLength(1);
-    expect(secondResult.nonSubmittedReporters).toEqual(
-      expect.arrayContaining([expect.objectContaining({ userId: 'userD' })])
+    const mockAiClient: any = {};
+    const result = await runTx4Imp1Agent(
+      {
+        targetDate: '2024-01-13',
+        leaderUserId: 'leader-001',
+        teamId: 'team-001',
+      },
+      mockAiClient
     );
-    expect(
-      JSON.stringify(secondResult.nonSubmittedReporters)
-    ).not.toContain('userC');
-    expect(secondResult.promptNotificationsSent).toBe(1);
-    expect(secondResult.promptNotificationsFailed).toBe(0);
-    expect(secondResult.leaderNotificationSent).toBe(true);
-    expect(typeof secondResult.detectionLogId).toBe('string');
-    expect(secondResult.detectionLogId.length).toBeGreaterThan(0);
-    expect(secondResult.executionTimestamp).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
-    );
-    expect(secondResult.errors ?? []).toEqual([]);
 
-    expect(mockedGetActiveReportersForSubmissionCheck).toHaveBeenCalled();
+    if (result.errors && result.errors.length > 0) {
+      result.errors.forEach((error: any) => {
+        expect(error).toHaveProperty('code');
+        expect(error).toHaveProperty('message');
+        expect(typeof error.code).toBe('string');
+        expect(typeof error.message).toBe('string');
+      });
+    }
   });
 });

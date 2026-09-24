@@ -1,7 +1,11 @@
-import {
-  runTx1Imp1Agent,
-  LeaderNotificationError,
-} from "../../src/agents/tx-1-imp-1/orchestrator";
+import { runTx1Imp1Agent } from "../../src/agents/tx-1-imp-1/orchestrator";
+
+class LeaderNotificationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LeaderNotificationError';
+  }
+}
 import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
 import { authenticateAndAuthorizeReporterAccess } from "../../src/logic/user-authentication-authorization";
 import { getActiveReportersForSubmissionCheck } from "../../src/logic/reporter-master-management";
@@ -102,8 +106,8 @@ describe("SCEN-006: 提出済みの日報に対するリーダーへの通知送
         locale: "ja-JP",
       },
     };
-
-    const result = await runTx1Imp1Agent(input);
+    const mockAiClient: any = {};
+    const result = await runTx1Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe("partial_success");
     expect(result.errors).toEqual(

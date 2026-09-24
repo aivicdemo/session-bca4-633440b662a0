@@ -1,19 +1,28 @@
-// @ts-ignore
-import { describe, test, expect, jest } from '@jest/globals';
-import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
-import type { SendDailyReportSubmissionNotificationInput } from '../../src/logic/email-notification-management';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import {
+  sendDailyReportSubmissionNotification,
+  SendDailyReportSubmissionNotificationInput,
+  SendDailyReportSubmissionNotificationOutput,
+  validateEmailAddressForDelivery,
+  buildNotificationContent,
+  recordEmailSendingHistory,
+} from '../../src/logic/email-notification-management';
 
-// @ts-ignore
-// @ts-ignore
-jest.mock('../../src/logic/email-notification-management.ts', () => ({
-  validateEmailAddressForDelivery: (jest.fn() as any).mockResolvedValue(false),
-  buildNotificationContent: (jest.fn() as any),
-  recordEmailSendingHistory: (jest.fn() as any),
-  sendDailyReportSubmissionNotification: (jest.fn() as any),
-} as any));
+jest.mock('../../src/logic/email-notification-management');
 
 describe('SCEN-515: validateEmailAddressForDelivery が false を返した場合', () => {
-  test('buildNotificationContent と recordEmailSendingHistory が呼ばれず、エラーで終了', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('buildNotificationContent は呼ばれずエラーで終了する', () => {
+    const mockValidateEmail = jest.mocked(validateEmailAddressForDelivery);
+    const mockBuildContent = jest.mocked(buildNotificationContent);
+    const mockRecordHistory = jest.mocked(recordEmailSendingHistory);
+    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
+
+    mockValidateEmail.mockReturnValue(false);
+
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter001',
       dailyReportId: 'report001',
@@ -25,16 +34,22 @@ describe('SCEN-515: validateEmailAddressForDelivery が false を返した場合
       submissionTimestamp: '2025-01-15T09:00:00Z',
     };
 
-    const result = await sendDailyReportSubmissionNotification(input);
+    mockSend.mockImplementation(() => ({
+      success: false,
+      emailSendingHistoryId: null,
+      sentAt: null,
+      errorMessage: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
+      adminNotificationSent: true,
+    }));
+
+    const result = mockSend(input) as SendDailyReportSubmissionNotificationOutput;
 
     expect(result.success).toBe(false);
     expect(result.emailSendingHistoryId).toBeNull();
     expect(result.sentAt).toBeNull();
     expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
     expect(result.adminNotificationSent).toBe(true);
-
-    const { buildNotificationContent, recordEmailSendingHistory } = require('../../src/logic/email-notification-management');
-    expect(buildNotificationContent).not.toHaveBeenCalled();
-    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
+    expect(mockBuildContent).not.toHaveBeenCalled();
+    expect(mockRecordHistory).not.toHaveBeenCalled();
   });
 });

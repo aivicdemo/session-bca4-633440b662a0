@@ -1,40 +1,43 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { updateReporter } from '../../src/logic/reporter-master-management';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
-import { ReporterNotFoundError } from '../../src/logic/reporter-master-management';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  UpdateReporterOutput,
+  ReporterNotFoundError,
+} from '../../src/logic/reporter-master-management';
+import {
+  retrieveReporterByUserId,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
-describe('SCEN-373: ReporterNotFoundError when reporterId does not exist', () => {
+describe('SCEN-373: 指定された報告者IDが存在しないと、ReporterNotFoundErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw ReporterNotFoundError when reporter is not found', async () => {
-    // 前提条件：retrieveReporterByUserId をスタブ化し、null を返す
-    (userMasterPersistence.retrieveReporterByUserId as any).mockResolvedValue(null);
+  test('報告者IDが報告者マスタに存在しない場合、ReporterNotFoundErrorが発生する', () => {
+    const reporterId = 'reporter-999';
+    const teamLeaderId = 'leader-001';
+    const executionTimestamp = new Date('2025-01-15T10:00:00Z');
 
-    // updateReporter を呼び出す
-    const input = {
-      reporterId: 'reporter-999',
+    (retrieveReporterByUserId as jest.Mock).mockReturnValue(null);
+
+    const input: UpdateReporterInput = {
+      reporterId,
       reporterName: '新しい名前',
       emailAddress: 'newemail@example.com',
       department: '営業部',
       status: 'active',
-      teamLeaderId: 'leader-001',
-      executionTimestamp: new Date('2024-01-15T10:00:00Z'),
+      teamLeaderId,
+      executionTimestamp,
     };
 
-    // ReporterNotFoundError が発生することを期待
-    await expect(updateReporter(input)).rejects.toThrow(ReporterNotFoundError);
+    expect(() => {
+      updateReporter(input);
+    }).toThrow(ReporterNotFoundError);
 
-    // エラーメッセージを確認
-    try {
-      await updateReporter(input);
-    } catch (error) {
-      if (error instanceof ReporterNotFoundError) {
-        expect(error.message).toBe('指定された報告者が見つかりません。');
-      }
-    }
+    expect(() => {
+      updateReporter(input);
+    }).toThrow(/指定された報告者が見つかりません/);
   });
 });

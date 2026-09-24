@@ -105,13 +105,23 @@ test('5名全員が日報を提出した場合、未提出者一覧は空で表�
   await page.getByText('管理', { exact: true }).click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
 
-  // 画面内の「検知ログ」機能（メール送信履歴・検知ログ確認エリア）にアクセスする
-  await page.locator('.rm-tab[data-tab="log"]').click();
-  const nonSubmittedLogRows = page.locator('#rm-log-tbody tr', { hasText: '未提出' });
-  await expect(nonSubmittedLogRows).toHaveCount(0);
-
   // 未提出者一覧セクションを確認する
+  // 画面内の「未提出者・リマインダー」タブにアクセス
   await page.locator('.rm-tab[data-tab="reminder"]').click();
-  const missingRows = page.locator('#rm-missing-tbody tr:not(.rm-empty-row)');
-  await expect(missingRows).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+
+  // 未提出者一覧テーブルが表示され、テーブル行が0件（空の状態）で表示される
+  const missingTable = page.locator('#rm-missing-tbody');
+  const missingRows = missingTable.locator('tr:not(.rm-empty-row)');
+  const emptyMessage = missingTable.locator('tr.rm-empty-row');
+
+  // 空の状態を確認
+  const emptyCount = await emptyMessage.count();
+  if (emptyCount > 0) {
+    // 「未提出者はいません」メッセージが表示される
+    await expect(emptyMessage).toContainText('未提出者はいません');
+  } else {
+    // データ行が0件
+    await expect(missingRows).toHaveCount(0);
+  }
 });

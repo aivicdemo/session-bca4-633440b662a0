@@ -4,6 +4,7 @@ import {
   UpdateReporterInMasterInput,
   UpdateReporterInMasterOutput,
   PersistenceFailureError,
+  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
@@ -24,12 +25,9 @@ describe('SCEN-462: データベースへの更新処理が失敗すると、Per
       updateTimestamp: new Date(),
     };
 
-    const mockResult: UpdateReporterInMasterOutput = {
-      success: false,
-      reporterId: null,
-      message: '報告者情報の更新に失敗しました。',
-    };
-    jest.mocked(updateReporterInMaster).mockResolvedValue(mockResult);
+    (persistReporterMasterChangeHistory as any).mockRejectedValue(
+      new PersistenceFailureError('Database error') as any
+    );
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 

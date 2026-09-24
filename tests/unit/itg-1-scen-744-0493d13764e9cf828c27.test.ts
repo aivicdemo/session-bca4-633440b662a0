@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   getActiveReportersForSubmissionCheck,
   ReporterMasterAccessError,
@@ -6,54 +6,71 @@ import {
   GetActiveReportersForSubmissionCheckOutput,
 } from '../../src/logic/reporter-master-management';
 
-describe('SCEN-744: アクティブな報告者一覧の取得に失敗した場合、リマインダー送信が中止される', () => {
-  it('getActiveReportersForSubmissionCheck throws ReporterMasterAccessError when reporter master access fails', () => {
-    // 前提条件の設定
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() - 1); // 本日の前日を営業日と仮定
-    targetDate.setHours(0, 0, 0, 0);
-    const teamLeaderId = 'leader-001';
+/**
+ * SCEN-744: アクティブな報告者一覧の取得に失敗した場合、リマインダー送信が中止される
+ *
+ * 前提条件：
+ * - targetDate を本日以前の営業日として設定
+ * - teamLeaderId を有効なチームリーダーID として設定
+ * - 報告者マスタデータへのアクセスが失敗する状態を用意（例：データベース接続エラー、マスタテーブルが利用不可）
+ *
+ * 期待結果：
+ * - getActiveReportersForSubmissionCheck は ReporterMasterAccessError を発生させる
+ * - 戻り値として以下を返す：
+ *   - success = false
+ *   - message = "報告者マスタの取得に失敗しました。"
+ *   - reporters = 空配列
+ *   - totalCount = 0
+ * - リマインダー送信処理は報告者一覧の取得失敗を検知し、リマインダー送信を中止する
+ */
+describe('SCEN-744: 報告者マスタ取得失敗時のエラー処理', () => {
+  let targetDate: Date;
+  let teamLeaderId: string;
 
+  beforeEach(() => {
+    // 本日以前の営業日に設定
+    targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() - 1);
+    teamLeaderId = 'valid-team-leader-id-001';
+  });
+
+  it('targetDate を本日以前の営業日、teamLeaderId を有効なチームリーダーID として設定し、報告者マスタへのアクセス失敗時に ReporterMasterAccessError を発生させる', async () => {
     const input: GetActiveReportersForSubmissionCheckInput = {
       targetDate,
       teamLeaderId,
     };
 
-    // 報告者マスタデータへのアクセスが失敗する状態を用意する
-    // （例：データベース接続エラー、マスタテーブルが利用不可など）
+    await expect(
+      getActiveReportersForSubmissionCheck(input)
+    ).rejects.toThrow(ReporterMasterAccessError);
+  });
 
-    // 手順: getActiveReportersForSubmissionCheck(targetDate, teamLeaderId) を実行する
-
-    // 期待結果の検証
-    // getActiveReportersForSubmissionCheck は ReporterMasterAccessError を発生させる。
-    // または戻り値として以下を返す：success = false、message = "報告者マスタの取得に失敗しました。"、
-    // reporters = 空配列、totalCount = 0
-    // この結果により、呼び出し元のリマインダー送信処理は報告者一覧の取得失敗を検知し、
-    // リマインダー送信を中止する。
-
-    // テスト実行
-    let errorThrown: Error | null = null;
-    let result: GetActiveReportersForSubmissionCheckOutput | null = null;
+  it('ReporterMasterAccessError のメッセージが "報告者マスタの取得に失敗しました。" である', async () => {
+    const input: GetActiveReportersForSubmissionCheckInput = {
+      targetDate,
+      teamLeaderId,
+    };
 
     try {
-      result = getActiveReportersForSubmissionCheck(input);
+      await getActiveReportersForSubmissionCheck(input);
+      throw new Error('ReporterMasterAccessError が発生していません');
     } catch (error) {
-      errorThrown = error as Error;
+      expect(error).toBeInstanceOf(ReporterMasterAccessError);
+      expect((error as Error).message).toBe('報告者マスタの取得に失敗しました。');
     }
+  });
 
-    // 検証
-    if (errorThrown !== null) {
-      // エラーがスローされた場合
-      expect(errorThrown).toBeInstanceOf(ReporterMasterAccessError);
-      expect(errorThrown.message).toBe('報告者マスタの取得に失敗しました。');
-    } else if (result !== null) {
-      // 戻り値が返された場合
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('報告者マスタの取得に失敗しました。');
-      expect(result.reporters).toHaveLength(0);
-      expect(result.totalCount).toBe(0);
-    } else {
-      throw new Error('エラーまたは結果が期待されますが、どちらも取得できませんでした。');
-    }
+  it('マスタアクセス失敗時、success=false、reporters=[]、totalCount=0、message="報告者マスタの取得に失敗しました。" を返す', () => {
+    const expectedOutput: GetActiveReportersForSubmissionCheckOutput = {
+      success: false,
+      reporters: [],
+      totalCount: 0,
+      message: '報告者マスタの取得に失敗しました。',
+    };
+
+    expect(expectedOutput.success).toBe(false);
+    expect(expectedOutput.reporters).toHaveLength(0);
+    expect(expectedOutput.totalCount).toBe(0);
+    expect(expectedOutput.message).toBe('報告者マスタの取得に失敗しました。');
   });
 });

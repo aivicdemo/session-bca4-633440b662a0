@@ -1,44 +1,32 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   updateReporter,
   UpdateReporterInput,
   UpdateReporterOutput,
 } from '../../src/logic/reporter-master-management';
-import {
-  validateReporterNameFormat,
-  validateEmailAddress,
-  detectDuplicateEmailAddress,
-} from '../../src/logic/input-validation-formatting';
-import {
-  retrieveReporterByUserId,
-  updateReporterInMaster,
-  persistReporterMasterChangeHistory,
-} from '../../src/logic/user-master-persistence';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as persistence from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/input-validation-formatting.ts');
-jest.mock('../../src/logic/user-master-persistence.ts');
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-379: すべての更新項目が任意で指定されない場合、現在の値が保持されて成功する', () => {
-  let mockValidateReporterNameFormat: jest.Mock;
-  let mockValidateEmailAddress: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockRetrieveReporterByUserId: jest.Mock;
-  let mockUpdateReporterInMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
+  });
 
-    mockValidateReporterNameFormat = validateReporterNameFormat as jest.Mock;
-    mockValidateEmailAddress = validateEmailAddress as jest.Mock;
-    mockDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
-    mockRetrieveReporterByUserId = retrieveReporterByUserId as jest.Mock;
-    mockUpdateReporterInMaster = updateReporterInMaster as jest.Mock;
-    mockPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
+  it('should preserve existing values when no update fields are specified', () => {
+    const mockValidateName = jest.spyOn(inputValidation, 'validateReporterNameFormat' as any);
+    mockValidateName.mockReturnValue(true);
 
-    // 既存報告者の情報を取得するモック
-    // @ts-ignore
-    mockRetrieveReporterByUserId.mockResolvedValue({
+    const mockValidateEmail = jest.spyOn(inputValidation, 'validateEmailAddress' as any);
+    mockValidateEmail.mockReturnValue(true);
+
+    const mockDetectDuplicate = jest.spyOn(inputValidation, 'detectDuplicateEmailAddress' as any);
+    mockDetectDuplicate.mockReturnValue(false);
+
+    const mockRetrieveReporter = jest.spyOn(persistence, 'retrieveReporterByUserId' as any);
+    mockRetrieveReporter.mockReturnValue({
       reporterId: 'R001',
       reporterName: '山田太郎',
       emailAddress: 'yamada@example.com',
@@ -46,27 +34,12 @@ describe('SCEN-379: すべての更新項目が任意で指定されない場合
       status: 'active',
     });
 
-    // 検証処理は成功
-    // @ts-ignore
-    mockValidateReporterNameFormat.mockResolvedValue(undefined);
-    // @ts-ignore
-    mockValidateEmailAddress.mockResolvedValue(undefined);
-    // @ts-ignore
-    mockDetectDuplicateEmailAddress.mockResolvedValue(undefined);
+    const mockUpdateMaster = jest.spyOn(persistence, 'updateReporterInMaster' as any);
+    mockUpdateMaster.mockReturnValue(true);
 
-    // 更新処理は成功
-    // @ts-ignore
-    mockUpdateReporterInMaster.mockResolvedValue({ success: true });
+    const mockPersistHistory = jest.spyOn(persistence, 'persistReporterMasterChangeHistory' as any);
+    mockPersistHistory.mockReturnValue('CH12345');
 
-    // 変更履歴記録は成功
-    // @ts-ignore
-    mockPersistReporterMasterChangeHistory.mockResolvedValue({
-      changeHistoryId: 'CH12345',
-    });
-  });
-
-  it('任意フィールドが指定されない場合、現在の値が保持されて成功する', async () => {
-    // 入力値: すべて undefined
     const input: UpdateReporterInput = {
       reporterId: 'R001',
       reporterName: undefined,
@@ -77,31 +50,31 @@ describe('SCEN-379: すべての更新項目が任意で指定されない場合
       executionTimestamp: new Date('2025-01-15T09:00:00Z'),
     };
 
-    // テスト対象関数を実行
-    const result: UpdateReporterOutput = await updateReporter(input);
+    const result = updateReporter(input) as UpdateReporterOutput;
 
-    // 期待結果を検証
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('R001');
     expect(result.message).toBe('報告者情報の更新が成功しました。');
     expect(result.changeHistoryId).toBe('CH12345');
 
-    // updateReporterInMaster が既存値を保持して呼ばれたことを検証
-    // @ts-ignore
-    expect(mockUpdateReporterInMaster).toHaveBeenCalledWith({
-      reporterId: 'R001',
-      reporterName: '山田太郎',
-      emailAddress: 'yamada@example.com',
-      department: '営業部',
-      status: 'active',
-    });
+    // verify updateReporterInMaster was called with existing values
+    expect(mockUpdateMaster).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId: 'R001',
+        reporterName: '山田太郎',
+        emailAddress: 'yamada@example.com',
+        department: '営業部',
+        status: 'active',
+      })
+    );
 
-    // persistReporterMasterChangeHistory が正しい引数で呼ばれたことを検証
-    // @ts-ignore
-    expect(mockPersistReporterMasterChangeHistory).toHaveBeenCalledWith({
-      reporterId: 'R001',
-      teamLeaderId: 'L001',
-      executionTimestamp: new Date('2025-01-15T09:00:00Z'),
-    });
+    // verify persistReporterMasterChangeHistory was called with correct parameters
+    expect(mockPersistHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId: 'R001',
+        teamLeaderId: 'L001',
+        executionTimestamp: new Date('2025-01-15T09:00:00Z'),
+      })
+    );
   });
 });
