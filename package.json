@@ -1,5 +1,5 @@
 {
-  "name": "aivic-generated-system",
+  "name": "--------",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "@types/jest": "^29.0.0",
+    "@types/node": "^22.0.0",
     "jest-junit": "^16.0.0",
     "jest-fetch-mock": "^3.0.3",
     "@playwright/test": "^1.40.0",
