@@ -17,7 +17,7 @@ jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
 
-import { runTx5Imp1Agent } from '../../src/agents/tx-5-imp-1/orchestrator';
+import { runTx5Imp1Agent, Tx5Imp1AiClient } from '../../src/agents/tx-5-imp-1/orchestrator';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
@@ -91,7 +91,7 @@ describe('SCEN-050: 定時スケジューラ実行タイミング正常・未提
       },
     };
 
-    const mockAiClient: any = {};
+    const mockAiClient: Tx5Imp1AiClient = {} as Tx5Imp1AiClient;
     const result = await runTx5Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe('success');

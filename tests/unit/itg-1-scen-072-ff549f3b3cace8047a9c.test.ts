@@ -1,4 +1,4 @@
-import { runTx7Imp1Agent } from '../../src/agents/tx-7-imp-1/orchestrator';
+import { runTx7Imp1Agent, Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
 import {
   registerReporter,
   updateReporter,
