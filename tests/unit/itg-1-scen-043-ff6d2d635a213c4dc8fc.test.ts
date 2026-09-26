@@ -1,12 +1,12 @@
 import { runTx4Imp1Agent, Tx4Imp1AiClient } from '../../src/agents/tx-4-imp-1/orchestrator';
 
-jest.mock('../../../src/logic/business-day-deadline-judgment');
-jest.mock('../../../src/logic/reporter-master-management');
-jest.mock('../../../src/logic/daily-report-persistence');
-jest.mock('../../../src/logic/daily-report-non-submission-detection');
-jest.mock('../../../src/logic/non-submission-prompt-decision');
-jest.mock('../../../src/logic/daily-report-reminder-notification');
-jest.mock('../../../src/logic/daily-report-management-view');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/daily-report-non-submission-detection');
+jest.mock('../../src/logic/non-submission-prompt-decision');
+jest.mock('../../src/logic/daily-report-reminder-notification');
+jest.mock('../../src/logic/daily-report-management-view');
 jest.mock('../../src/logic/email-notification-management');
 
 import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
