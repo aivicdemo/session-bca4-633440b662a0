@@ -15,9 +15,9 @@ describe('SCEN-205: 提出時刻が定時期限を超過している場合、期
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
-    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
-    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockRejectedValue(
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.MockedFunction<any>).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>).mockRejectedValue(
       new SubmissionDeadlineExceededException('日報提出期限を超過しています。')
     );
   });

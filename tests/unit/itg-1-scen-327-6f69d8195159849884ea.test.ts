@@ -8,13 +8,16 @@ import * as inputValidation from '../../src/logic/input-validation-formatting';
 import * as userAuth from '../../src/logic/user-authentication-authorization';
 import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-authentication-authorization');
+jest.mock('../../src/logic/user-master-persistence');
+
 describe('SCEN-327: 有効なユーザーID・報告者名・メールアドレスで新規報告者を登録し、成功レスポンスと変更履歴IDを返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should register a new reporter with valid inputs and return success response with change history ID', async () => {
-    // テスト用の入力値を準備
     const now = new Date();
     const input: RegisterReporterInput = {
       userId: 'U001',
@@ -24,58 +27,49 @@ describe('SCEN-327: 有効なユーザーID・報告者名・メールアドレ�
       executionTimestamp: now,
     };
 
-    // validateReporterNameFormat スタブ化
-    jest
-      .spyOn(inputValidation, 'validateReporterNameFormat')
-      .mockResolvedValue({
-        isValid: true,
-      });
+    (inputValidation.validateReporterNameFormat as any).mockResolvedValue({
+      isValid: true,
+      validatedReporterName: '山田太郎',
+      errorCode: null,
+    });
 
-    // validateEmailAddress スタブ化
-    jest
-      .spyOn(inputValidation, 'validateEmailAddress')
-      .mockResolvedValue({
-        isValid: true,
-      });
+    (inputValidation.validateEmailAddress as any).mockResolvedValue({
+      isValid: true,
+      validatedEmailAddress: 'yamada@example.com',
+      errorCode: null,
+    });
 
-    // detectDuplicateEmailAddress スタブ化
-    jest
-      .spyOn(inputValidation, 'detectDuplicateEmailAddress')
-      .mockResolvedValue({
-        isDuplicate: false,
-      });
+    (inputValidation.detectDuplicateEmailAddress as any).mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: 'yamada@example.com',
+      errorCode: null,
+    });
 
-    // validateUserAccountActiveStatus スタブ化
-    jest
-      .spyOn(userAuth, 'validateUserAccountActiveStatus')
-      .mockResolvedValue({
-        isActive: true,
-      });
+    (userAuth.validateUserAccountActiveStatus as any).mockResolvedValue({
+      isActive: true,
+      userId: 'U001',
+      inactiveReason: null,
+    });
 
-    // registerReporterToMaster スタブ化
-    jest
-      .spyOn(userMasterPersistence, 'registerReporterToMaster')
-      .mockResolvedValue({
-        reporterId: 'RPT-001',
-      });
+    (userMasterPersistence.registerReporterToMaster as any).mockResolvedValue({
+      success: true,
+      reporterId: 'RPT-001',
+      message: '報告者が登録されました',
+    });
 
-    // persistReporterMasterChangeHistory スタブ化
-    jest
-      .spyOn(userMasterPersistence, 'persistReporterMasterChangeHistory')
-      .mockResolvedValue({
-        changeHistoryId: 'CHG-001',
-      });
+    (userMasterPersistence.persistReporterMasterChangeHistory as any).mockResolvedValue({
+      success: true,
+      changeHistoryId: 'CHG-001',
+      message: '変更履歴が記録されました',
+    });
 
-    // registerReporter 関数を呼び出す
-    const result = (await registerReporter(input)) as RegisterReporterOutput;
+    const result: RegisterReporterOutput = await registerReporter(input);
 
-    // 出力を検証
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('RPT-001');
     expect(result.message).toBe('報告者を正常に登録しました');
     expect(result.changeHistoryId).toBe('CHG-001');
 
-    // スタブ関数が期待通りの順序で呼び出されたことを検証
     expect(inputValidation.validateReporterNameFormat).toHaveBeenCalledWith(
       expect.objectContaining({
         reporterName: '山田太郎',
@@ -99,10 +93,10 @@ describe('SCEN-327: 有効なユーザーID・報告者名・メールアドレ�
     expect(userMasterPersistence.registerReporterToMaster).toHaveBeenCalled();
     expect(userMasterPersistence.persistReporterMasterChangeHistory).toHaveBeenCalledWith(
       expect.objectContaining({
-        operationType: 'CREATE',
+        operationType: 'register',
         reporterId: 'RPT-001',
-        executedBy: 'TL001',
-        executedAt: expect.any(Date),
+        leaderUserId: 'TL001',
+        operationTimestamp: now,
       })
     );
   });

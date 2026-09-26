@@ -1,4 +1,4 @@
-import { runTx7Imp1Agent } from '../../src/agents/tx-7-imp-1/orchestrator';
+import { runTx7Imp1Agent, Tx7Imp1AgentInput, Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
 import {
   registerReporter,
   updateReporter,
@@ -56,45 +56,46 @@ describe('SCEN-076: 報告者マスタの登録・更新・削除処理がシス
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (validateUserInformationRequired as jest.Mock).mockResolvedValue(true);
-    (detectDuplicateEmailAddress as jest.Mock).mockResolvedValue(false);
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue(true);
+    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue(false);
 
-    (registerReporter as jest.Mock).mockResolvedValue({
+    (registerReporter as jest.MockedFunction<any>).mockResolvedValue({
       userId: NEW_HIRE.userId,
       status: 'success',
     });
 
     const updateError = new Error('報告者マスタの更新に失敗しました。');
     updateError.name = 'ReporterMasterUpdateFailed';
-    (updateReporter as jest.Mock).mockRejectedValue(updateError);
+    (updateReporter as jest.MockedFunction<any>).mockRejectedValue(updateError);
 
-    (deactivateReporter as jest.Mock).mockResolvedValue({
+    (deactivateReporter as jest.MockedFunction<any>).mockResolvedValue({
       userId: RETIREE.userId,
       status: 'success',
       deactivationReason: 'retirement',
     });
 
-    (registerReporterToMaster as jest.Mock).mockResolvedValue({ success: true });
-    (updateReporterInMaster as jest.Mock).mockResolvedValue({ success: true });
-    (deactivateReporterInMaster as jest.Mock).mockResolvedValue({ success: true });
-    (persistReporterMasterChangeHistory as jest.Mock).mockResolvedValue({
+    (registerReporterToMaster as jest.MockedFunction<any>).mockResolvedValue({ success: true });
+    (updateReporterInMaster as jest.MockedFunction<any>).mockResolvedValue({ success: true });
+    (deactivateReporterInMaster as jest.MockedFunction<any>).mockResolvedValue({ success: true });
+    (persistReporterMasterChangeHistory as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
 
-    (sendUserInformationApprovalNotification as jest.Mock).mockResolvedValue({
+    (sendUserInformationApprovalNotification as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
   });
 
   it('updateReporterのシステム障害によりReporterMasterUpdateFailedエラーが発生する', async () => {
     const executionTimestamp = new Date('2024-04-01T09:00:00+09:00');
+    const aiClient: Tx7Imp1AiClient = {} as any;
 
     const resultPromise = runTx7Imp1Agent(
       {
         personnelMovementData: [NEW_HIRE, TRANSFER, RETIREE],
         executionTimestamp,
-      },
-      {}
+      } as Tx7Imp1AgentInput,
+      aiClient
     );
 
     await expect(resultPromise).rejects.toThrow(

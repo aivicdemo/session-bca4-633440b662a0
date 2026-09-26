@@ -55,6 +55,7 @@ async function login(page: Page, username: string) {
 }
 
 test('定時期限超過後の提出は受け付けられ翌営業日の日付で記録される', async ({ page, request }) => {
+  // システムの定時期限を超過した時刻に設定する（金曜 17:05）
   await page.clock.install({ time: new Date(AFTER_DEADLINE_DATETIME) });
   await login(page, 'reporter_scen608');
   const config = await readAivicConfig(page);
@@ -62,24 +63,38 @@ test('定時期限超過後の提出は受け付けられ翌営業日の日付�
   const content = '本日の業務内容（定時期限超過提出）';
   const textarea = page.locator('#rp-content');
   const submitBtn = page.locator('#rp-submit-btn');
+  const success = page.locator('#rp-success');
 
+  // 日報入力フィールドに内容を入力する
   await textarea.fill(content);
+
+  // 提出ボタンを押す
   await submitBtn.click();
 
-  // 提出確認ダイアログが表示される場合は確定する。
+  // 妥当性チェックが完了し、提出確認ダイアログが表示されることを確認する
   const confirmDialog = page.getByRole('dialog').filter({ hasText: '提出確認' });
   if (await confirmDialog.isVisible().catch(() => false)) {
+    // 提出確認ダイアログで確定ボタンを押す
     await confirmDialog.getByRole('button', { name: /確定/ }).click();
   }
 
-  await expect(page.getByText('日報を受け付けました')).toBeVisible();
+  // 画面に「日報を受け付けました」というメッセージが表示されることを確認する
+  await expect(page.locator('text=日報を受け付けました')).toBeVisible();
+  await expect(success).toBeVisible();
 
+  // 日報確認・管理画面に遷移し、その日報の記録日付を確認する
   await page.clock.setFixedTime(new Date(`${NEXT_BUSINESS_DAY}T09:00:00+09:00`));
 
-  await page.getByText('管理', { exact: true }).click();
+  await page.locator('#rp-history-link').click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.locator('#rm-r-keyword').fill(content);
+
+  const searchField = page.locator('#rm-r-keyword');
+  if (await searchField.isVisible()) {
+    await searchField.fill(content);
+  }
   const matchingRow = page.locator('#rm-r-tbody tr', { hasText: content });
+
+  // 記録日付が翌営業日（月曜）となっていることを確認する
   await expect(matchingRow).toContainText(NEXT_BUSINESS_DAY);
 
   const reportRecords = await fetchTableRecords(request, config, '日報');

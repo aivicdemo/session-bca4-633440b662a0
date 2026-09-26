@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-431: リーダーが指定期間内の提出済み日報を検索し、日報ID・ユーザーID・報告日・業務内容・提出時刻を含むレコードセットが返される', () => {
-  test('指定期間内の提出済み日報が返却される', () => {
+  it('指定期間内の提出済み日報が返却される', async () => {
     // RetrieveDailyReportsForLeaderReviewInput を組み立てる
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: 'leader-001',
@@ -20,7 +20,7 @@ describe('SCEN-431: リーダーが指定期間内の提出済み日報を検索
     };
 
     // retrieveDailyReportsForLeaderReview に渡して実行
-    const result: RetrieveDailyReportsForLeaderReviewOutput = retrieveDailyReportsForLeaderReview(input);
+    const result: RetrieveDailyReportsForLeaderReviewOutput = await retrieveDailyReportsForLeaderReview(input);
 
     // 戻り値の RetrieveDailyReportsForLeaderReviewOutput を検証
     expect(result).toHaveProperty('dailyReports');
@@ -34,10 +34,15 @@ describe('SCEN-431: リーダーが指定期間内の提出済み日報を検索
     expect(Array.isArray(result.dailyReports)).toBe(true);
     result.dailyReports.forEach((report: DailyReportForLeaderReview) => {
       expect(report).toHaveProperty('dailyReportId');
+      expect(typeof report.dailyReportId).toBe('string');
       expect(report).toHaveProperty('userId');
+      expect(typeof report.userId).toBe('string');
       expect(report).toHaveProperty('reportDate');
-      expect(report).toHaveProperty('content');
-      expect(report).toHaveProperty('submissionTime');
+      expect(typeof report.reportDate).toBe('string');
+      expect(report).toHaveProperty('businessContent');
+      expect(typeof report.businessContent).toBe('string');
+      expect(report).toHaveProperty('submittedAt');
+      expect(typeof report.submittedAt).toBe('string');
     });
 
     // totalCount が検索条件に合致した提出済み日報の全件数を示す

@@ -10,18 +10,19 @@ import type {
 
 jest.mock('../../src/logic/email-notification-management');
 
+const mockModule = require('../../src/logic/email-notification-management');
+const mockValidateEmailAddressForDelivery = mockModule.validateEmailAddressForDelivery as jest.MockedFunction<typeof validateEmailAddressForDelivery>;
+
 describe('SCEN-553: リーダーのメールアドレス形式が無効な場合、InvalidLeaderEmailAddressErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('リーダーのメールアドレス形式が無効な場合、InvalidLeaderEmailAddressErrorが発生する', async () => {
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(false);
-
-    jest.mocked(sendUserInformationApprovalNotification).mockImplementation(async () => {
-      throw new InvalidLeaderEmailAddressError(
-        'リーダーのメールアドレスが無効です。管理者に通知してください。'
-      );
+    mockValidateEmailAddressForDelivery.mockResolvedValue({
+      isValid: false,
+      reason: 'Invalid email format',
+      errorCode: 'INVALID_FORMAT',
     });
 
     const input: SendUserInformationApprovalNotificationInput = {
@@ -40,6 +41,13 @@ describe('SCEN-553: リーダーのメールアドレス形式が無効な場合
     );
     await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
       'リーダーのメールアドレスが無効です。管理者に通知してください。'
+    );
+
+    expect(mockValidateEmailAddressForDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAddress: 'invalid-email-format',
+        recipientType: 'leader',
+      })
     );
   });
 });

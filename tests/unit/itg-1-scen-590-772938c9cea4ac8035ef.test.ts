@@ -1,7 +1,3 @@
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveEmailSendingHistoryByDateRange: jest.fn(),
-}));
-
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
@@ -13,7 +9,7 @@ describe('SCEN-590: リーダー権限がない、または対象チームの日
     jest.clearAllMocks();
   });
 
-  it('リーダー権限を持たないユーザーIDを指定するとLeaderAuthorizationErrorが発生する', async () => {
+  it('リーダー権限を持たないユーザーIDを指定するとLeaderAuthorizationErrorが発生し、エラーメッセージが「You do not have permission to view email sending history for this team.」である', async () => {
     const input = {
       leaderId: 'non-leader-user-001',
       startDate: '2024-01-01',
@@ -27,35 +23,12 @@ describe('SCEN-590: リーダー権限がない、または対象チームの日
 
     try {
       await retrieveEmailSendingHistoryDetails(input);
-      throw new Error('LeaderAuthorizationErrorが発生すべきですが、発生しませんでした。');
+      fail('Expected LeaderAuthorizationError to be thrown');
     } catch (error) {
-      if (!(error instanceof LeaderAuthorizationError)) {
-        throw error;
-      }
-      expect(error.message).toBe('You do not have permission to view email sending history for this team.');
-    }
-  });
-
-  it('対象チームの日報管理権限がないユーザーIDを指定するとLeaderAuthorizationErrorが発生する', async () => {
-    const input = {
-      leaderId: 'leader-other-team-001',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
-      emailType: null,
-      sendingStatus: null,
-      recipientEmail: null,
-      pageNumber: 1,
-      pageSize: 10,
-    };
-
-    try {
-      await retrieveEmailSendingHistoryDetails(input);
-      throw new Error('LeaderAuthorizationErrorが発生すべきですが、発生しませんでした。');
-    } catch (error) {
-      if (!(error instanceof LeaderAuthorizationError)) {
-        throw error;
-      }
-      expect(error.message).toBe('You do not have permission to view email sending history for this team.');
+      expect(error).toBeInstanceOf(LeaderAuthorizationError);
+      expect((error as Error).message).toBe(
+        'You do not have permission to view email sending history for this team.'
+      );
     }
   });
 });

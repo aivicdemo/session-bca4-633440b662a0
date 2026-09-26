@@ -1,75 +1,35 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-test.describe('SCEN-651: 報告者IDが空または不正な形式のとき、エラーメッセージ「報告者情報が不正です。管理者に確認してください」が表示される', () => {
-  let page: Page;
+// SCEN-651: 報告者IDが空または不正な形式のとき、エラーメッセージ
+// 「報告者情報が不正です。管理者に確認してください」が表示される
 
-  test.beforeEach(async ({ browser }) => {
-    page = await browser.newPage();
-    const baseUrl = process.env.TEST_BASE_URL || 'http://localhost:3000';
-    await page.goto(`${baseUrl}/panels/scr-1790147095974.html`);
-  });
+test('SCEN-651: 報告者IDが空または不正な形式のとき、エラーメッセージが表示される', async ({
+  page,
+}) => {
+  // テスト環境でPlaywrightブラウザコンテキストを初期化し、日報確認・管理画面へアクセスする
+  await page.goto('/panels/scr-1790147095974.html');
 
-  test.afterEach(async () => {
-    await page.close();
-  });
+  // 未提出者検知機能の実行をトリガーする
+  // 管理画面の「未提出者・リマインダー」タブに移動
+  const reminderTab = page.locator('[data-tab="reminder"]');
+  await reminderTab.click();
 
-  test('should display error message when reporter id is invalid', async () => {
-    // テストユーザー（管理者）でログイン
-    const adminEmail = 'admin@company.com';
-    const adminPassword = 'password123';
+  // ページが完全にロードされるまで待機
+  await page.waitForLoadState('networkidle');
 
-    // ログイン画面へアクセス
-    const baseUrl = process.env.TEST_BASE_URL || 'http://localhost:3000';
-    await page.goto(`${baseUrl}/panels/scr-1790147087109.html`);
+  // page.locator で対象要素を特定してエラーメッセージを待機
+  // 仕様で指定されたエラーメッセージを検索
+  const errorMessage = page.locator('text=報告者情報が不正です。管理者に確認してください');
 
-    const emailInput = page.locator('input[type="email"]');
-    const passwordInput = page.locator('input[type="password"]');
-    const loginButton = page.locator('button:has-text("ログイン")');
+  // 表示されたエラーメッセージの内容を取得し、検証対象文言と照合
+  await expect(errorMessage).toBeVisible({ timeout: 5000 });
 
-    await emailInput.fill(adminEmail);
-    await passwordInput.fill(adminPassword);
-    await loginButton.click();
+  // エラーメッセージのテキストが完全に一致することを確認
+  const messageText = await errorMessage.innerText();
+  expect(messageText).toContain('報告者情報が不正です。管理者に確認してください');
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // 日報確認・管理画面へ遷移
-    const managementScreenLink = page.locator('a, button').filter({ hasText: /日報確認|管理画面/ }).first();
-    await managementScreenLink.click();
-
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // 未提出者検知機能の実行をトリガー
-    const triggerButton = page.locator('button').filter({ hasText: /検知|実行/ }).first();
-    if (await triggerButton.isVisible()) {
-      await triggerButton.click();
-      await page.waitForTimeout(2000);
-    }
-
-    // システムが未提出者データから報告者IDの妥当性チェックを実行
-    // 報告者IDが空または不正な形式のレコードを処理する
-    // エラーハンドリング処理が発動し、画面にエラーメッセージが表示されるまで待機
-
-    // 期待結果の検証
-    // 1. 日報確認・管理画面上に、エラーメッセージが表示される
-    const errorMessage = page.locator('text=/報告者情報が不正です|管理者に確認してください/i');
-    const isErrorVisible = await errorMessage.isVisible().catch(() => false);
-
-    if (isErrorVisible) {
-      const errorText = await errorMessage.innerText();
-      expect(errorText).toContain('報告者情報が不正です');
-    }
-
-    // 2. 「通知未送信」フラグが立てられることを確認
-    const unsubmittedList = page.locator('#rm-missing-tbody, tbody').first();
-    const listText = await unsubmittedList.innerText().catch(() => '');
-    
-    // エラーメッセージが表示されていないか、または「通知未送信」が表示されていることを確認
-    // (仕様では両方の条件があるため、少なくとも一つの条件を満たすことを確認)
-    expect(isErrorVisible || listText.includes('通知未送信')).toBeTruthy();
-
-    // 3. エラーが表示されていない場合、内部ログに送信失敗が記録されていることを確認
-    // (これはブラウザコンソールやログで確認可能)
-  });
+  // EmailNotificationService.sendNonSubmissionAlert が呼び出されないことを暗示
+  // 管理画面の未提出者一覧に「通知未送信」フラグが立てられている状態を確認
+  const unsentFlag = page.locator('text=通知未送信');
+  await expect(unsentFlag).toBeVisible({ timeout: 5000 });
 });

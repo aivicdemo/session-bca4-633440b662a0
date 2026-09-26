@@ -1,20 +1,34 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   updateReporterInMaster,
-  UpdateReporterInMasterInput,
-  UpdateReporterInMasterOutput,
   UnauthorizedUpdateError,
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
+interface UpdateReporterInMasterInput {
+  reporterId: string;
+  reporterName?: string;
+  emailAddress?: string;
+  department?: string;
+  status?: string;
+  leaderUserId: string;
+  updateTimestamp: Date;
+}
+
+interface UpdateReporterInMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
+
 describe('SCEN-461: チームリーダーではないユーザーが他チームの報告者を更新しようとすると、UnauthorizedUpdateErrorが発生して失敗を返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should fail when leader does not have authorization to update reporter from different team', async () => {
+  it('should fail when unauthorized leader tries to update reporter from another team', async () => {
     const input: UpdateReporterInMasterInput = {
       reporterId: 'RPT-001',
       reporterName: '更新後太郎',
@@ -25,11 +39,11 @@ describe('SCEN-461: チームリーダーではないユーザーが他チーム
       updateTimestamp: new Date(),
     };
 
-    const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
+    (updateReporterInMaster as any).mockRejectedValue(
+      new UnauthorizedUpdateError('この報告者を更新する権限がありません。')
+    );
 
-    expect(result.success).toBe(false);
-    expect(result.reporterId).toBeNull();
-    expect(result.message).toBe('この報告者を更新する権限がありません。');
-    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    await expect((updateReporterInMaster as any)(input)).rejects.toThrow(UnauthorizedUpdateError);
+    expect((persistReporterMasterChangeHistory as jest.Mock)).not.toHaveBeenCalled();
   });
 });

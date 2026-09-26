@@ -1,18 +1,10 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   InvalidNonSubmitterInput,
 } from '../../src/logic/non-submission-prompt-decision';
 
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  isWithinSubmissionDeadline: jest.fn(),
-}));
-
 describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な場合、InvalidNonSubmitterInputエラーが発生する', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
 
   it('userId が空文字列の場合、InvalidNonSubmitterInput エラーがスローされる', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
@@ -22,7 +14,7 @@ describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -38,7 +30,7 @@ describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -54,7 +46,7 @@ describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -70,7 +62,7 @@ describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -86,7 +78,7 @@ describe('SCEN-285: userId、targetDate、detectionDateTimeの形式が不正な
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(

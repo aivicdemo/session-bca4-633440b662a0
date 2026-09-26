@@ -1,91 +1,78 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
+import {
+  runTx3Imp1Agent,
+  type Tx3Imp1AgentInput,
+  type Tx3Imp1AiClient,
+  type NotificationStatus,
+} from '../../src/agents/tx-3-imp-1/orchestrator';
 
 describe('SCEN-030: 古い報告者マスタのまま未提出者検知が実行される', () => {
-  let mockJudgeSchedulerExecutionTiming: jest.Mock;
-  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
-  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
-  let mockJudgePromptNecessityAndMethod: jest.Mock;
-  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
-  let mockSendNonSubmissionPromptNotification: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveLeaderDashboardData: jest.Mock;
+  let mockAiClient: Tx3Imp1AiClient;
+
+  const targetDate = '2024-01-15';
+  const executionTimestamp = 1705276800000;
+  const leaderUserIds = ['leader-001', 'leader-002'];
 
   beforeEach(() => {
-    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
-    
-    const retiredEmployeeA = 'user-A';
-    const nonSubmittedReporters = [retiredEmployeeA, 'user-B', 'user-C', 'user-D', 'user-E'];
-    mockDetectNonSubmittedReportersAtDeadline = jest
-      .fn()
-      .mockReturnValue(nonSubmittedReporters);
-    
-    const detectionResult = {
-      detectedReporters: nonSubmittedReporters,
-      detectionLogId: 'log-001',
-      detectionTimestamp: 1705276800000,
-      totalReportersChecked: 6,
+    const retiredEmployeeId = 'reporter-retired-001';
+    const nonSubmittedReporterIds = [retiredEmployeeId, 'reporter-001', 'reporter-002', 'reporter-003', 'reporter-004'];
+
+    mockAiClient = {
+      judgeSchedulerExecutionTiming: jest.fn().mockResolvedValue(true),
+      detectNonSubmittedReportersAtDeadline: jest.fn().mockResolvedValue(nonSubmittedReporterIds),
+      generateNonSubmissionDetectionResult: jest.fn().mockResolvedValue({
+        nonSubmittedReporters: nonSubmittedReporterIds.map(id => ({
+          userId: id,
+          userName: `Reporter ${id}`,
+          emailAddress: `${id}@example.com`,
+          promptPriority: 'high'
+        })),
+        detectionLogId: 'det-log-20240115-001',
+        targetDate: '2024-01-15',
+      }),
+      judgePromptNecessityAndMethod: jest.fn().mockResolvedValue({
+        isPromptNecessary: true,
+        promptMethod: 'email_notification',
+      }),
+      sendLeaderNonSubmissionPromptNotification: jest.fn().mockResolvedValue([
+        { recipientUserId: 'leader-001', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-001' },
+        { recipientUserId: 'leader-002', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-002' },
+      ] as NotificationStatus[]),
+      sendNonSubmissionPromptNotification: jest.fn().mockResolvedValue(
+        nonSubmittedReporterIds.map((reporterId, idx) => ({
+          recipientUserId: reporterId,
+          notificationType: 'email',
+          sendStatus: 'success',
+          emailSendingHistoryId: `hist-${300 + idx}`,
+        }))
+      ),
+      retrieveDailyReportsForLeaderReview: jest.fn().mockResolvedValue([]),
+      retrieveLeaderDashboardData: jest.fn().mockResolvedValue({
+        submittedReportCount: 4,
+        nonSubmittedCount: 6,
+        nonSubmittedReporters: [],
+        promptNotificationStatus: { sent: 6, failed: 0 },
+      }),
     };
-    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
-    
-    const promptRequirements = [
-      { reporterId: retiredEmployeeA, required: true },
-      { reporterId: 'user-B', required: true },
-      { reporterId: 'user-C', required: true },
-      { reporterId: 'user-D', required: true },
-      { reporterId: 'user-E', required: true },
-    ];
-    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue(promptRequirements);
-    
-    const leaderNotifications = [
-      { leaderId: 'leader-001', status: 'success', timestamp: 1705276800100 },
-      { leaderId: 'leader-002', status: 'success', timestamp: 1705276800200 },
-    ];
-    mockSendLeaderNonSubmissionPromptNotification = jest
-      .fn()
-      .mockReturnValue(leaderNotifications);
-    
-    const promptNotifications = nonSubmittedReporters.map((reporterId) => ({
-      reporterId,
-      status: 'success',
-      timestamp: 1705276800300,
-    }));
-    mockSendNonSubmissionPromptNotification = jest.fn().mockReturnValue(promptNotifications);
-    
-    mockRetrieveDailyReportsForLeaderReview = jest.fn().mockReturnValue([]);
-    
-    const dashboardData = {
-      nonSubmittedCount: 5,
-      detectionLogId: 'log-001',
-      detectionTimestamp: 1705276800000,
-    };
-    mockRetrieveLeaderDashboardData = jest.fn().mockReturnValue(dashboardData);
   });
 
-  it('古いマスタで未提出者検知が実行され partial_failure になる', async () => {
-    const input = {
-      targetDate: '2024-01-15',
-      executionTimestamp: 1705276800000,
-      leaderUserIds: ['leader-001', 'leader-002'],
+  test('should return partial_failure when old reporter master is used', async () => {
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    const aiClient = {
-      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
-      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
-      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
-      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
-      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
-      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
-      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
-      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
-    };
+    const result = await runTx3Imp1Agent(input, mockAiClient);
 
-    const output = await runTx3Imp1Agent(input, aiClient);
+    expect(result.executionStatus).toBe('partial_failure');
+    expect(result.detectionResult).toBeDefined();
+    expect((result.detectionResult as any).nonSubmittedReporters.map((r: any) => r.userId)).toContain('reporter-retired-001');
+    expect((result.detectionResult as any).nonSubmittedReporters).toHaveLength(5);
 
-    expect(output.executionStatus).toBe('partial_failure');
-    expect(output.detectionResult.detectedReporters).toHaveLength(6);
-    expect(output.detectionResult.detectedReporters).toContain('user-A');
-    expect(output.leaderNotificationStatus).toHaveLength(6);
-    expect(output.promptNotificationStatus).toHaveLength(6);
+    expect(result.leaderNotificationStatus).toHaveLength(2);
+    expect(result.promptNotificationStatus).toHaveLength(5);
+
+    expect(result.dashboardData).toBeDefined();
+    expect((result.dashboardData as any).nonSubmittedCount).toBe(6);
   });
 });

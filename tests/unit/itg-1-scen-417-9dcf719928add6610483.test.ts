@@ -1,44 +1,42 @@
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeLeaderAccess: jest.fn(),
-}));
-jest.mock('../../src/logic/user-information-input-confirmation', () => ({
-  buildUserInformationConfirmationStatusList: jest.fn(),
-}));
-
+import type { RetrieveUserInformationConfirmationStatusInput } from '../../src/logic/user-information-input-confirmation';
 import {
   retrieveUserInformationConfirmationStatus,
-  buildUserInformationConfirmationStatusList,
   DataRetrievalError,
 } from '../../src/logic/user-information-input-confirmation';
-import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
 
-const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.Mock;
-const mockedBuildUserInformationConfirmationStatusList = buildUserInformationConfirmationStatusList as jest.Mock;
+jest.mock('../../src/logic/user-authentication-authorization');
+jest.mock('../../src/logic/user-information-input-confirmation', () => {
+  const actualModule = jest.requireActual('../../src/logic/user-information-input-confirmation');
+  return {
+    ...actualModule,
+    buildUserInformationConfirmationStatusList: jest.fn(),
+  };
+});
 
-describe('SCEN-417: DataRetrievalError when system failure occurs during status retrieval', () => {
+describe('SCEN-417: ユーザー情報確認状態の取得処理がシステム障害で失敗した場合、DataRetrievalErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw DataRetrievalError with correct message when system failure occurs', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+  it('should throw DataRetrievalError with correct message when system failure occurs', () => {
+    const mockAuthenticateAndAuthorizeLeaderAccess = userAuthModule.authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
+
+    mockAuthenticateAndAuthorizeLeaderAccess.mockReturnValue({
       authorized: true,
     });
-    mockedBuildUserInformationConfirmationStatusList.mockRejectedValue(
-      new DataRetrievalError('ユーザー情報確認状態の取得に失敗しました。')
-    );
 
-    const input = {
+    const input: RetrieveUserInformationConfirmationStatusInput = {
       leaderUserId: 'leader-001',
-      retrievalTimestamp: new Date(),
+      retrievalTimestamp: new Date('2026-09-25T10:00:00Z'),
     };
 
-    try {
-      await retrieveUserInformationConfirmationStatus(input);
-      fail('Should have thrown DataRetrievalError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(DataRetrievalError);
-      expect((error as Error).message).toBe('ユーザー情報確認状態の取得に失敗しました。');
-    }
+    expect(() => {
+      retrieveUserInformationConfirmationStatus(input);
+    }).toThrow(DataRetrievalError);
+
+    expect(() => {
+      retrieveUserInformationConfirmationStatus(input);
+    }).toThrow('ユーザー情報確認状態の取得に失敗しました。');
   });
 });

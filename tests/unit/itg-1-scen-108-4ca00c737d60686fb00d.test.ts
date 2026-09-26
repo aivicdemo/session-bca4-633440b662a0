@@ -1,48 +1,33 @@
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserAccountActiveStatus: jest.fn(),
-  validateUserHasLeaderRole: jest.fn(),
-}));
-
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   authenticateAndAuthorizeLeaderAccess,
   validateUserAccountActiveStatus,
   validateUserHasLeaderRole,
   InsufficientPermissionError,
-  type AuthenticateLeaderAccessInput,
 } from '../../src/logic/user-authentication-authorization';
 
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
-const mockedValidateUserHasLeaderRole = validateUserHasLeaderRole as jest.Mock;
-
 describe('SCEN-108: ログイン済みだがリーダー権限を持たないユーザーがアクセスを試みると、InsufficientPermissionError が発生する', () => {
-  const userId = 'user-002';
-  const isAuthenticated = true;
-
   beforeEach(() => {
-    jest.resetAllMocks();
-
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
-      isAccountActive: true,
-      userId,
-    });
-
-    mockedValidateUserHasLeaderRole.mockResolvedValue({
-      hasLeaderRole: false,
-    });
+    jest.clearAllMocks();
   });
 
-  it('InsufficientPermissionError が発生し、エラー文言が「管理画面へのアクセス権限がありません。」である', async () => {
-    const input: AuthenticateLeaderAccessInput = {
-      userId,
-      isAuthenticated,
-    };
+  it('ログイン済みだがリーダー権限を持たないユーザーがアクセスを試みると、InsufficientPermissionError が発生する', async () => {
+    jest.mocked(validateUserAccountActiveStatus as any).mockResolvedValue({
+      isActive: true,
+      userId: 'user-002',
+    });
 
-    try {
-      await authenticateAndAuthorizeLeaderAccess(input);
-      fail('InsufficientPermissionError should have been thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(InsufficientPermissionError);
-      expect((error as Error).message).toBe('管理画面へのアクセス権限がありません。');
-    }
+    jest.mocked(validateUserHasLeaderRole as any).mockResolvedValue({
+      hasLeaderRole: false,
+      userId: 'user-002',
+    });
+
+    await expect(
+      authenticateAndAuthorizeLeaderAccess({ userId: 'user-002', isAuthenticated: true })
+    ).rejects.toThrow(InsufficientPermissionError);
+
+    await expect(
+      authenticateAndAuthorizeLeaderAccess({ userId: 'user-002', isAuthenticated: true })
+    ).rejects.toThrow('管理画面へのアクセス権限がありません。');
   });
 });

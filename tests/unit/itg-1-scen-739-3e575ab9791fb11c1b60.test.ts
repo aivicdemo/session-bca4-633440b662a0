@@ -5,7 +5,6 @@ import {
   GetActiveReportersForSubmissionCheckInput,
   GetActiveReportersForSubmissionCheckOutput,
 } from '../../src/logic/reporter-master-management';
-import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-739: 営業日の定時にスケジューラが実行され、アクティブな報告者へリマインダーが送信され、検知ログが記録される', () => {
   let targetDate: Date;
@@ -18,8 +17,6 @@ describe('SCEN-739: 営業日の定時にスケジューラが実行され、ア
   });
 
   it('本日を営業日とした日付でアクティブな報告者一覧を取得できる', async () => {
-    jest.spyOn(businessDayModule, 'isBusinessDay').mockResolvedValue(true);
-
     const input: GetActiveReportersForSubmissionCheckInput = {
       targetDate,
       teamLeaderId,
@@ -35,8 +32,10 @@ describe('SCEN-739: 営業日の定時にスケジューラが実行され、ア
     expect(Array.isArray(result.reporters)).toBe(true);
     result.reporters.forEach((reporter: ActiveReporterInfo) => {
       expect(reporter).toHaveProperty('reporterId');
-      expect(reporter).toHaveProperty('name');
-      expect(reporter).toHaveProperty('email');
+      expect(reporter).toHaveProperty('userId');
+      expect(reporter).toHaveProperty('reporterName');
+      expect(reporter).toHaveProperty('emailAddress');
+      expect(reporter).toHaveProperty('department');
       expect(reporter).toHaveProperty('status');
     });
 

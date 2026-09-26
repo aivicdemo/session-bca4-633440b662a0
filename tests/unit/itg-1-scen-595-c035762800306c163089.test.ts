@@ -5,6 +5,7 @@ jest.mock('../../src/logic/user-master-persistence', () => ({
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
+  RetrieveEmailSendingHistoryDetailsInput,
 } from '../../src/logic/daily-report-management-view';
 import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
 
@@ -21,18 +22,30 @@ describe('SCEN-595: 次ページが存在しない最終ページの場合、has
     const pageSize = 10;
 
     const mockHistoryRecords = Array.from({ length: 95 }, (_, i) => ({
-      historyId: `EH-${String(i + 1).padStart(3, '0')}`,
-      recipientId: `USER-${String((i % 5) + 1).padStart(3, '0')}`,
-      recipientEmail: `user${(i % 5) + 1}@company.com`,
-      emailType: 'daily_report_submission',
-      sentTime: `2024-01-${String(Math.floor(i / 30) + 1).padStart(2, '0')}T09:30:00Z`,
-      sendingStatus: 'success',
+      emailSendingHistoryId: `EH-${String(i + 1).padStart(3, '0')}`,
+      userId: `USER-${String((i % 5) + 1).padStart(3, '0')}`,
+      emailType: 'daily_report_submission' as const,
+      recipientEmailAddress: `user${(i % 5) + 1}@company.com`,
+      subject: `Daily Report ${i + 1}`,
+      body: 'Report submission confirmation',
+      sentDateTime: new Date(`2024-01-${String(Math.floor(i / 30) + 1).padStart(2, '0')}T09:30:00Z`),
+      sendingStatus: 'success' as const,
       errorMessage: null,
+      relatedDailyReportId: null,
+      relatedReminderSettingId: null,
+      resendFlag: false,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
     }));
 
-    (retrieveEmailSendingHistoryByDateRange as jest.Mock).mockResolvedValue(mockHistoryRecords);
+    (retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>).mockResolvedValue({
+      success: true,
+      emailSendingHistories: mockHistoryRecords,
+      totalCount: 95,
+      pageNumber: 10,
+      pageSize: 10,
+    });
 
-    const result = await retrieveEmailSendingHistoryDetails({
+    const input: RetrieveEmailSendingHistoryDetailsInput = {
       leaderId,
       startDate,
       endDate,
@@ -41,7 +54,9 @@ describe('SCEN-595: 次ページが存在しない最終ページの場合、has
       recipientEmail: null,
       pageNumber,
       pageSize,
-    });
+    };
+
+    const result = await retrieveEmailSendingHistoryDetails(input);
 
     expect(result.emailHistoryList).toHaveLength(5);
     expect(result.totalCount).toBe(95);

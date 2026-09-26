@@ -1,42 +1,71 @@
 import { test, expect } from '@playwright/test';
 
-test('SCEN-665: 検知ログ画面で、リマインダーメール送信済みの未提出者に「リマインダー送信済み」ステータスが表示される', async ({ page }) => {
-  // ステップ1: 管理者として日報確認・管理画面にログイン
-  await page.goto('./panels/scr-1790147095974.html');
+/**
+ * SCEN-665: 検知ログ確認
+ * 検知ログ画面で、リマインダーメール送信済みの未提出者に
+ * 「リマインダー送信済み」ステータスが表示される
+ */
+test('リマインダーメール送信済みの未提出者に「リマインダー送信済み」ステータスが表示される', async ({ page }) => {
+  // 1. 管理者として日報確認・管理画面にログインする
+  await page.goto('/');
+  await page.fill('input[type="text"]', 'admin_yamada');
+  await page.fill('input[type="password"]', 'password');
+  await page.click('button:has-text("ログイン")');
 
-  // ステップ2: 日報確認・管理画面の未提出者一覧から、リマインダーメール送信済みのユーザーを特定
-  // ステップ3: 検知ログセクションに遷移
-  await page.click('.rm-tab[data-tab="log"]');
-  await page.waitForSelector('#rm-log-tbody');
+  await page.waitForLoadState('networkidle');
 
-  // ステップ4-5: 検索条件またはフィルタでリマインダーメール送信記録を検索
-  const logRows = await page.locator('#rm-log-tbody tr');
-  let foundSentReminder = false;
+  // 2. 日報確認・管理画面の未提出者一覧から、
+  // リマインダーメール送信済みのユーザーを特定する
+  const reminderTab = page.locator('.rm-tab').filter({ hasText: '未提出者' });
+  await reminderTab.click();
 
-  // 期待結果: リマインダーメール送信記録が表示
-  const rowCount = await logRows.count();
-  expect(rowCount).toBeGreaterThan(0);
+  await page.waitForLoadState('networkidle');
+
+  const reminderTable = page.locator('#rm-missing-tbody');
+  await expect(reminderTable).toBeVisible();
+
+  // 3. 日報確認・管理画面内の「検知ログ」または「メール送信履歴」セクションに遷移する
+  const logTab = page.locator('.rm-tab').filter({ hasText: '検知ログ' });
+  await logTab.click();
+
+  await page.waitForLoadState('networkidle');
+
+  // 4. 検索条件またはフィルタで、手順2で特定したユーザーの
+  // リマインダーメール送信記録を検索する
+  const logTable = page.locator('.rm-table');
+  await expect(logTable).toBeVisible();
+
+  // 5. 該当ユーザーの送信記録行を画面上で確認する
+  const rows = logTable.locator('tbody tr');
+  const rowCount = await rows.count();
+
+  let reminderSentFound = false;
 
   for (let i = 0; i < rowCount; i++) {
-    const row = logRows.nth(i);
-    const cells = await row.locator('td').allTextContents();
-    
-    // リマインダー送信済みの状態を確認
-    if (cells[3] === '送信済み') {
-      foundSentReminder = true;
-      
-      // ステータス列に「リマインダー送信済み」が表示
-      expect(['送信済み', '未送信']).toContain(cells[3]);
-      
-      // 送信日時、送信先、送信種別が表示される
-      expect(cells[2]).toBeTruthy(); // 検知日時
-      expect(cells[0]).toBeTruthy(); // 報告者名
+    const row = rows.nth(i);
+    const cells = row.locator('td');
+
+    // リマインダー送信済みを示す列を確認
+    const reminderStatusCell = cells.nth(3);
+    const reminderStatus = await reminderStatusCell.textContent();
+
+    if (reminderStatus?.includes('送信済み')) {
+      reminderSentFound = true;
+
+      // ステータス列に「リマインダー送信済み」と表示されていることを確認
+      expect(reminderStatus).toContain('送信済み');
+
+      // 送信日時、送信先メールアドレス、送信種別（リマインダー）が画面に表示される
+      const reporterName = await cells.nth(0).textContent();
+      const detectedAt = await cells.nth(2).textContent();
+
+      expect(reporterName).toBeTruthy();
+      expect(detectedAt).toMatch(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
+
       break;
     }
   }
 
-  // 送信済みのレコードが存在する場合、ステータスが表示される
-  if (foundSentReminder) {
-    expect(foundSentReminder).toBe(true);
-  }
+  // リマインダー送信済みの記録が検索結果に表示されていることを確認
+  expect(reminderSentFound).toBe(true);
 });

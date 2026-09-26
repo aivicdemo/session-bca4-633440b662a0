@@ -14,7 +14,7 @@ describe('SCEN-288: 報告者IDが空または存在しない場合、エラー�
     jest.clearAllMocks();
   });
 
-  it('userId が空文字列の場合、InvalidNonSubmitterInput エラーがスローされる', async () => {
+  it('報告者IDが空文字列である入力でジャッジ処理を実行すると、InvalidNonSubmitterInputエラーが発生し、エラー文言が正しい', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: '',
       targetDate: '2024-01-15',
@@ -22,11 +22,18 @@ describe('SCEN-288: 報告者IDが空または存在しない場合、エラー�
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
-      '未提出者情報の必須項目が不足しているか形式が不正です。'
-    );
+
+    try {
+      await judgePromptNecessityAndMethod(input);
+    } catch (error) {
+      if (error instanceof InvalidNonSubmitterInput) {
+        expect(error.message).toBe('未提出者情報の必須項目が不足しているか形式が不正です。');
+      } else {
+        throw error;
+      }
+    }
   });
 });

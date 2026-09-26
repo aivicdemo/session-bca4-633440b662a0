@@ -1,57 +1,44 @@
-import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
-import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
-import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
-import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
-import {
-  sendLeaderNonSubmissionPromptNotification,
-  sendLeaderSubmissionNotification,
-} from "../../src/logic/daily-report-reminder-notification";
-import { retrieveLeaderDashboardData } from "../../src/logic/daily-report-management-view";
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock("../../src/logic/business-day-deadline-judgment");
-jest.mock("../../src/logic/daily-report-non-submission-detection");
-jest.mock("../../src/logic/non-submission-prompt-decision");
-jest.mock("../../src/logic/daily-report-reminder-notification");
-jest.mock("../../src/logic/daily-report-management-view");
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
 
-describe("SCEN-017: 提出期限に達していない対象日付で実行した場合、SubmissionDeadlineNotReachedエラーで拒否される", () => {
-  const targetDate = "2025-01-15";
-  const executionTimestamp = 1736913600000; // 日報提出期限より前のUnixタイムスタンプ（ミリ秒）
-  const leaderUserIds = ["leader-001"];
+import { runTx2Imp1Agent, type Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/orchestrator';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+
+class SubmissionDeadlineNotReached extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SubmissionDeadlineNotReached';
+  }
+}
+
+describe('SCEN-017: 提出期限に達していない対象日付で実行した場合', () => {
+  const targetDate = '2025-01-15';
+  const executionTimestamp = 1673779200000;
+  const leaderUserIds = ['leader-001'];
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    const error = new Error("日報提出期限に達していないため、監視を実行できません。");
-    (error as any).name = "SubmissionDeadlineNotReached";
-    (judgeSchedulerExecutionTiming as jest.Mock).mockRejectedValue(error);
+    jest.resetAllMocks();
   });
 
-  it("SubmissionDeadlineNotReachedエラーを発生させ、以降の処理を一切実行しない", async () => {
-    const input = {
-      targetDate,
-      executionTimestamp,
-      leaderUserIds,
-    };
-
-    let thrown: unknown;
-    const mockAiClient = {};
-    try {
-      await runTx2Imp1Agent(input, mockAiClient);
-    } catch (error) {
-      thrown = error;
-    }
-
-    expect(thrown).toBeDefined();
-    expect((thrown as any).name).toBe("SubmissionDeadlineNotReached");
-    expect((thrown as Error).message).toBe(
-      "日報提出期限に達していないため、監視を実行できません。"
+  it('SubmissionDeadlineNotReachedエラーで拒否される', async () => {
+    mockedJudgeSchedulerExecutionTiming.mockRejectedValue(
+      new SubmissionDeadlineNotReached('日報提出期限に達していないため、監視を実行できません。')
     );
 
-    expect(detectNonSubmittedReportersAtDeadline).not.toHaveBeenCalled();
-    expect(judgePromptNecessityAndMethod).not.toHaveBeenCalled();
-    expect(sendLeaderNonSubmissionPromptNotification).not.toHaveBeenCalled();
-    expect(sendLeaderSubmissionNotification).not.toHaveBeenCalled();
-    expect(retrieveLeaderDashboardData).not.toHaveBeenCalled();
+    const mockAiClient: Tx2Imp1AiClient = {};
+
+    await expect(
+      runTx2Imp1Agent(
+        { targetDate, executionTimestamp, leaderUserIds },
+        mockAiClient
+      )
+    ).rejects.toThrow(SubmissionDeadlineNotReached);
+
+    expect(mockedJudgeSchedulerExecutionTiming).toHaveBeenCalled();
   });
 });

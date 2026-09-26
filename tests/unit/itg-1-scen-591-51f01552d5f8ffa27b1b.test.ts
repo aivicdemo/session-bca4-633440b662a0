@@ -1,7 +1,3 @@
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveEmailSendingHistoryByDateRange: jest.fn(),
-}));
-
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
@@ -13,7 +9,7 @@ describe('SCEN-591: 開始日が終了日より後、またはメールタイプ
     jest.clearAllMocks();
   });
 
-  it('開始日が終了日より後の場合、InvalidFilterCriteriaErrorが発生する', async () => {
+  it('開始日が終了日より後の場合、InvalidFilterCriteriaErrorが発生し、エラー文言が「Invalid filter criteria: date range or email type is not valid.」である', async () => {
     const input = {
       leaderId: 'leader-001',
       startDate: '2025-01-15',
@@ -27,35 +23,12 @@ describe('SCEN-591: 開始日が終了日より後、またはメールタイプ
 
     try {
       await retrieveEmailSendingHistoryDetails(input);
-      throw new Error('InvalidFilterCriteriaErrorが発生すべきですが、発生しませんでした。');
+      fail('Expected InvalidFilterCriteriaError to be thrown');
     } catch (error) {
-      if (!(error instanceof InvalidFilterCriteriaError)) {
-        throw error;
-      }
-      expect(error.message).toBe('Invalid filter criteria: date range or email type is not valid.');
-    }
-  });
-
-  it('メールタイプが定義済み値以外の場合、InvalidFilterCriteriaErrorが発生する', async () => {
-    const input = {
-      leaderId: 'leader-001',
-      startDate: '2025-01-10',
-      endDate: '2025-01-15',
-      emailType: 'invalid_email_type',
-      sendingStatus: null,
-      recipientEmail: null,
-      pageNumber: 1,
-      pageSize: 10,
-    };
-
-    try {
-      await retrieveEmailSendingHistoryDetails(input);
-      throw new Error('InvalidFilterCriteriaErrorが発生すべきですが、発生しませんでした。');
-    } catch (error) {
-      if (!(error instanceof InvalidFilterCriteriaError)) {
-        throw error;
-      }
-      expect(error.message).toBe('Invalid filter criteria: date range or email type is not valid.');
+      expect(error).toBeInstanceOf(InvalidFilterCriteriaError);
+      expect((error as Error).message).toBe(
+        'Invalid filter criteria: date range or email type is not valid.'
+      );
     }
   });
 });

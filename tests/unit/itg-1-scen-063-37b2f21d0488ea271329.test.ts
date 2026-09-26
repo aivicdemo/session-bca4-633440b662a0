@@ -1,144 +1,182 @@
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-information-input-confirmation');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/email-notification-management');
-jest.mock('../../src/logic/daily-report-non-submission-detection');
-jest.mock('../../src/logic/daily-report-reminder-notification');
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  runTx6Imp1Agent,
+  type Tx6Imp1AiClient,
+  type Tx6Imp1AgentInput,
+  type Tx6Imp1AgentOutput,
+  UserInformationApprovalTimeoutError,
+} from '../../src/agents/tx-6-imp-1/orchestrator';
 
-import { runTx6Imp1Agent, Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
-import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
-import { validateUserInformationRequired, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { submitUserInformationForConfirmation, confirmAndApproveUserInformation } from '../../src/logic/user-information-input-confirmation';
-import { registerReporterToMaster } from '../../src/logic/user-master-persistence';
-import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
-import { sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
-
-interface Tx6Imp1AgentInput {
-  leaderUserId: string;
-  userInformationSubmissions: Array<{
+describe('SCEN-063: ユーザー情報の承認期限を超過した場合、処理が中断しUserInformationApprovalTimeoutErrorが発生する', () => {
+  let mockAiClient: Tx6Imp1AiClient;
+  let executionTimestamp: Date;
+  let targetDate: Date;
+  let leaderUserId: string;
+  let userInformationSubmissions: Array<{
     userId: string;
     userName: string;
     email: string;
     department: string;
     role: string;
   }>;
-  executionTimestamp: Date;
-  targetDate: Date;
-}
-
-describe('SCEN-063: ユーザー情報の承認期限を超過した場合、処理が中断しUserInformationApprovalTimeoutErrorが発生する', () => {
-  const leaderUserId = 'leader-001';
-  const executionTimestamp = new Date('2024-01-15T17:30:00Z');
-  const targetDate = new Date('2024-01-15');
-  const userInformationSubmissions = [
-    { userId: 'user-001', userName: 'Taro Yamada', email: 'taro@example.com', department: 'Sales', role: 'Staff' },
-    { userId: 'user-002', userName: 'Hanako Tanaka', email: 'hanako@example.com', department: 'Sales', role: 'Staff' },
-    { userId: 'user-003', userName: 'Jiro Suzuki', email: 'jiro@example.com', department: 'Marketing', role: 'Staff' },
-    { userId: 'user-004', userName: 'Sakura Ito', email: 'sakura@example.com', department: 'HR', role: 'Staff' },
-    { userId: 'user-005', userName: 'Yuki Nakamura', email: 'yuki@example.com', department: 'Finance', role: 'Staff' },
-  ];
-
-  const mockAiClient: Tx6Imp1AiClient = {};
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    leaderUserId = 'leader001';
+    executionTimestamp = new Date('2024-01-15T18:00:00+09:00');
+    targetDate = new Date('2024-01-15T00:00:00+09:00');
 
-    (authenticateAndAuthorizeLeaderAccess as jest.Mock).mockResolvedValue({
+    userInformationSubmissions = [
+      {
+        userId: 'user001',
+        userName: 'ユーザー1',
+        email: 'user001@example.com',
+        department: '営業部',
+        role: '営業',
+      },
+      {
+        userId: 'user002',
+        userName: 'ユーザー2',
+        email: 'user002@example.com',
+        department: '企画部',
+        role: '企画',
+      },
+      {
+        userId: 'user003',
+        userName: 'ユーザー3',
+        email: 'user003@example.com',
+        department: '開発部',
+        role: '開発',
+      },
+      {
+        userId: 'user004',
+        userName: 'ユーザー4',
+        email: 'user004@example.com',
+        department: '総務部',
+        role: '管理',
+      },
+      {
+        userId: 'user005',
+        userName: 'ユーザー5',
+        email: 'user005@example.com',
+        department: '営業部',
+        role: '営業',
+      },
+    ];
+
+    // authenticateAndAuthorizeLeaderAccess のスタブ
+    const authenticateStub = (jest.fn() as any).mockResolvedValue({
+      isAuthenticated: true,
       isAuthorized: true,
-      leaderUserId,
-      authenticationTimestamp: executionTimestamp,
+      userId: leaderUserId,
     });
 
-    (validateUserInformationRequired as jest.Mock).mockResolvedValue({
+    // validateUserInformationRequired のスタブ
+    const validateUserInfoStub = (jest.fn() as any).mockResolvedValue({
       isValid: true,
-      validationTimestamp: executionTimestamp,
-      invalidFields: [],
+      validationResults: {
+        requiredFieldsPresent: true,
+        formatValid: true,
+      },
     });
 
-    (detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
+    // detectDuplicateEmailAddress のスタブ
+    const detectDuplicateStub = (jest.fn() as any).mockResolvedValue({
       hasDuplicates: false,
-      duplicateEmails: [],
+      duplicates: [],
     });
 
-    (submitUserInformationForConfirmation as jest.Mock).mockResolvedValue({
-      success: true,
+    // submitUserInformationForConfirmation のスタブ
+    const submitUserInfoStub = (jest.fn() as any).mockResolvedValue({
       submissionId: 'submission-001',
-      submissionTimestamp: executionTimestamp,
+      submittedAt: executionTimestamp.toISOString(),
+      status: 'submitted',
     });
 
-    (confirmAndApproveUserInformation as jest.Mock).mockRejectedValue(
-      new Error('UserInformationApprovalTimeoutError: ユーザー情報の承認期限を超過しました。リーダーによる確認が必要です。')
-    );
-
-    (registerReporterToMaster as jest.Mock).mockResolvedValue({
-      success: true,
+    // confirmAndApproveUserInformation のスタブ - 承認期限超過を返す
+    const confirmAndApproveStub = (jest.fn() as any).mockResolvedValue({
+      isApproved: false,
+      approvalStatus: 'timeout',
+      timeoutReason: 'Approval deadline exceeded',
+      timedOutAt: executionTimestamp.toISOString(),
     });
 
-    (detectNonSubmittedReportersAtDeadline as jest.Mock).mockResolvedValue({
-      detectedCount: 0,
-    });
-
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockResolvedValue({
-      success: true,
-    });
+    mockAiClient = {
+      authenticateAndAuthorizeLeaderAccess: authenticateStub,
+      validateUserInformationRequired: validateUserInfoStub,
+      detectDuplicateEmailAddress: detectDuplicateStub,
+      submitUserInformationForConfirmation: submitUserInfoStub,
+      confirmAndApproveUserInformation: confirmAndApproveStub,
+      retrieveUserInformationConfirmationStatus: (jest.fn() as any).mockResolvedValue({
+        confirmed: false,
+        approvalStatus: 'timeout',
+      }),
+      registerReporter: jest.fn(),
+      updateReporter: jest.fn(),
+      deactivateReporter: jest.fn(),
+      sendApprovalNotification: jest.fn(),
+      detectNonSubmittedReportersAtDeadline: jest.fn(),
+      sendNonSubmissionPromptNotification: jest.fn(),
+    };
   });
 
-  it('承認期限を超過した場合、UserInformationApprovalTimeoutErrorが発生し処理が中断される', async () => {
-    const input = {
+  it('承認期限超過時に UserInformationApprovalTimeoutError が発生する', async () => {
+    const input: Tx6Imp1AgentInput = {
       leaderUserId,
       userInformationSubmissions,
       executionTimestamp,
       targetDate,
     };
 
-    let thrownError: Error | null = null;
+    await expect(runTx6Imp1Agent(input, mockAiClient)).rejects.toThrow(
+      UserInformationApprovalTimeoutError
+    );
+  });
+
+  it('エラーメッセージが正しい内容を含む', async () => {
+    const input: Tx6Imp1AgentInput = {
+      leaderUserId,
+      userInformationSubmissions,
+      executionTimestamp,
+      targetDate,
+    };
+
+    try {
+      await runTx6Imp1Agent(input, mockAiClient);
+      fail('UserInformationApprovalTimeoutError should have been thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(UserInformationApprovalTimeoutError);
+      expect((error as Error).message).toContain('承認期限を超過しました');
+      expect((error as Error).message).toContain('リーダーによる確認が必要です');
+    }
+  });
+
+  it('承認期限超過後の処理（reporterMasterUpdateResult等）は実行されない', async () => {
+    const registerReporterSpy = jest.fn();
+    const updateReporterSpy = jest.fn();
+    const detectNonSubmittedSpy = jest.fn();
+    const sendNonSubmissionSpy = jest.fn();
+
+    mockAiClient.registerReporter = registerReporterSpy;
+    mockAiClient.updateReporter = updateReporterSpy;
+    mockAiClient.detectNonSubmittedReportersAtDeadline = detectNonSubmittedSpy;
+    mockAiClient.sendNonSubmissionPromptNotification = sendNonSubmissionSpy;
+
+    const input: Tx6Imp1AgentInput = {
+      leaderUserId,
+      userInformationSubmissions,
+      executionTimestamp,
+      targetDate,
+    };
 
     try {
       await runTx6Imp1Agent(input, mockAiClient);
     } catch (error) {
-      thrownError = error as Error;
+      // エラーが発生することは期待通り
     }
 
-    expect(thrownError).not.toBeNull();
-    expect(thrownError?.message).toMatch(/UserInformationApprovalTimeoutError/);
-    expect(thrownError?.message).toMatch(/承認期限を超過しました/);
-    expect(thrownError?.message).toMatch(/リーダーによる確認が必要です/);
-
-    expect(authenticateAndAuthorizeLeaderAccess).toHaveBeenCalled();
-    expect(validateUserInformationRequired).toHaveBeenCalled();
-    expect(detectDuplicateEmailAddress).toHaveBeenCalled();
-    expect(submitUserInformationForConfirmation).toHaveBeenCalled();
-    expect(confirmAndApproveUserInformation).toHaveBeenCalled();
-
-    expect(registerReporterToMaster).not.toHaveBeenCalled();
-    expect(detectNonSubmittedReportersAtDeadline).not.toHaveBeenCalled();
-    expect(sendLeaderNonSubmissionPromptNotification).not.toHaveBeenCalled();
-  });
-
-  it('承認期限超過時に後続の処理が実行されないことを確認', async () => {
-    const input = {
-      leaderUserId,
-      userInformationSubmissions,
-      executionTimestamp,
-      targetDate,
-    };
-
-    try {
-      await runTx6Imp1Agent(input, mockAiClient);
-    } catch {
-      // エラーが発生することは期待される
-    }
-
-    const confirmAndApproveCall = (confirmAndApproveUserInformation as jest.Mock).mock.calls.length;
-    const reporterMasterUpdateCall = (registerReporterToMaster as jest.Mock).mock.calls.length;
-    const nonSubmissionDetectionCall = (detectNonSubmittedReportersAtDeadline as jest.Mock).mock.calls.length;
-    const promptNotificationCall = (sendLeaderNonSubmissionPromptNotification as jest.Mock).mock.calls.length;
-
-    expect(confirmAndApproveCall).toBeGreaterThan(0);
-    expect(reporterMasterUpdateCall).toBe(0);
-    expect(nonSubmissionDetectionCall).toBe(0);
-    expect(promptNotificationCall).toBe(0);
+    expect(registerReporterSpy).not.toHaveBeenCalled();
+    expect(updateReporterSpy).not.toHaveBeenCalled();
+    expect(detectNonSubmittedSpy).not.toHaveBeenCalled();
+    expect(sendNonSubmissionSpy).not.toHaveBeenCalled();
   });
 });

@@ -62,12 +62,20 @@ test('報告内容が空白のみの場合、送信が阻止されエラーメ�
 
   // 空白文字のみ（スペース、タブ）を入力する
   await textarea.fill('   \t  ');
-  await submitBtn.click({ force: true });
 
-  await expect(validation).toHaveText('報告内容は必須項目です');
+  // 送信ボタンをクリック
+  await submitBtn.click();
+
+  // エラーメッセージが表示される
+  await expect(validation).toContainText('報告内容は必須項目です');
+
+  // 成功メッセージは表示されない
   await expect(success).not.toBeVisible();
+
+  // 画面は入力画面のままである
   await expect(page).toHaveURL(/panels\/scr-1790147087109\.html/);
 
+  // メール送信は行われていない
   const mailAfter = await fetchTableRecords(request, config, 'メール送信履歴');
   expect(mailAfter.length).toBe(mailBefore.length);
 });

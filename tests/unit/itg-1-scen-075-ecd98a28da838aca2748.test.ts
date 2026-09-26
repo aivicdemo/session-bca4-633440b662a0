@@ -1,4 +1,4 @@
-import { runTx7Imp1Agent } from '../../src/agents/tx-7-imp-1/orchestrator';
+import { runTx7Imp1Agent, Tx7Imp1AgentInput, Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
 import {
   validateUserInformationRequired,
   detectDuplicateEmailAddress,
@@ -34,29 +34,30 @@ describe('SCEN-075: 同一ユーザーIDまたはメールアドレスで既に�
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (validateUserInformationRequired as jest.Mock).mockResolvedValue(true);
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue(true);
 
-    (detectDuplicateEmailAddress as jest.Mock)
+    (detectDuplicateEmailAddress as jest.MockedFunction<any>)
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
 
     const error = new Error('既に登録されている報告者です。');
     error.name = 'DuplicateReporterRegistration';
 
-    (registerReporterToMaster as jest.Mock)
+    (registerReporterToMaster as jest.MockedFunction<any>)
       .mockResolvedValueOnce({ success: true, userId: RECORD_1.userId })
       .mockRejectedValueOnce(error);
   });
 
   it('2件目の登録でDuplicateReporterRegistrationエラーが発生する', async () => {
     const executionTimestamp = new Date('2024-04-01T09:00:00+09:00');
+    const aiClient: Tx7Imp1AiClient = {} as any;
 
     const resultPromise = runTx7Imp1Agent(
       {
         personnelMovementData: [RECORD_1, RECORD_2],
         executionTimestamp,
-      },
-      {}
+      } as Tx7Imp1AgentInput,
+      aiClient
     );
 
     await expect(resultPromise).rejects.toThrow(

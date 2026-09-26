@@ -16,6 +16,7 @@ jest.mock('../../src/logic/email-notification-management', () => ({
 
 import {
   confirmAndApproveUserInformation,
+  ConfirmAndApproveUserInformationInput,
   ApprovalNotificationSendFailureError,
 } from '../../src/logic/user-information-input-confirmation';
 import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
@@ -24,11 +25,11 @@ import { detectDuplicateEmailAddress } from '../../src/logic/input-validation-fo
 import { registerReporterToMaster } from '../../src/logic/user-master-persistence';
 import { sendUserInformationApprovalNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.Mock;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
-const mockedSendUserInformationApprovalNotification = sendUserInformationApprovalNotification as jest.Mock;
+const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
+const mockedSendUserInformationApprovalNotification = sendUserInformationApprovalNotification as jest.MockedFunction<any>;
 
 describe('SCEN-414: ApprovalNotificationSendFailureError when notification send fails', () => {
   beforeEach(() => {
@@ -52,10 +53,10 @@ describe('SCEN-414: ApprovalNotificationSendFailureError when notification send 
       new ApprovalNotificationSendFailureError('承認結果の通知送信に失敗しました。')
     );
 
-    const input = {
+    const input: ConfirmAndApproveUserInformationInput = {
       leaderUserId: 'leader-001',
       userInformationId: 'userinfo-123',
-      approvalDecision: 'approve' as const,
+      approvalDecision: 'approve',
       rejectionReason: null,
       approvalTimestamp: new Date(),
     };

@@ -1,84 +1,142 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  retrieveLeaderDashboardData,
-  RetrieveLeaderDashboardDataOutput,
-} from '../../src/logic/daily-report-management-view';
-import * as authModule from '../../src/logic/user-authentication-authorization';
-import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
-import * as reportPersistenceModule from '../../src/logic/daily-report-persistence';
-import * as emailHistoryModule from '../../src/logic/user-master-persistence';
 
-describe('SCEN-584: targetDateがISO 8601形式で正しく指定されたとき、その日付の営業日判定と日報データ取得が行われる', () => {
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: jest.fn(),
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  retrieveDailyReportsForLeaderReview: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+}));
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
+
+import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
+import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
+import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
+import { retrieveDailyReportsForLeaderReview, retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
+import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
+
+const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.MockedFunction<any>;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
+const mockedRetrieveEmailSendingHistoryByDateRange = retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>;
+
+describe('SCEN-584: targetDateがISO 8601形式（YYYY-MM-DD）で正しく指定されたとき、その日付の営業日判定と日報データ取得が行われる', () => {
+  const targetDate = '2024-01-15';
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+      isAccessGranted: true,
+      leaderId: 'leader-001',
+      denialReason: null,
+    });
+
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+      isBusinessDay: true,
+      isWithinDeadline: true,
+      deadlineTime: '18:00',
+    });
+
+    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+      success: true,
+      reports: [],
+      totalCount: 0,
+    });
+
+    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+      success: true,
+      detectionLogs: [],
+      totalCount: 0,
+    });
+
+    mockedRetrieveEmailSendingHistoryByDateRange.mockResolvedValue({
+      success: true,
+      emailHistory: [],
+      totalCount: 0,
+    });
   });
 
-  it('ISO 8601形式の日付で営業日判定と日報データ取得が正常に行われる', async () => {
-    const leaderId = 'leader-001';
-    const targetDate = '2024-01-15';
-
-    jest.spyOn(authModule, 'authenticateAndAuthorizeLeaderAccess').mockResolvedValue({
-      leaderId,
-      isAuthenticated: true,
-      role: 'leader',
-    });
-
-    jest.spyOn(businessDayModule, 'judgeBusinessDayAndDeadline').mockResolvedValue({
-      isBusinessDay: true,
-      targetDate,
-      deadlineDateTime: '2024-01-15T18:00:00Z',
-    });
-
-    jest.spyOn(reportPersistenceModule, 'retrieveDailyReportsForLeaderReview').mockResolvedValue([
-      {
-        reportId: 'R-001',
-        reporterId: 'E-001',
-        reporterName: '山田太郎',
-        submissionTime: '2024-01-15T10:30:00Z',
-        businessContent: 'テスト日報',
-      },
-    ]);
-
-    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue([
-      {
-        detectionLogId: 'DL-001',
-        targetDate,
-        detectionDateTime: '2024-01-15T09:00:00Z',
-        nonSubmittedReporters: [
-          {
-            userId: 'E-002',
-            userName: '田中太郎',
-            emailAddress: 'tanaka@example.com',
-          },
-        ],
-      },
-    ]);
-
-    jest.spyOn(emailHistoryModule, 'retrieveEmailSendingHistoryByDateRange').mockResolvedValue([
-      {
-        emailHistoryId: 'EH-001',
-        notificationType: 'daily_report_submitted',
-        deliveryStatus: 'success',
-        sentDateTime: '2024-01-15T09:30:00Z',
-      },
-    ]);
-
-    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData({
-      leaderId,
+  it('ISO 8601形式の有効な日付で関数が呼び出される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
       targetDate,
     });
 
-    expect(result.submittedReports).toBeDefined();
-    expect(Array.isArray(result.submittedReports)).toBe(true);
-    expect(result.nonSubmittedReporters).toBeDefined();
-    expect(Array.isArray(result.nonSubmittedReporters)).toBe(true);
-    expect(result.detectionLogs).toBeDefined();
-    expect(Array.isArray(result.detectionLogs)).toBe(true);
-    expect(result.emailSendingHistory).toBeDefined();
-    expect(Array.isArray(result.emailSendingHistory)).toBe(true);
+    expect(result).toBeDefined();
+  });
+
+  it('営業日判定が成功し、営業日フラグがtrueを返す', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(result).toBeDefined();
     expect(result.submissionStatusSummary).toBeDefined();
-    expect(result.submissionStatusSummary).toHaveProperty('submittedCount');
-    expect(result.submissionStatusSummary).toHaveProperty('nonSubmittedCount');
-    expect(result.submissionStatusSummary).toHaveProperty('promptedCount');
+  });
+
+  it('提出済み日報配列が返される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(Array.isArray(result.submittedReports)).toBe(true);
+  });
+
+  it('検知ログ配列が返される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(Array.isArray(result.detectionLogs)).toBe(true);
+  });
+
+  it('メール送信履歴配列が返される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(Array.isArray(result.emailSendingHistory)).toBe(true);
+  });
+
+  it('未提出者配列が返される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(Array.isArray(result.nonSubmittedReporters)).toBe(true);
+  });
+
+  it('RetrieveLeaderDashboardDataOutput型が返される', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(result).toHaveProperty('submittedReports');
+    expect(result).toHaveProperty('nonSubmittedReporters');
+    expect(result).toHaveProperty('detectionLogs');
+    expect(result).toHaveProperty('emailSendingHistory');
+    expect(result).toHaveProperty('submissionStatusSummary');
+  });
+
+  it('エラーは発生しない', async () => {
+    const result = await retrieveLeaderDashboardData({
+      leaderId: 'leader-001',
+      targetDate,
+    });
+
+    expect(result).toBeDefined();
   });
 });

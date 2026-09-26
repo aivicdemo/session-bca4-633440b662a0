@@ -10,28 +10,23 @@ describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionL
     jest.clearAllMocks();
   });
 
-  it('存在しない検知ログIDを指定するとDetectionLogNotFoundエラーが発生する', async () => {
+  it('存在しない検知ログIDを指定するとDetectionLogNotFoundエラーが発生し、エラー文言が「検知ログが見つかりません。」である', async () => {
     const detectionLogId = 'nonexistent-log-id-999';
     const leaderId = 'leader-001';
 
-    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue([]);
+    // モック: 存在しない検知ログIDに対して空結果を返す
+    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate' as any).mockResolvedValue([] as any);
 
-    await expect(
-      retrieveNonSubmissionDetectionDetails({
-        detectionLogId,
-        leaderId,
-      })
-    ).rejects.toThrow(DetectionLogNotFound);
-
+    // DetectionLogNotFoundエラーが発生することを確認
     try {
       await retrieveNonSubmissionDetectionDetails({
         detectionLogId,
         leaderId,
       });
+      fail('Expected DetectionLogNotFound to be thrown');
     } catch (error) {
-      if (error instanceof DetectionLogNotFound) {
-        expect(error.message).toContain('検知ログが見つかりません');
-      }
+      expect(error).toBeInstanceOf(DetectionLogNotFound);
+      expect((error as Error).message).toBe('検知ログが見つかりません。');
     }
   });
 });

@@ -17,7 +17,7 @@ describe('SCEN-175: 期限超過の提出が翌営業日扱いに自動切り替
     };
 
     // 関数を呼び出す
-    const result: JudgeBusinessDayAndDeadlineOutput = await judgeBusinessDayAndDeadline(input);
+    const result = await judgeBusinessDayAndDeadline(input);
 
     // 期待される出力を検証
     expect(result.isAcceptable).toBe(false);

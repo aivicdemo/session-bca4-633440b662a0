@@ -23,13 +23,13 @@ import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadli
 import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
 import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedValidateDailyReportContent = validateDailyReportContent as jest.Mock;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedSaveDailyReport = saveDailyReport as jest.Mock;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.Mock;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.Mock;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
+const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-204: 業務内容が最大文字数を超過している場合、超過エラーが発生して提出が拒否される', () => {
   beforeEach(() => {

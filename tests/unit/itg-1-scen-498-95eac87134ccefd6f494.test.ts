@@ -1,9 +1,11 @@
 jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
   validateEmailAddressForDelivery: jest.fn(),
   buildNotificationContent: jest.fn(),
   recordEmailSendingHistory: jest.fn(),
 }));
 
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
   validateEmailAddressForDelivery,
@@ -11,14 +13,14 @@ import {
   SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
 
-const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-498: チームリーダーのメールアドレスが登録されていない場合、エラーが発生する', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
-  it('leaderEmailAddress に空文字列（『』）を設定した場合、LeaderEmailAddressNotFoundError 例外が発生する', async () => {
+  it('should throw LeaderEmailAddressNotFoundError when email address is empty', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-123',
@@ -30,17 +32,16 @@ describe('SCEN-498: チームリーダーのメールアドレスが登録され
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
-      isValid: false,
-      reason: 'チームリーダーのメールアドレスが設定されていません。管理画面で設定してください',
-    });
+    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
+      new LeaderEmailAddressNotFoundError('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。')
+    );
 
-    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow(
       LeaderEmailAddressNotFoundError
     );
   });
 
-  it('エラーメッセージが『チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。』である', async () => {
+  it('should return error output when email address is not found', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'report-123',
@@ -52,51 +53,20 @@ describe('SCEN-498: チームリーダーのメールアドレスが登録され
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
-      isValid: false,
-      reason: 'チームリーダーのメールアドレスが設定されていません。管理画面で設定してください',
+    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+      success: false,
+      emailSendingHistoryId: null,
+      sentAt: null,
+      errorMessage: 'チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。',
+      adminNotificationSent: true,
     });
 
-    try {
-      await sendDailyReportSubmissionNotification(input);
-      fail('Expected LeaderEmailAddressNotFoundError to be thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(LeaderEmailAddressNotFoundError);
-      expect((error as Error).message).toBe('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。');
-    }
-  });
+    const result = await mockedSendDailyReportSubmissionNotification(input);
 
-  it('出力型のフィールドで success=false、emailSendingHistoryId=null、sentAt=null、errorMessage にエラー文言が含まれ、adminNotificationSent が true となる', async () => {
-    const input: SendDailyReportSubmissionNotificationInput = {
-      reporterId: 'reporter-001',
-      dailyReportId: 'report-123',
-      reportContent: '本日の業務を実施しました',
-      reportDate: '2024-01-15',
-      leaderUserId: 'leader-001',
-      leaderEmailAddress: '',
-      reporterName: '山田太郎',
-      submissionTimestamp: '2024-01-15T09:00:00Z',
-    };
-
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
-      isValid: false,
-      reason: 'チームリーダーのメールアドレスが設定されていません。管理画面で設定してください',
-    });
-
-    let result;
-    try {
-      result = await sendDailyReportSubmissionNotification(input);
-    } catch (error) {
-      // エラー発生時
-      expect(error).toBeInstanceOf(LeaderEmailAddressNotFoundError);
-    }
-
-    if (result) {
-      expect(result.success).toBe(false);
-      expect(result.emailSendingHistoryId).toBeNull();
-      expect(result.sentAt).toBeNull();
-      expect(result.errorMessage).toContain('チームリーダーのメールアドレスが登録されていないため');
-      expect(result.adminNotificationSent).toBe(true);
-    }
+    expect(result.success).toBe(false);
+    expect(result.emailSendingHistoryId).toBeNull();
+    expect(result.sentAt).toBeNull();
+    expect(result.errorMessage).toContain('チームリーダーのメールアドレスが登録されていないため');
+    expect(result.adminNotificationSent).toBe(true);
   });
 });

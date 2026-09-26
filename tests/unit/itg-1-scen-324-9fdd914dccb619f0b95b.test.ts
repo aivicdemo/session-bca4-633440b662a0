@@ -3,29 +3,25 @@ import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
-  InvalidSettingParametersError,
 } from '../../src/logic/daily-report-reminder-notification';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+import {
+  retrieveReminderNotificationSettingsByUserId,
+  saveReminderNotificationSettings,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
+const mockedRetrieve = retrieveReminderNotificationSettingsByUserId as jest.MockedFunction<any>;
+const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
+
 describe('SCEN-324: 送信方法が定義済みの値でない場合、入力値エラーが返される', () => {
+  const now = new Date();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('deliveryMethod="invalid-method"（定義済み値の範囲外）で呼び出すとInvalidSettingParametersErrorが返される', () => {
-    const mockRetrieve = jest.spyOn(
-      userMasterPersistence,
-      'retrieveReminderNotificationSettingsByUserId' as any
-    );
-    mockRetrieve.mockReturnValue([]);
-
-    const mockSave = jest.spyOn(
-      userMasterPersistence,
-      'saveReminderNotificationSettings' as any
-    );
-
+  it('deliveryMethod="invalid-method"（定義済み値の範囲外）で呼び出すとInvalidSettingParametersErrorが返される', async () => {
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
       reporterId: 'reporter-001',
@@ -34,18 +30,17 @@ describe('SCEN-324: 送信方法が定義済みの値でない場合、入力値
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 3, 5],
       deliveryMethod: 'invalid-method',
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: now,
     };
 
-    const result: ManageReminderNotificationSettingsOutput =
-      manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
-    expect(result.reminderSettingId).toBe(null);
+    expect(result.reminderSettingId).toBeNull();
     expect(result.operation).toBe('register');
-    expect(result.appliedAt).toBe(null);
+    expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('リマインダー設定のパラメータが無効です。');
-    expect(mockRetrieve).not.toHaveBeenCalled();
-    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockedRetrieve).not.toHaveBeenCalled();
+    expect(mockedSave).not.toHaveBeenCalled();
   });
 });

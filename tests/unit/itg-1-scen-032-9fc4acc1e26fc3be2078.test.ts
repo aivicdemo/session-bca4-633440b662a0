@@ -1,81 +1,74 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
+import {
+  runTx3Imp1Agent,
+  type Tx3Imp1AgentInput,
+  type Tx3Imp1AiClient,
+  type NotificationStatus,
+  DetectionLogRecordingFailure,
+} from '../../src/agents/tx-3-imp-1/orchestrator';
 
-describe('SCEN-032: DetectionLogRecordingFailure エラー発生', () => {
-  let mockJudgeSchedulerExecutionTiming: jest.Mock;
-  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
-  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
-  let mockJudgePromptNecessityAndMethod: jest.Mock;
-  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
-  let mockSendNonSubmissionPromptNotification: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveLeaderDashboardData: jest.Mock;
+describe('SCEN-032: 未提出者検知ログの記録に失敗し、DetectionLogRecordingFailureが発生する', () => {
+  let mockAiClient: Tx3Imp1AiClient;
+
+  const targetDate = '2024-01-15';
+  const executionTimestamp = 1705276800000;
+  const leaderUserIds = ['leader-001', 'leader-002'];
 
   beforeEach(() => {
-    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
-    mockDetectNonSubmittedReportersAtDeadline = jest
-      .fn()
-      .mockReturnValue(['user-001', 'user-002', 'user-003', 'user-004', 'user-005']);
-    
-    const detectionResult = {
-      detectedReporters: ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'],
-      detectionLogId: 'det-log-20240115-001',
-      detectionTimestamp: 1705276800000,
+    const nonSubmittedReporterIds = ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'];
+
+    mockAiClient = {
+      judgeSchedulerExecutionTiming: jest.fn().mockResolvedValue(true),
+      detectNonSubmittedReportersAtDeadline: jest.fn().mockResolvedValue(nonSubmittedReporterIds),
+      generateNonSubmissionDetectionResult: jest.fn().mockResolvedValue({
+        nonSubmittedReporters: nonSubmittedReporterIds.map(id => ({
+          userId: id,
+          userName: `User ${id}`,
+          emailAddress: `${id}@example.com`,
+          promptPriority: 'high'
+        })),
+        detectionLogId: 'det-log-20240115-001',
+        targetDate: '2024-01-15',
+      }),
+      judgePromptNecessityAndMethod: jest.fn().mockResolvedValue({
+        isPromptNecessary: true,
+        promptMethod: 'email_notification',
+      }),
+      sendLeaderNonSubmissionPromptNotification: jest.fn().mockResolvedValue([
+        { recipientUserId: 'leader-001', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-001' },
+        { recipientUserId: 'leader-002', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-002' },
+      ] as NotificationStatus[]),
+      sendNonSubmissionPromptNotification: jest.fn().mockRejectedValue(new DetectionLogRecordingFailure('検知ログの記録に失敗しました。')),
+      retrieveDailyReportsForLeaderReview: jest.fn(),
+      retrieveLeaderDashboardData: jest.fn(),
     };
-    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
-    
-    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue([
-      { reporterId: 'user-001', required: true },
-      { reporterId: 'user-002', required: true },
-      { reporterId: 'user-003', required: true },
-      { reporterId: 'user-004', required: true },
-      { reporterId: 'user-005', required: true },
-    ]);
-    
-    mockSendLeaderNonSubmissionPromptNotification = jest.fn().mockReturnValue([
-      { leaderId: 'leader-001', status: 'success', timestamp: 1705276800100 },
-      { leaderId: 'leader-002', status: 'success', timestamp: 1705276800200 },
-    ]);
-    
-    mockSendNonSubmissionPromptNotification = jest.fn().mockImplementation(() => {
-      const error = new Error('検知ログの記録に失敗しました。');
-      error.name = 'DetectionLogRecordingFailure';
-      throw error;
-    });
-    
-    mockRetrieveDailyReportsForLeaderReview = jest.fn();
-    mockRetrieveLeaderDashboardData = jest.fn();
   });
 
-  it('検知ログ記録失敗で DetectionLogRecordingFailure をスロー', async () => {
-    const input = {
-      targetDate: '2024-01-15',
-      executionTimestamp: 1705276800000,
-      leaderUserIds: ['leader-001', 'leader-002'],
+  test('should throw DetectionLogRecordingFailure when log recording fails', async () => {
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    const aiClient = {
-      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
-      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
-      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
-      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
-      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
-      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
-      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
-      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
+    await expect(runTx3Imp1Agent(input, mockAiClient)).rejects.toThrow(DetectionLogRecordingFailure);
+
+    expect(mockAiClient.retrieveDailyReportsForLeaderReview).not.toHaveBeenCalled();
+    expect(mockAiClient.retrieveLeaderDashboardData).not.toHaveBeenCalled();
+  });
+
+  test('should have correct error message', async () => {
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    let caughtError: Error | null = null;
     try {
-      await runTx3Imp1Agent(input, aiClient);
+      await runTx3Imp1Agent(input, mockAiClient);
+      throw new Error('Expected DetectionLogRecordingFailure to be thrown');
     } catch (error) {
-      caughtError = error as Error;
+      expect(error).toBeInstanceOf(DetectionLogRecordingFailure);
+      expect((error as Error).message).toBe('検知ログの記録に失敗しました。');
     }
-
-    expect(caughtError).not.toBeNull();
-    expect(caughtError?.name).toBe('DetectionLogRecordingFailure');
-    expect(caughtError?.message).toBe('検知ログの記録に失敗しました。');
-    expect(mockRetrieveDailyReportsForLeaderReview).not.toHaveBeenCalled();
-    expect(mockRetrieveLeaderDashboardData).not.toHaveBeenCalled();
   });
 });

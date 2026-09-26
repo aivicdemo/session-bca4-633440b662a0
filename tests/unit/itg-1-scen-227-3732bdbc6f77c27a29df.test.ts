@@ -1,82 +1,79 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
   SubmissionStatusCheckFailureError,
-  DetectionLogRecordingFailureError,
 } from '../../src/logic/daily-report-non-submission-detection';
-import {
-  judgeSchedulerExecutionTiming,
-} from '../../src/logic/business-day-deadline-judgment';
-import {
-  getActiveReportersForSubmissionCheck,
-} from '../../src/logic/reporter-master-management';
+
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import {
   checkDailyReportExistsForDate,
   retrieveNonSubmissionDetectionLogsByDate,
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
-
-describe('SCEN-227: 日報提出状況の確認に失敗した場合は検知を中止する', () => {
-  const mockJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<typeof judgeSchedulerExecutionTiming>;
-  const mockGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<typeof getActiveReportersForSubmissionCheck>;
-  const mockCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<typeof checkDailyReportExistsForDate>;
-  const mockRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<typeof retrieveNonSubmissionDetectionLogsByDate>;
-  const mockUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.MockedFunction<typeof updateNonSubmissionDetectionLogWithReminderStatus>;
-
+describe('SCEN-227: detectNonSubmittedReportersAtDeadline - Submission Status Check Failure', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('日報提出状況の確認処理がエラーをスローした場合、SubmissionStatusCheckFailureError をスローし、DetectionLogRecordingFailureError はスローしない', async () => {
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
+  it('should throw SubmissionStatusCheckFailureError when submission status check fails', async () => {
+    const activeReporters = [
+      {
+        userId: 'reporter-001',
+        userName: 'Reporter One',
+        emailAddress: 'reporter1@example.com',
+        departmentId: 'dept-001',
+      },
+      {
+        userId: 'reporter-002',
+        userName: 'Reporter Two',
+        emailAddress: 'reporter2@example.com',
+        departmentId: 'dept-001',
+      },
+      {
+        userId: 'reporter-003',
+        userName: 'Reporter Three',
+        emailAddress: 'reporter3@example.com',
+        departmentId: 'dept-001',
+      },
+    ];
+
+    // Mock judgeSchedulerExecutionTiming to return true
+    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+
+    // Mock getActiveReportersForSubmissionCheck to return 3 reporters
+    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue(activeReporters);
+
+    // Mock checkDailyReportExistsForDate to throw error
+    (checkDailyReportExistsForDate as jest.Mock).mockRejectedValue(
+      new Error('Database connection failed')
+    );
+
+    // Mock retrieveNonSubmissionDetectionLogsByDate to return empty array
+    (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue([]);
+
+    // Mock updateNonSubmissionDetectionLogWithReminderStatus to throw error
+    (updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock).mockRejectedValue(
+      new Error('Log update failed')
+    );
+
+    const input = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:05:00Z',
       submissionDeadlineTime: '17:00',
       teamId: 'team-001',
     };
 
-    mockJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      SubmissionStatusCheckFailureError
+    );
 
-    mockGetActiveReportersForSubmissionCheck.mockResolvedValue([
-      {
-        userId: 'USER-001',
-        userName: '太郎',
-        emailAddress: 'user1@example.com',
-        departmentId: 'DEPT-001',
-      },
-      {
-        userId: 'USER-002',
-        userName: '花子',
-        emailAddress: 'user2@example.com',
-        departmentId: 'DEPT-001',
-      },
-      {
-        userId: 'USER-003',
-        userName: '次郎',
-        emailAddress: 'user3@example.com',
-        departmentId: 'DEPT-002',
-      },
-    ]);
-
-    mockCheckDailyReportExistsForDate.mockRejectedValue(new Error('ネットワークタイムアウト'));
-
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-
-    mockUpdateNonSubmissionDetectionLogWithReminderStatus.mockRejectedValue(new Error('データベース接続失敗'));
-
-    let thrownError: unknown;
-    try {
-      await detectNonSubmittedReportersAtDeadline(input);
-    } catch (error) {
-      thrownError = error;
-    }
-
-    expect(thrownError).toBeInstanceOf(SubmissionStatusCheckFailureError);
-    expect((thrownError as Error).message).toContain('日報提出状況の確認に失敗しました。');
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      '日報提出状況の確認に失敗しました。'
+    );
   });
 });

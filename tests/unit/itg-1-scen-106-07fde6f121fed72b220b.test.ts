@@ -9,16 +9,13 @@ describe('SCEN-106: ログイン状態にないユーザーがアクセスを試
     jest.clearAllMocks();
   });
 
-  it('isAuthenticated が false のとき NotAuthenticatedError がスローされる', async () => {
-    const userId = 'user-001';
-    const isAuthenticated = false;
-
+  it('ログイン状態にないユーザーがアクセスを試みると、NotAuthenticatedError が発生する', async () => {
     await expect(
-      authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
+      authenticateAndAuthorizeLeaderAccess({ userId: 'user-001', isAuthenticated: false })
     ).rejects.toThrow(NotAuthenticatedError);
 
     await expect(
-      authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
+      authenticateAndAuthorizeLeaderAccess({ userId: 'user-001', isAuthenticated: false })
     ).rejects.toThrow('ログインが必要です。');
   });
 });

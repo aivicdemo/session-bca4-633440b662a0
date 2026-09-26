@@ -1,4 +1,5 @@
-import { validateEmailAddress, ValidateEmailAddressInput, ValidateEmailAddressOutput } from '../../src/logic/input-validation-formatting';
+import { describe, it, expect } from '@jest/globals';
+import { validateEmailAddress, type ValidateEmailAddressInput, type ValidateEmailAddressOutput } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-123: エラー：メールアドレスがRFC 5322に準拠していない場合、INVALID_EMAIL_FORMAT エラーが返される', () => {
   const invalidEmailCases = [
@@ -13,40 +14,40 @@ describe('SCEN-123: エラー：メールアドレスがRFC 5322に準拠して�
   ];
 
   invalidEmailCases.forEach(({ emailAddress, description }) => {
-    it(`${description}を入力したとき、errorCodeがINVALID_EMAIL_FORMATである`, () => {
+    it(`${description}を入力したとき、errorCodeがINVALID_EMAIL_FORMATである`, async () => {
       const input: ValidateEmailAddressInput = {
         emailAddress: emailAddress,
       };
 
-      const result: ValidateEmailAddressOutput = validateEmailAddress(input);
+      const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
 
       expect(result.isValid).toBe(false);
-      expect(result.validatedEmailAddress).toBeNull();
+      expect(result.validatedEmailAddress).toBe(null);
       expect(result.errorCode).toBe('INVALID_EMAIL_FORMAT');
     });
   });
 
-  it('nullを入力したとき、errorCodeがINVALID_EMAIL_FORMATである', () => {
+  it('nullを入力したとき、errorCodeがINVALID_EMAIL_FORMATである', async () => {
     const input: ValidateEmailAddressInput = {
       emailAddress: null,
     };
 
-    const result: ValidateEmailAddressOutput = validateEmailAddress(input);
+    const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
 
     expect(result.isValid).toBe(false);
-    expect(result.validatedEmailAddress).toBeNull();
+    expect(result.validatedEmailAddress).toBe(null);
     expect(result.errorCode).toBe('INVALID_EMAIL_FORMAT');
   });
 
-  it('undefinedを入力したとき、errorCodeがINVALID_EMAIL_FORMATである', () => {
+  it('undefinedを入力したとき、errorCodeがINVALID_EMAIL_FORMATである', async () => {
     const input: ValidateEmailAddressInput = {
       emailAddress: undefined,
     };
 
-    const result: ValidateEmailAddressOutput = validateEmailAddress(input);
+    const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
 
     expect(result.isValid).toBe(false);
-    expect(result.validatedEmailAddress).toBeNull();
+    expect(result.validatedEmailAddress).toBe(null);
     expect(result.errorCode).toBe('INVALID_EMAIL_FORMAT');
   });
 });

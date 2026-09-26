@@ -1,13 +1,13 @@
-import { validateDailyReportContent, ValidateDailyReportContentInput, ValidateDailyReportContentOutput } from '../../src/logic/input-validation-formatting';
+import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 
-describe('SCEN-110: エラー：nullが入力されたとき、EmptyOrNullContentErrorを返す', () => {
-  it('nullが入力されたとき、isValidがfalse、validatedContentがnull、errorCodeが\'EmptyOrNullContentError\'である', () => {
-    const input: ValidateDailyReportContentInput = {
+describe('SCEN-110: validateDailyReportContent - エラー系: null入力', () => {
+  it('nullが入力されたとき、EmptyOrNullContentErrorを返す', async () => {
+    const input = {
       content: null,
-      minimumCharacterLength: 10,
+      minimumCharacterLength: 10
     };
 
-    const result: ValidateDailyReportContentOutput = validateDailyReportContent(input);
+    const result = await validateDailyReportContent(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedContent).toBeNull();

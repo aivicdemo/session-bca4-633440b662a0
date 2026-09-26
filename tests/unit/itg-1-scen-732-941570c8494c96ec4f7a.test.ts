@@ -1,12 +1,8 @@
 import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
 import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
-// テスト対象: SCEN-732
-// チームメンバーIDが空のとき、InvalidSchedulerConfigurationError が発生する
-// 注: 入力型に teamMemberId フィールドが無いため、仕様とのギャップあり
-
-describe('SCEN-732: スケジューラ設定が無効なときエラーが発生', () => {
-  it('scheduledExecutionTime が空または不正な形式のとき、InvalidSchedulerConfigurationError をスロー', () => {
+describe('SCEN-732: チームメンバーIDが空のとき、エラーが発生して処理が中断される', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '',
@@ -15,5 +11,28 @@ describe('SCEN-732: スケジューラ設定が無効なときエラーが発生
     };
 
     expect(() => judgeSchedulerExecutionTiming(input)).toThrow(InvalidSchedulerConfigurationError);
+    try {
+      judgeSchedulerExecutionTiming(input);
+      fail('Should have thrown');
+    } catch (e) {
+      expect((e as Error).message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+    }
+  });
+
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is whitespace', () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:30:00Z',
+      scheduledExecutionTime: '   ',
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'Asia/Tokyo',
+    };
+
+    expect(() => judgeSchedulerExecutionTiming(input)).toThrow(InvalidSchedulerConfigurationError);
+    try {
+      judgeSchedulerExecutionTiming(input);
+      fail('Should have thrown');
+    } catch (e) {
+      expect((e as Error).message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+    }
   });
 });

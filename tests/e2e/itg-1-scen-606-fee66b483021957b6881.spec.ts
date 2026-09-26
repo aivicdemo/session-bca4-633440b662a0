@@ -52,7 +52,7 @@ async function login(page: Page, username: string) {
 }
 
 test('管理チームに所属していない報告者は日報送信がエラーとなる', async ({ page, request }) => {
-  // 前提: テストユーザーAは「社員」ロールでログインし、所属チームにチームリーダーが設定されていない。
+  // 前提: テストユーザーが「社員」ロールでログインし、所属チームにチームリーダーが設定されていない
   await login(page, 'user_a_no_leader_team');
   const config = await readAivicConfig(page);
 
@@ -62,24 +62,39 @@ test('管理チームに所属していない報告者は日報送信がエラ�
 
   const textarea = page.locator('#rp-content');
   const submitBtn = page.locator('#rp-submit-btn');
+  const success = page.locator('#rp-success');
 
   await textarea.fill(content);
-  await submitBtn.click({ force: true });
 
+  // 送信ボタンをクリック
+  await submitBtn.click();
+
+  // エラーメッセージが表示される
   await expect(
-    page.getByText('エラー：このユーザーは管理チームに所属していないため、日報の送信ができません'),
+    page.locator('text=エラー：このユーザーは管理チームに所属していないため、日報の送信ができません'),
   ).toBeVisible();
+
+  // 入力内容が保持されている
   await expect(textarea).toHaveValue(content);
 
+  // 成功メッセージは表示されない
+  await expect(success).not.toBeVisible();
+
+  // メール通知は送信されていない
   const mailAfter = await fetchTableRecords(request, config, 'メール送信履歴');
   expect(mailAfter.length).toBe(mailBefore.length);
 
+  // 日報は業務システムに登録されていない
   const reportsAfter = await fetchTableRecords(request, config, '日報');
   expect(reportsAfter.find((r) => r['業務内容'] === content)).toBeUndefined();
   expect(reportsAfter.length).toBe(reportsBefore.length);
 
-  await page.getByText('管理', { exact: true }).click();
+  // 日報確認・管理画面の「提出済み日報一覧」に記録されていない
+  await page.locator('#rp-history-link').click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.locator('#rm-r-keyword').fill(content);
+  const searchField = page.locator('#rm-r-keyword');
+  if (await searchField.isVisible()) {
+    await searchField.fill(content);
+  }
   await expect(page.locator('#rm-r-tbody tr', { hasText: content })).toHaveCount(0);
 });

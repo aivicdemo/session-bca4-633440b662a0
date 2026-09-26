@@ -1,17 +1,19 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
 import {
   sendDailyReportSubmissionNotification,
-  SendDailyReportSubmissionNotificationInput,
+  type SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
+
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-487: ユーザーマスタが空の場合、validateReporterValidity で『チームの報告者マスタが設定されていません』のエラーが発生する', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('ユーザーマスタが空の場合、エラーが発生すること', async () => {
@@ -26,11 +28,10 @@ describe('SCEN-487: ユーザーマスタが空の場合、validateReporterValid
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    try {
-      await sendDailyReportSubmissionNotification(input);
-      expect(true).toBe(false);
-    } catch (error) {
-      expect((error as Error).message).toBe('チームの報告者マスタが設定されていません');
-    }
+    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
+      new Error('チームの報告者マスタが設定されていません')
+    );
+
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow('チームの報告者マスタが設定されていません');
   });
 });

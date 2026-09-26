@@ -1,50 +1,56 @@
-import { jest } from '@jest/globals';
-import {
-  saveReminderNotificationSettings,
-  retrieveReporterByUserId,
-  persistReporterMasterChangeHistory,
-  SaveReminderNotificationSettingsInput,
-  SaveReminderNotificationSettingsOutput,
-} from '../../src/logic/user-master-persistence';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { saveReminderNotificationSettings, retrieveReporterByUserId, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  retrieveReporterByUserId: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
+}));
 
 describe('SCEN-473: チームリーダーが有効な入力値でリマインダー設定を保存すると、設定が永続化され成功応答が返される', () => {
-  it('should save reminder notification settings successfully with valid input', async () => {
-    const input: SaveReminderNotificationSettingsInput = {
-      userId: '対象ユーザーID',
-      enabledFlag: true,
-      sendingTime: '09:00',
-      sendingDaysOfWeek: ['月', '水', '金'],
-      sendingMethod: 'メール',
-      leaderUserId: 'チームリーダーのユーザーID',
-      updateTimestamp: new Date(),
-    };
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    jest.mocked(retrieveReporterByUserId).mockResolvedValueOnce({
+  it('should save reminder notification settings successfully', async () => {
+    const mockRetrieveReporter = retrieveReporterByUserId as jest.Mock<any>;
+    const mockPersistChangeHistory = persistReporterMasterChangeHistory as jest.Mock<any>;
+
+    mockRetrieveReporter.mockResolvedValueOnce({
       success: true,
       reporter: {
-        reporterId: 'RPT-001',
-        userId: '対象ユーザーID',
-        reporterName: 'テストユーザー',
+        reporterId: 'rpt-123',
+        userId: 'user-123',
+        reporterName: 'Test User',
         emailAddress: 'test@example.com',
-        department: '営業部',
+        department: 'Engineering',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-      message: 'ユーザーが見つかりました。',
     });
 
-    jest.mocked(persistReporterMasterChangeHistory).mockResolvedValueOnce({
+    mockPersistChangeHistory.mockResolvedValueOnce({
       success: true,
-      message: '変更履歴を記録しました。',
+      changeHistoryId: 'history-789',
+      message: '変更履歴が記録されました。',
     });
 
-    const result: SaveReminderNotificationSettingsOutput =
-      await saveReminderNotificationSettings(input);
+    const input = {
+      userId: 'user-123',
+      enabledFlag: true,
+      sendingTime: '09:00',
+      sendingDaysOfWeek: ['月', '水', '金'],
+      sendingMethod: 'メール',
+      leaderUserId: 'leader-001',
+      updateTimestamp: new Date(),
+    };
 
-    expect(result.success).toBe(true);
-    expect(result.reminderSettingId).not.toBeNull();
-    expect(result.message).toContain('正常に保存されました');
-    expect(persistReporterMasterChangeHistory).toHaveBeenCalled();
+    const result = await saveReminderNotificationSettings(input);
+
+    expect((result as any).success).toBe(true);
+    expect((result as any).reminderSettingId).not.toBe(null);
+    expect((result as any).message).toBe('リマインダー設定が正常に保存されました。');
+
+    expect(mockPersistChangeHistory).toHaveBeenCalledTimes(1);
   });
 });

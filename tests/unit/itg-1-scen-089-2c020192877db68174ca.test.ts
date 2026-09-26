@@ -1,10 +1,7 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import { jest } from '@jest/globals';
 import {
   authenticateAndAuthorizeReporterAccess,
-  validateUserAccountActiveStatus,
-  validateUserHasReporterRole,
-  type AuthenticateReporterAccessInput,
-  type AuthenticateReporterAccessOutput,
 } from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-089: アカウント有効かつ報告者ロール保有時にアクセスが許可される', () => {
@@ -13,34 +10,25 @@ describe('SCEN-089: アカウント有効かつ報告者ロール保有時にア
   });
 
   it('should grant access when account is active and user has reporter role', async () => {
-    const input: AuthenticateReporterAccessInput = {
+    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserAccountActiveStatus').mockResolvedValue({
+      isActive: true,
+      userId: 'reporter-001',
+    });
+
+    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserHasReporterRole').mockResolvedValue({
+      hasReporterRole: true,
+      userId: 'reporter-001',
+    });
+
+    const input = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
-
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
-      isActive: true,
-    });
-
-    jest.mocked(validateUserHasReporterRole).mockResolvedValue({
-      hasRole: true,
-    });
-
-    const expectedOutput: AuthenticateReporterAccessOutput = {
-      isAccessGranted: true,
-      userId: 'reporter-001',
-      denialReason: null,
-    };
-
-    jest.mocked(authenticateAndAuthorizeReporterAccess).mockResolvedValue(expectedOutput);
 
     const result = await authenticateAndAuthorizeReporterAccess(input);
 
     expect(result.isAccessGranted).toBe(true);
     expect(result.userId).toBe('reporter-001');
     expect(result.denialReason).toBeNull();
-
-    expect(validateUserAccountActiveStatus).toHaveBeenCalled();
-    expect(validateUserHasReporterRole).toHaveBeenCalled();
   });
 });

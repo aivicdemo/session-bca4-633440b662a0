@@ -1,135 +1,198 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { runTx7Imp1Agent } from '../../src/agents/tx-7-imp-1/orchestrator';
+import {
+  runTx7Imp1Agent,
+  Tx7Imp1AgentInput,
+  Tx7Imp1AgentOutput,
+  Tx7Imp1AiClient,
+  PersonnelMovementRecord,
+  ReporterRegistrationResult,
+} from '../../src/agents/tx-7-imp-1/orchestrator';
+import * as reporterMgt from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as userMasterPersist from '../../src/logic/user-master-persistence';
+import * as emailNotif from '../../src/logic/email-notification-management';
 
-// テストで使用する型定義
-interface PersonnelMovementRecord {
-  employeeId: string;
-  name: string;
-  email: string;
-  department: string;
-  team: string;
-  movementType: 'NEW_HIRE' | 'TRANSFER' | 'RETIREMENT';
-  effectiveDate: Date;
-}
-
-interface Tx7Imp1AgentInput {
-  personnelMovementData: PersonnelMovementRecord[];
-  executionTimestamp: Date;
-}
-
-interface Tx7Imp1AgentOutput {
-  registeredReporters: unknown[];
-  updatedReporters: unknown[];
-  deactivatedReporters: unknown[];
-  changeHistoryRecorded: boolean;
-  leaderNotificationSent?: boolean;
-  executionSummary: string;
-}
-
-// 依存先のモック
-jest.mock('../../src/logic/reporter-master-management.ts', () => ({
-  registerReporter: jest.fn(),
-  updateReporter: jest.fn(),
-  deactivateReporter: jest.fn(),
-}));
-
-jest.mock('../../src/logic/input-validation-formatting.ts', () => ({
-  validateUserInformationRequired: jest.fn(),
-  detectDuplicateEmailAddress: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  registerReporterToMaster: jest.fn(),
-  updateReporterInMaster: jest.fn(),
-  deactivateReporterInMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
-
-jest.mock('../../src/logic/email-notification-management.ts', () => ({
-  sendUserInformationApprovalNotification: jest.fn(),
-}));
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/email-notification-management');
 
 describe('SCEN-080: 変更履歴の記録が失敗した場合、changeHistoryRecordedがfalseとなり、その他の処理結果は出力される', () => {
-  let mockRegisterReporter: jest.Mock;
-  let mockUpdateReporter: jest.Mock;
-  let mockDeactivateReporter: jest.Mock;
-  let mockValidateUserInformationRequired: jest.Mock;
-  let mockDetectDuplicateEmailAddress: jest.Mock;
-  let mockRegisterReporterToMaster: jest.Mock;
-  let mockUpdateReporterInMaster: jest.Mock;
-  let mockDeactivateReporterInMaster: jest.Mock;
-  let mockPersistReporterMasterChangeHistory: jest.Mock;
-  let mockSendUserInformationApprovalNotification: jest.Mock;
+  let mockAiClient: jest.Mocked<Tx7Imp1AiClient>;
+
+  const now = new Date('2026-09-25T10:00:00Z');
+  const newHireRecord: PersonnelMovementRecord = {
+    movementType: 'new_hire',
+    userId: 'user-001',
+    userName: '新入社員 太郎',
+    email: 'taro.new@example.com',
+    fullName: '新入社員 太郎',
+    department: '営業部',
+    teamId: 'team-001',
+    effectiveDate: new Date('2026-09-25'),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    const reporterMasterMgmt = require('../../src/logic/reporter-master-management.ts');
-    const inputValidation = require('../../src/logic/input-validation-formatting.ts');
-    const userMasterPersistence = require('../../src/logic/user-master-persistence.ts');
-    const emailNotification = require('../../src/logic/email-notification-management.ts');
+    mockAiClient = {} as jest.Mocked<Tx7Imp1AiClient>;
 
-    mockRegisterReporter = reporterMasterMgmt.registerReporter;
-    mockUpdateReporter = reporterMasterMgmt.updateReporter;
-    mockDeactivateReporter = reporterMasterMgmt.deactivateReporter;
-    mockValidateUserInformationRequired = inputValidation.validateUserInformationRequired;
-    mockDetectDuplicateEmailAddress = inputValidation.detectDuplicateEmailAddress;
-    mockRegisterReporterToMaster = userMasterPersistence.registerReporterToMaster;
-    mockUpdateReporterInMaster = userMasterPersistence.updateReporterInMaster;
-    mockDeactivateReporterInMaster = userMasterPersistence.deactivateReporterInMaster;
-    mockPersistReporterMasterChangeHistory = userMasterPersistence.persistReporterMasterChangeHistory;
-    mockSendUserInformationApprovalNotification = emailNotification.sendUserInformationApprovalNotification;
+    (inputValidation.validateUserInformationRequired as jest.Mock).mockResolvedValue({
+      isValid: true,
+      validatedUserName: '新入社員 太郎',
+      validatedEmailAddress: 'taro.new@example.com',
+      validatedDepartment: '営業部',
+      errorCode: null,
+    });
 
-    // デフォルト: 成功応答を設定
-    (mockValidateUserInformationRequired as jest.Mock<any>).mockResolvedValue({ valid: true });
-    (mockDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
-    (mockRegisterReporter as jest.Mock<any>).mockResolvedValue({ id: 'reporter-1', name: 'New Employee' });
-    (mockRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ registered: true });
-    (mockSendUserInformationApprovalNotification as jest.Mock<any>).mockResolvedValue({ sent: true });
+    (inputValidation.detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: 'taro.new@example.com',
+      errorCode: null,
+    });
 
-    // persistReporterMasterChangeHistory は失敗
-    (mockPersistReporterMasterChangeHistory as jest.Mock<any>).mockRejectedValue(
+    (reporterMgt.registerReporter as jest.Mock).mockResolvedValue({
+      success: true,
+      reporterId: 'reporter-001',
+      message: 'Registration successful',
+      changeHistoryId: 'history-001',
+    });
+
+    (userMasterPersist.registerReporterToMaster as jest.Mock).mockResolvedValue({
+      success: true,
+      reporterId: 'reporter-001',
+      message: 'Registered to master',
+    });
+
+    (userMasterPersist.persistReporterMasterChangeHistory as jest.Mock).mockRejectedValue(
       new Error('Database write failed')
+    );
+
+    (emailNotif.sendUserInformationApprovalNotification as jest.Mock).mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: 'email-001',
+      sentAt: '2026-09-25T10:00:00Z',
+      errorMessage: null,
+      adminNotificationSent: false,
+    });
+  });
+
+  it('should return changeHistoryRecorded: false when history recording fails, with other results output successfully', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
+
+    const result: Tx7Imp1AgentOutput = await runTx7Imp1Agent(input, mockAiClient);
+
+    expect(result.registeredReporters).toHaveLength(1);
+    expect(result.registeredReporters[0]).toEqual(
+      expect.objectContaining({
+        userId: 'user-001',
+        status: 'success',
+      })
+    );
+
+    expect(result.updatedReporters).toEqual([]);
+    expect(result.deactivatedReporters).toEqual([]);
+
+    expect(result.changeHistoryRecorded).toBe(false);
+
+    expect(result.leaderNotificationSent).toBe(true);
+
+    expect(result.executionSummary).toContain('登録件数: 1');
+    expect(result.executionSummary).toContain('更新件数: 0');
+    expect(result.executionSummary).toContain('削除件数: 0');
+    expect(result.executionSummary).toContain('エラー件数: 0');
+  });
+
+  it('should call validateUserInformationRequired with correct input', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
+
+    await runTx7Imp1Agent(input, mockAiClient);
+
+    expect(inputValidation.validateUserInformationRequired).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userName: '新入社員 太郎',
+        emailAddress: 'taro.new@example.com',
+        department: '営業部',
+      })
     );
   });
 
-  it('変更履歴記録失敗時、changeHistoryRecordedはfalseだが、マスタ変更と通知は成功して反映される', async () => {
-    const executionTimestamp = new Date();
-    const personnel: PersonnelMovementRecord = {
-      employeeId: 'EMP001',
-      name: 'New Employee',
-      email: 'newemp@example.com',
-      department: 'Engineering',
-      team: 'Platform',
-      movementType: 'NEW_HIRE',
-      effectiveDate: new Date('2026-09-01'),
-    };
-
+  it('should call detectDuplicateEmailAddress with correct input', async () => {
     const input: Tx7Imp1AgentInput = {
-      personnelMovementData: [personnel],
-      executionTimestamp,
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
     };
 
-    const output = (await runTx7Imp1Agent(input, {})) as Tx7Imp1AgentOutput;
+    await runTx7Imp1Agent(input, mockAiClient);
 
-    // 登録結果は返される
-    expect(output.registeredReporters).toHaveLength(1);
-    expect(output.registeredReporters[0]).toBeDefined();
+    expect(inputValidation.detectDuplicateEmailAddress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAddress: 'taro.new@example.com',
+      })
+    );
+  });
 
-    // 更新・削除は対象外
-    expect(output.updatedReporters).toEqual([]);
-    expect(output.deactivatedReporters).toEqual([]);
+  it('should call registerReporter with correct input', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
 
-    // 変更履歴記録が失敗したことを確認
-    expect(output.changeHistoryRecorded).toBe(false);
+    await runTx7Imp1Agent(input, mockAiClient);
 
-    // 通知送信は成功したことを確認
-    expect(output.leaderNotificationSent).toBe(true);
+    expect(reporterMgt.registerReporter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-001',
+        emailAddress: 'taro.new@example.com',
+      })
+    );
+  });
 
-    // 実行サマリーに登録1件が反映される
-    expect(output.executionSummary).toMatch(/登録件数:\s*1/);
-    expect(output.executionSummary).toMatch(/更新件数:\s*0/);
-    expect(output.executionSummary).toMatch(/削除件数:\s*0/);
-    expect(output.executionSummary).toMatch(/エラー件数:\s*0/);
+  it('should call registerReporterToMaster with correct input', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
+
+    await runTx7Imp1Agent(input, mockAiClient);
+
+    expect(userMasterPersist.registerReporterToMaster).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterName: '新入社員 太郎',
+        emailAddress: 'taro.new@example.com',
+        department: '営業部',
+      })
+    );
+  });
+
+  it('should call persistReporterMasterChangeHistory for the registered reporter', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
+
+    await runTx7Imp1Agent(input, mockAiClient);
+
+    expect(userMasterPersist.persistReporterMasterChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationType: 'register',
+      })
+    );
+  });
+
+  it('should call sendUserInformationApprovalNotification', async () => {
+    const input: Tx7Imp1AgentInput = {
+      personnelMovementData: [newHireRecord],
+      executionTimestamp: now,
+    };
+
+    await runTx7Imp1Agent(input, mockAiClient);
+
+    expect(emailNotif.sendUserInformationApprovalNotification).toHaveBeenCalled();
   });
 });

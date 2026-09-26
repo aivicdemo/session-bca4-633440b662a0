@@ -14,7 +14,7 @@ describe('SCEN-290: メンバーIDが空またはシステムに存在しない�
     jest.clearAllMocks();
   });
 
-  it('userId が空文字列の場合、InvalidNonSubmitterInput エラーがスローされ、エラー文言は「未提出者情報の必須項目が不足しているか形式が不正です。」である', async () => {
+  it('メンバーIDが空文字列の場合、InvalidNonSubmitterInputエラーが発生し、エラー文言が正しい', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: '',
       targetDate: '2024-01-15',
@@ -22,15 +22,22 @@ describe('SCEN-290: メンバーIDが空またはシステムに存在しない�
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
-      '未提出者情報の必須項目が不足しているか形式が不正です。'
-    );
+
+    try {
+      await judgePromptNecessityAndMethod(input);
+    } catch (error) {
+      if (error instanceof InvalidNonSubmitterInput) {
+        expect(error.message).toBe('未提出者情報の必須項目が不足しているか形式が不正です。');
+      } else {
+        throw error;
+      }
+    }
   });
 
-  it('userId がシステムに存在しない場合、InvalidNonSubmitterInput エラーがスローされ、エラー文言は「未提出者情報の必須項目が不足しているか形式が不正です。」である', async () => {
+  it('メンバーIDがシステムに存在しない場合、InvalidNonSubmitterInputエラーが発生し、エラー文言が正しい', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'nonexistent-member-9999',
       targetDate: '2024-01-15',
@@ -38,11 +45,18 @@ describe('SCEN-290: メンバーIDが空またはシステムに存在しない�
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
-      '未提出者情報の必須項目が不足しているか形式が不正です。'
-    );
+
+    try {
+      await judgePromptNecessityAndMethod(input);
+    } catch (error) {
+      if (error instanceof InvalidNonSubmitterInput) {
+        expect(error.message).toBe('未提出者情報の必須項目が不足しているか形式が不正です。');
+      } else {
+        throw error;
+      }
+    }
   });
 });

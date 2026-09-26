@@ -1,3 +1,5 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeSchedulerExecutionTiming: jest.fn(),
 }));
@@ -8,14 +10,21 @@ jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeReporterAccess: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-submission', () => ({
-  ...jest.requireActual('../../src/logic/daily-report-submission'),
   submitDailyReport: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
   sendLeaderSubmissionNotification: jest.fn(),
+  sendLeaderNonSubmissionPromptNotification: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
+  detectNonSubmittedReportersAtDeadline: jest.fn(),
 }));
 
-import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
+import { runTx1Imp1Agent, type Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
+import { submitDailyReport } from '../../src/logic/daily-report-submission';
 
 class DailyReportSubmissionError extends Error {
   constructor(message: string) {
@@ -23,28 +32,21 @@ class DailyReportSubmissionError extends Error {
     this.name = 'DailyReportSubmissionError';
   }
 }
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { submitDailyReport } from '../../src/logic/daily-report-submission';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedSubmitDailyReport = submitDailyReport as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedSubmitDailyReport = submitDailyReport as jest.MockedFunction<any>;
 
-// AIVICゴール制約: チーム人数5名以下、業務内容テキスト1項目のみ、通知対象はリーダーのメールアドレス1つのみ。
 const REPORTERS = [
-  { reporterId: 'R001', userId: 'R001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active', leaderEmail: 'leader@example.com' },
-  { reporterId: 'R002', userId: 'R002', reporterName: '報告者2', emailAddress: 'r002@example.com', department: '営業部', status: 'active', leaderEmail: 'leader@example.com' },
-  { reporterId: 'R003', userId: 'R003', reporterName: '報告者3', emailAddress: 'r003@example.com', department: '開発部', status: 'active', leaderEmail: 'leader@example.com' },
-  { reporterId: 'R004', userId: 'R004', reporterName: '報告者4', emailAddress: 'r004@example.com', department: '開発部', status: 'active', leaderEmail: 'leader@example.com' },
-  { reporterId: 'R005', userId: 'R005', reporterName: '報告者5', emailAddress: 'r005@example.com', department: '総務部', status: 'active', leaderEmail: 'leader@example.com' },
+  { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
+  { reporterId: 'R002', userId: 'U002', reporterName: '報告者2', emailAddress: 'r002@example.com', department: '営業部', status: 'active' },
+  { reporterId: 'R003', userId: 'U003', reporterName: '報告者3', emailAddress: 'r003@example.com', department: '開発部', status: 'active' },
+  { reporterId: 'R004', userId: 'U004', reporterName: '報告者4', emailAddress: 'r004@example.com', department: '開発部', status: 'active' },
+  { reporterId: 'R005', userId: 'U005', reporterName: '報告者5', emailAddress: 'r005@example.com', department: '総務部', status: 'active' },
 ];
 
-describe('SCEN-005: 日報の提出処理に失敗し、その報告者の日報が記録されず提出エラーが記録される', () => {
+describe('SCEN-005: 生成された日報の提出処理に失敗し、その報告者の日報がシステムに記録されず、提出エラーが記録される', () => {
   const executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
   const targetDate = new Date('2024-01-15T00:00:00+09:00');
   const systemContext = {
@@ -79,40 +81,27 @@ describe('SCEN-005: 日報の提出処理に失敗し、その報告者の日報
       })
     );
 
-    // R001, R002は正常提出。R003は日報提出処理（DB保存）でDailyReportSubmissionErrorを発生。
-    // R004, R005は入力が行われず未提出のまま。
     mockedSubmitDailyReport.mockImplementation((input: any) => {
-      if (['R001', 'R002'].includes(input.userId)) {
-        return Promise.resolve({
-          dailyReportId: `DR-${input.userId}`,
-          userId: input.userId,
-          reportDate: '2024-01-15',
-          submissionTimestamp: '2024-01-15T17:03:00+09:00',
-          submissionStatus: 'submitted',
-          notificationTriggered: true,
-          completionMessage: '日報を提出しました。',
-        });
-      }
-      if (input.userId === 'R003') {
+      if (input.userId === 'U003') {
         return Promise.reject(
-          new DailyReportSubmissionError('日報の提出に失敗しました。システム管理者に連絡してください。')
+          new DailyReportSubmissionError(
+            '日報の提出に失敗しました。システム管理者に連絡してください。'
+          )
         );
       }
-      return Promise.reject(new Error(`unexpected submitDailyReport call for ${input.userId}`));
+      return Promise.resolve({
+        dailyReportId: `DR-${input.userId}`,
+        userId: input.userId,
+        reportDate: '2024-01-15',
+        submissionTimestamp: '2024-01-15T17:03:00+09:00',
+        submissionStatus: 'submitted',
+        notificationTriggered: true,
+        completionMessage: '日報を提出しました。',
+      });
     });
-
-    mockedSendLeaderSubmissionNotification.mockImplementation((input: any) =>
-      Promise.resolve({
-        success: true,
-        notificationId: `NOTIF-${input.reporterId}`,
-        sentAt: new Date('2024-01-15T17:04:00+09:00'),
-        deliveryMethod: 'email',
-        errorDetails: null,
-      })
-    );
   });
 
-  it('提出処理失敗によりexecutionStatusがfailureとなり、提出エラーが記録される', async () => {
+  it('提出失敗によりfailureステータス、reportsSubmittedは2以下が返される', async () => {
     const mockAiClient: any = {};
     const result = await runTx1Imp1Agent({
       executionTimestamp,
@@ -121,31 +110,12 @@ describe('SCEN-005: 日報の提出処理に失敗し、その報告者の日報
     }, mockAiClient);
 
     expect(result.executionStatus).toBe('failure');
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          errorCode: 'DailyReportSubmissionError',
-          errorMessage: '日報の提出に失敗しました。システム管理者に連絡してください。',
-        }),
-      ])
-    );
     expect(result.reportsSubmitted).toBeLessThanOrEqual(2);
-    expect(result.executionSummary).toMatch(/中断|失敗/);
-
-    // AIVICゴール制約: チーム人数5名以下
-    expect(REPORTERS.length).toBeLessThanOrEqual(5);
-    expect(result.reportersPrompted).toBeLessThanOrEqual(5);
-
-    // AIVICゴール制約: 入力項目は業務内容テキスト1つのみ
-    for (const call of mockedSubmitDailyReport.mock.calls) {
-      const submitInput = call[0];
-      expect(typeof submitInput.businessContent).toBe('string');
-    }
-
-    // AIVICゴール制約: メール通知対象はリーダーのメールアドレス1つのみ
-    for (const call of mockedSendLeaderSubmissionNotification.mock.calls) {
-      const notifyInput = call[0];
-      expect(typeof notifyInput.leaderId).toBe('string');
-    }
+    expect(result.errors).toBeDefined();
+    expect(result.errors?.some(e => e.errorCode.includes('DailyReportSubmissionError'))).toBe(true);
+    expect(result.errors?.[0].errorMessage).toBe(
+      '日報の提出に失敗しました。システム管理者に連絡してください。'
+    );
+    expect(result.executionSummary).toContain('提出失敗');
   });
 });

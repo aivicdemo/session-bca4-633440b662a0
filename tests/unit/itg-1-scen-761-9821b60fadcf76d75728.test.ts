@@ -1,32 +1,19 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  judgeSchedulerExecutionTiming,
-  isBusinessDay,
-  JudgeSchedulerExecutionTimingInput,
-  JudgeSchedulerExecutionTimingOutput,
-} from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
-jest.mock('../../src/logic/business-day-deadline-judgment');
-
-describe('SCEN-761: 日報提出期限17:00に達したとき、5名の報告者のうち期限までに提出しなかった者が未提出者として検知される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('月曜日 2024-01-15 の17:00にスケジューラが実行されるとき、shouldExecute が true となる', async () => {
+describe('SCEN-761: 日報提出期限17:00に達したとき、未提出者が検知される', () => {
+  test('営業日の期限時刻で judgeSchedulerExecutionTiming が呼び出されると、実行可能判定が得られる', () => {
     // isBusinessDay を営業日（月曜日 2024-01-15）を返すようスタブ設定
-    (isBusinessDay as jest.Mock).mockReturnValueOnce(true);
-
-    const input: JudgeSchedulerExecutionTimingInput = {
+    const input = {
       currentTimestamp: '2024-01-15T17:00:00Z',
       scheduledExecutionTime: '17:00',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
+      timeZone: 'Asia/Tokyo'
     };
 
-    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+    const result = judgeSchedulerExecutionTiming(input);
 
-    // 出力の各フィールドを検証：shouldExecute=true（営業日かつ実行時刻内のため実行可能）、isBusinessDay=true、isWithinExecutionWindow=true（現在時刻17:00がスケジューラ実行予定時刻17:00±5分の範囲内）、nextScheduledExecutionTime=null（実行可能なため次回予定時刻は計算しない）、executionReason='営業日の実行時刻内'（営業日かつ実行時刻に該当する旨の理由が記載されていること）
+    // 仕様の期待結果：shouldExecute=true、isBusinessDay=true、isWithinExecutionWindow=true、
+    // nextScheduledExecutionTime=null、executionReason='営業日の実行時刻内'
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);
     expect(result.isWithinExecutionWindow).toBe(true);

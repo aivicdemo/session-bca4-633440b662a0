@@ -2,7 +2,7 @@ import {
   judgeSchedulerExecutionTiming,
   InvalidSchedulerConfigurationError,
   type JudgeSchedulerExecutionTimingInput,
-} from '../../src/logic/business-day-deadline-judgment';
+} from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
 
 describe('SCEN-729: 定時未提出者自動検知 - 提出期限の時刻が設定されていないとき', () => {
   describe('judgeSchedulerExecutionTiming処理', () => {

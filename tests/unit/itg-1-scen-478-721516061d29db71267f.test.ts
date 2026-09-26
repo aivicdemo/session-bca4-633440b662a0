@@ -1,24 +1,17 @@
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  saveReminderNotificationSettings: jest.fn(),
-  retrieveReporterByUserId: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+jest.mock('../../src/logic/user-master-persistence', () => {
+  const actual = jest.requireActual('../../src/logic/user-master-persistence');
+  return {
+    ...actual,
+    retrieveReporterByUserId: jest.fn(),
+    persistReporterMasterChangeHistory: jest.fn(),
+  };
+});
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  saveReminderNotificationSettings,
-  retrieveReporterByUserId,
-  persistReporterMasterChangeHistory,
-  PersistenceFailureError,
-  SaveReminderNotificationSettingsInput,
-  SaveReminderNotificationSettingsOutput,
-  RetrieveReporterByUserIdOutput,
-  PersistReporterMasterChangeHistoryOutput,
-} from '../../src/logic/user-master-persistence';
+import { saveReminderNotificationSettings, retrieveReporterByUserId, persistReporterMasterChangeHistory, PersistenceFailureError } from '../../src/logic/user-master-persistence';
+import type { SaveReminderNotificationSettingsInput, SaveReminderNotificationSettingsOutput, RetrieveReporterByUserIdOutput, PersistReporterMasterChangeHistoryOutput } from '../../src/logic/user-master-persistence';
 
-const mockedSaveReminderNotificationSettings = saveReminderNotificationSettings as jest.Mock;
-const mockedRetrieveReporterByUserId = retrieveReporterByUserId as jest.Mock;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
+const mockedRetrieveReporterByUserId = retrieveReporterByUserId as jest.MockedFunction<typeof retrieveReporterByUserId>;
+const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<typeof persistReporterMasterChangeHistory>;
 
 describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エラー', () => {
   const currentTime = new Date('2026-09-24T10:00:00Z');
@@ -39,71 +32,86 @@ describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エ�
 
   it('データベースへの保存操作が失敗した場合、PersistenceFailureErrorが発生し失敗応答が返される', async () => {
     // 前提: retrieveReporterByUserId をスタブ化して有効なユーザーレコードを返す
-    const validReporterOutput: Partial<RetrieveReporterByUserIdOutput> = {
-      userId: 'user-123',
-      reporterName: 'Test Reporter',
-      isActive: true,
+    const validReporterOutput: RetrieveReporterByUserIdOutput = {
+      success: true,
+      reporter: {
+        reporterId: 'rep-123',
+        userId: 'user-123',
+        reporterName: 'Test Reporter',
+        emailAddress: 'test@example.com',
+        department: 'Engineering',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      message: undefined,
     };
-    (mockedRetrieveReporterByUserId.mockResolvedValue as any)(validReporterOutput);
+    mockedRetrieveReporterByUserId.mockResolvedValue(validReporterOutput);
 
     // 前提: persistReporterMasterChangeHistory をスタブ化して成功応答を返す
-    const historyOutput: Partial<PersistReporterMasterChangeHistoryOutput> = {
-      historyId: 'history-001',
+    const historyOutput: PersistReporterMasterChangeHistoryOutput = {
       success: true,
+      changeHistoryId: 'history-001',
+      message: 'Change history recorded',
     };
-    (mockedPersistReporterMasterChangeHistory.mockResolvedValue as any)(historyOutput);
+    mockedPersistReporterMasterChangeHistory.mockResolvedValue(historyOutput);
 
-    // 前提: データベース層をモック化して保存操作が失敗するよう設定
-    // (例: 接続エラー、トランザクション失敗、タイムアウト)
-    mockedSaveReminderNotificationSettings.mockImplementation(() => {
-      throw new PersistenceFailureError('リマインダー設定の保存に失敗しました。');
-    });
-
-    // 処理を実行
-    let error: Error | null = null;
-    let output: SaveReminderNotificationSettingsOutput | null = null;
-
-    try {
-      output = await mockedSaveReminderNotificationSettings(validInput);
-    } catch (e) {
-      error = e as Error;
-    }
-
-    // 期待結果を検証
-    // 1. PersistenceFailureError エラーが発生していること
-    expect(error).toBeInstanceOf(PersistenceFailureError);
-    expect(error?.message).toBe('リマインダー設定の保存に失敗しました。');
-
-    // 2. 戻り値（catchされた場合）の出力型 SaveReminderNotificationSettingsOutput は以下の値を持つ
-    // success=false, reminderSettingId=null, message='リマインダー設定の保存に失敗しました。'
-    // (エラー発生時は出力がnullになるため、呼び出し側で適切にハンドリングする必要がある)
-    // ここでは、モック設定でエラーが正しく発生することを確認
-    expect(output).toBeNull();
+    // テスト実行: saveReminderNotificationSettings を呼び出し
+    // 期待結果: PersistenceFailureError エラーが発生し、エラーメッセージは「リマインダー設定の保存に失敗しました。」
+    await expect(saveReminderNotificationSettings(validInput)).rejects.toThrow(PersistenceFailureError);
+    await expect(saveReminderNotificationSettings(validInput)).rejects.toThrow('リマインダー設定の保存に失敗しました。');
   });
 
-  it('エラー発生時の出力形式を検証（呼び出し側のエラーハンドリング想定）', async () => {
-    // この検証パターンは、saveReminderNotificationSettings 呼び出し側で
-    // エラーをcatchして、適切な出力形式に変換する想定
-    mockedSaveReminderNotificationSettings.mockImplementation(() => {
-      throw new PersistenceFailureError('リマインダー設定の保存に失敗しました。');
-    });
+  it('エラー発生時の出力形式を検証（rejectsで確認）', async () => {
+    // 前提: retrieveReporterByUserId をスタブ化
+    const validReporterOutput: RetrieveReporterByUserIdOutput = {
+      success: true,
+      reporter: {
+        reporterId: 'rep-123',
+        userId: 'user-123',
+        reporterName: 'Test Reporter',
+        emailAddress: 'test@example.com',
+        department: 'Engineering',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      message: undefined,
+    };
+    mockedRetrieveReporterByUserId.mockResolvedValue(validReporterOutput);
 
-    let caughtOutput: SaveReminderNotificationSettingsOutput | null = null;
+    // 前提: persistReporterMasterChangeHistory をスタブ化
+    const historyOutput: PersistReporterMasterChangeHistoryOutput = {
+      success: true,
+      changeHistoryId: 'history-001',
+      message: 'Change history recorded',
+    };
+    mockedPersistReporterMasterChangeHistory.mockResolvedValue(historyOutput);
+
+    // 呼び出し元で PersistenceFailureError をキャッチして、失敗応答を構築
+    let caughtError: Error | null = null;
 
     try {
-      await mockedSaveReminderNotificationSettings(validInput);
+      await saveReminderNotificationSettings(validInput);
     } catch (e) {
-      if (e instanceof PersistenceFailureError) {
-        caughtOutput = {
-          success: false,
-          reminderSettingId: null,
-          message: 'リマインダー設定の保存に失敗しました。',
-        };
-      }
+      caughtError = e as Error;
     }
 
     // 期待結果の検証
-    expect(caughtOutput).toEqual({
+    expect(caughtError).toBeInstanceOf(PersistenceFailureError);
+    expect(caughtError?.message).toBe('リマインダー設定の保存に失敗しました。');
+
+    // 呼び出し元が適切にハンドリングした場合の出力形式を検証
+    let output: SaveReminderNotificationSettingsOutput | null = null;
+    if (caughtError instanceof PersistenceFailureError) {
+      output = {
+        success: false,
+        reminderSettingId: null,
+        message: 'リマインダー設定の保存に失敗しました。',
+      };
+    }
+
+    expect(output).toEqual({
       success: false,
       reminderSettingId: null,
       message: 'リマインダー設定の保存に失敗しました。',

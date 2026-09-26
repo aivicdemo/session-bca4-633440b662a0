@@ -1,92 +1,74 @@
 import { runTx4Imp1Agent, Tx4Imp1AiClient } from '../../src/agents/tx-4-imp-1/orchestrator';
 
 describe('SCEN-048: 処理中に複数のエラーが発生した場合、executionStatusはpartial_failureになりerrorsフィールドにすべてのエラーが記録される', () => {
-  it('複数のエラーが発生した場合、executionStatusがpartial_failureになり、すべてのエラーがerrorsに記録される', async () => {
-    // テスト用の日付（営業日）、リーダーユーザーID、チームIDを設定する
-    const targetDate = '2025-09-24';
+  it('should return partial_failure with all errors when multiple operations fail', async () => {
+    const targetDate = '2024-01-15';
     const leaderUserId = 'leader-001';
-    const teamId = 'team-001';
+    const teamId = 'team-A';
 
-    // 複数のエラーを返すモッククライアントをセットアップ
     const mockAiClient: Tx4Imp1AiClient = {
       judgeBusinessDayAndDeadline: jest.fn().mockResolvedValue({
         isBusinessDay: true,
-        isWithinDeadline: true,
+        deadline: '2024-01-15T17:00:00+09:00',
       }),
-      getActiveReportersForSubmissionCheck: jest.fn().mockResolvedValue({
-        reporters: [
-          { userId: 'reporter-1', userName: 'reporter1', reporterName: 'Reporter 1' },
-          { userId: 'reporter-2', userName: 'reporter2', reporterName: 'Reporter 2' },
-        ],
-      }),
+      getActiveReportersForSubmissionCheck: jest.fn().mockResolvedValue([
+        { userId: 'user-001', userName: 'reporter-001', reporterName: 'Reporter 1' },
+        { userId: 'user-002', userName: 'reporter-002', reporterName: 'Reporter 2' },
+      ]),
       retrieveDailyReportsForLeaderReview: jest
         .fn()
-        .mockRejectedValue(new Error('日報の自動解析処理に失敗しました。')),
+        .mockRejectedValue(new Error('DailyReportAnalysisFailed')),
       detectNonSubmittedReportersAtDeadline: jest
         .fn()
-        .mockRejectedValue(new Error('未提出者の検知に失敗しました。')),
+        .mockRejectedValue(new Error('NonSubmissionDetectionFailed')),
+      judgePromptNecessityAndMethod: jest
+        .fn()
+        .mockResolvedValue({ isPromptRequired: true }),
       sendLeaderNonSubmissionPromptNotification: jest
         .fn()
-        .mockRejectedValue(new Error('未提出者への催促メール送信に失敗しました。')),
-      retrieveLeaderDashboardData: jest
-        .fn()
-        .mockRejectedValue(new Error('チーム進捗サマリーの生成に失敗しました。')),
+        .mockRejectedValue(new Error('PromptNotificationSendingFailed')),
       sendNonSubmissionPromptNotification: jest
         .fn()
-        .mockRejectedValue(new Error('リーダーへの通知送信に失敗しました。')),
+        .mockRejectedValue(new Error('LeaderNotificationFailed')),
+      retrieveLeaderDashboardData: jest
+        .fn()
+        .mockRejectedValue(new Error('ProgressSummaryGenerationFailed')),
     };
 
-    // runTx4Imp1Agent を入力値（targetDate、leaderUserId、teamId）で呼び出す
     const result = await runTx4Imp1Agent(
-      {
-        targetDate,
-        leaderUserId,
-        teamId,
-      },
+      { targetDate, leaderUserId, teamId },
       mockAiClient
     );
 
-    // 戻り値の executionStatus フィールドを検証する
     expect(result.executionStatus).toBe('partial_failure');
-
-    // 戻り値の errors フィールドの内容を検証する
     expect(result.errors).toBeDefined();
     expect(Array.isArray(result.errors)).toBe(true);
     expect(result.errors.length).toBe(5);
 
-    // 各エラーコードとメッセージを検証
-    const expectedErrors = [
-      {
-        code: 'DailyReportAnalysisFailed',
-        message: '日報の自動解析処理に失敗しました。',
-      },
-      {
-        code: 'NonSubmissionDetectionFailed',
-        message: '未提出者の検知に失敗しました。',
-      },
-      {
-        code: 'PromptNotificationSendingFailed',
-        message: '未提出者への催促メール送信に失敗しました。',
-      },
-      {
-        code: 'ProgressSummaryGenerationFailed',
-        message: 'チーム進捗サマリーの生成に失敗しました。',
-      },
-      {
-        code: 'LeaderNotificationFailed',
-        message: 'リーダーへの通知送信に失敗しました。',
-      },
-    ];
+    const errorCodes = result.errors.map((e: any) => e.code);
+    expect(errorCodes).toContain('DailyReportAnalysisFailed');
+    expect(errorCodes).toContain('NonSubmissionDetectionFailed');
+    expect(errorCodes).toContain('PromptNotificationSendingFailed');
+    expect(errorCodes).toContain('ProgressSummaryGenerationFailed');
+    expect(errorCodes).toContain('LeaderNotificationFailed');
 
-    expectedErrors.forEach((expectedError) => {
-      const actualError = result.errors.find((e: any) => e.code === expectedError.code);
-      expect(actualError).toBeDefined();
-      expect(actualError.message).toBe(expectedError.message);
-    });
+    const dailyReportError = result.errors.find((e: any) => e.code === 'DailyReportAnalysisFailed');
+    expect(dailyReportError?.message).toBe('日報の自動解析処理に失敗しました。');
 
-    // 戻り値の targetDate、executionTimestamp、leaderNotificationSent などのフィールドが出力型の仕様に合致していることを確認する
+    const nonSubmissionError = result.errors.find((e: any) => e.code === 'NonSubmissionDetectionFailed');
+    expect(nonSubmissionError?.message).toBe('未提出者の検知に失敗しました。');
+
+    const promptError = result.errors.find((e: any) => e.code === 'PromptNotificationSendingFailed');
+    expect(promptError?.message).toBe('未提出者への催促メール送信に失敗しました。');
+
+    const progressError = result.errors.find((e: any) => e.code === 'ProgressSummaryGenerationFailed');
+    expect(progressError?.message).toBe('チーム進捗サマリーの生成に失敗しました。');
+
+    const leaderError = result.errors.find((e: any) => e.code === 'LeaderNotificationFailed');
+    expect(leaderError?.message).toBe('リーダーへの通知送信に失敗しました。');
+
     expect(result.targetDate).toBe(targetDate);
-    expect(typeof result.executionTimestamp).toBe('string');
+    expect(result.executionTimestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     expect(result.leaderNotificationSent).toBe(false);
     expect(typeof result.submittedReportCount).toBe('number');
     expect(typeof result.nonSubmittedReporterCount).toBe('number');

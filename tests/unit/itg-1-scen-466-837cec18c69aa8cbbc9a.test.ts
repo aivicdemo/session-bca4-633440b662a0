@@ -3,10 +3,22 @@ import {
   deactivateReporterInMaster,
   persistReporterMasterChangeHistory,
   ReporterNotFoundError,
-  type DeactivateReporterInMasterInput,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
+
+interface DeactivateReporterInMasterInput {
+  reporterId: string;
+  leaderUserId: string;
+  deactivationTimestamp: Date;
+  deactivationReason?: string;
+}
+
+interface DeactivateReporterInMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-466: 指定された報告者IDがマスタに存在しないため無効化が失敗する', () => {
   beforeEach(() => {

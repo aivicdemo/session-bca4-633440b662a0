@@ -1,47 +1,60 @@
-import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
+import { describe, it, expect } from '@jest/globals';
+import {
+  judgeSchedulerExecutionTiming,
+  InvalidSchedulerConfigurationError,
+  JudgeSchedulerExecutionTimingInput
+} from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-191: 実行予定時刻が未設定のとき、スケジューラ設定エラーが発生する', () => {
-  it('scheduledExecutionTimeがnullのとき、InvalidSchedulerConfigurationErrorが発生する', () => {
-    const input = {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is null', () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: null,
+      scheduledExecutionTime: null as any,
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
+      timeZone: 'Asia/Tokyo'
     };
 
-    const mockIsBusinessDay = jest.fn().mockReturnValue(true);
-    const dependencies = { isBusinessDay: mockIsBusinessDay };
-
-    let thrownError: Error | null = null;
-    try {
-      judgeSchedulerExecutionTiming(input, dependencies);
-    } catch (error) {
-      thrownError = error as Error;
-    }
-
-    expect(thrownError).toBeInstanceOf(InvalidSchedulerConfigurationError);
-    expect(thrownError?.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+    expect(() => {
+      judgeSchedulerExecutionTiming(input as any);
+    }).toThrow(InvalidSchedulerConfigurationError);
   });
 
-  it('scheduledExecutionTimeが空文字列のとき、InvalidSchedulerConfigurationErrorが発生する', () => {
-    const input = {
+  it('should throw with correct error message when scheduledExecutionTime is null', () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:30:00Z',
+      scheduledExecutionTime: null as any,
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'Asia/Tokyo'
+    };
+
+    expect(() => {
+      judgeSchedulerExecutionTiming(input as any);
+    }).toThrow('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+  });
+
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty string', () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
+      timeZone: 'Asia/Tokyo'
     };
 
-    const mockIsBusinessDay = jest.fn().mockReturnValue(true);
-    const dependencies = { isBusinessDay: mockIsBusinessDay };
+    expect(() => {
+      judgeSchedulerExecutionTiming(input);
+    }).toThrow(InvalidSchedulerConfigurationError);
+  });
 
-    let thrownError: Error | null = null;
-    try {
-      judgeSchedulerExecutionTiming(input, dependencies);
-    } catch (error) {
-      thrownError = error as Error;
-    }
+  it('should throw with correct error message when scheduledExecutionTime is empty string', () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
+      currentTimestamp: '2024-01-15T17:30:00Z',
+      scheduledExecutionTime: '',
+      executionTimeToleranceMinutes: 5,
+      timeZone: 'Asia/Tokyo'
+    };
 
-    expect(thrownError).toBeInstanceOf(InvalidSchedulerConfigurationError);
-    expect(thrownError?.message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
+    expect(() => {
+      judgeSchedulerExecutionTiming(input);
+    }).toThrow('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
   });
 });

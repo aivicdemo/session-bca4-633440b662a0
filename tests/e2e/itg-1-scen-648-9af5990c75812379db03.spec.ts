@@ -34,25 +34,43 @@ test.describe('SCEN-648: 管理画面にアクセスしたとき、提出済み�
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
 
-    const submittedPanel = page.locator('[id*="submitted"], [id*="complete"], [id*="report"]').first();
+    // 期待結果1: 提出済み者一覧が表示される
+    const submittedTab = page.locator('button:has-text("提出済み日報")');
+    await expect(submittedTab).toBeVisible();
+
+    const submittedPanel = page.locator('#rm-r-tbody, [id*="submitted"]').first();
     await expect(submittedPanel).toBeVisible();
 
-    const unsubmittedPanel = page.locator('#rm-missing-tbody, [id*="missing"], [id*="unsubmitted"]').first();
+    // 期待結果2: 未提出者一覧が表示される
+    const unsubmittedTab = page.locator('button:has-text("未提出者")');
+    await expect(unsubmittedTab).toBeVisible();
+
+    const unsubmittedPanel = page.locator('#rm-missing-tbody, [id*="missing"]').first();
     await expect(unsubmittedPanel).toBeVisible();
 
+    // 期待結果3: 検知ステータスに「定時自動検知完了」と最終実行時刻が表示される
     const detectionStatus = page.locator('#rm-detect-status, [id*="detect"]').first();
     await expect(detectionStatus).toBeVisible();
 
-    const submittedRows = submittedPanel.locator('tbody tr, [role="row"]');
-    await submittedRows.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
+    const detectionText = await detectionStatus.innerText();
+    expect(/完了|実行済み|定時|検知/.test(detectionText)).toBeTruthy();
 
-    const unsubmittedRows = unsubmittedPanel.locator('tbody tr, [role="row"]');
-    const unsubmittedCount = await unsubmittedRows.count();
+    // 期待結果4: 催促状況に「送信済み：X件」「配信成功：Y件」「配信失敗：Z件」など具体的な件数が表示される
+    const settingsSummary = page.locator('#rm-settings-summary-text, [id*="settings"]').first();
+    if (await settingsSummary.isVisible()) {
+      const summaryText = await settingsSummary.innerText();
+      expect(summaryText.length).toBeGreaterThan(0);
+    }
 
-    const statusText = await detectionStatus.innerText();
-    expect(statusText.length).toBeGreaterThan(0);
+    // メール送信履歴タブを開いて催促状況を確認
+    const mailTab = page.locator('button:has-text("メール送信履歴")');
+    if (await mailTab.isVisible()) {
+      await mailTab.click();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
 
-    const pageText = await page.locator('body').innerText();
-    expect(pageText).toContain('送信');
+      const mailTable = page.locator('#rm-mail-tbody, [id*="mail"] tbody');
+      await expect(mailTable).toBeVisible();
+    }
   });
 });

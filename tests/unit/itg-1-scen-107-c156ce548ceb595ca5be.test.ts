@@ -11,48 +11,24 @@ describe('SCEN-107: ユーザーアカウントが無効化されている場合
     jest.clearAllMocks();
   });
 
-  it('ユーザーアカウントが無効化されているとき UserAccountInactiveError がスローされる', async () => {
-    const userId = 'leader-001';
-    const isAuthenticated = true;
+  it('ユーザーアカウントが無効化されている場合、UserAccountInactiveError が発生する', async () => {
+    jest.mocked(validateUserAccountActiveStatus as any).mockResolvedValue({
+      isActive: false,
+      userId: 'leader-001',
+    });
 
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
-      isValid: false,
-      userId,
-    } as any);
-
-    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
-      hasRole: true,
-      userId,
-    } as any);
+    jest.mocked(validateUserHasLeaderRole as any).mockResolvedValue({
+      hasLeaderRole: true,
+      userId: 'leader-001',
+    });
 
     await expect(
-      authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
+      authenticateAndAuthorizeLeaderAccess({ userId: 'leader-001', isAuthenticated: true })
     ).rejects.toThrow(UserAccountInactiveError);
 
     await expect(
-      authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated })
+      authenticateAndAuthorizeLeaderAccess({ userId: 'leader-001', isAuthenticated: true })
     ).rejects.toThrow('ユーザーアカウントが無効です。');
-  });
-
-  it('validateUserAccountActiveStatus が呼び出され、戻り値が無効化された状態を返す', async () => {
-    const userId = 'leader-001';
-    const isAuthenticated = true;
-
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
-      isValid: false,
-      userId,
-    } as any);
-
-    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
-      hasRole: true,
-      userId,
-    } as any);
-
-    try {
-      await authenticateAndAuthorizeLeaderAccess({ userId, isAuthenticated });
-    } catch {
-      // Expected to throw
-    }
 
     expect(validateUserHasLeaderRole).not.toHaveBeenCalled();
   });

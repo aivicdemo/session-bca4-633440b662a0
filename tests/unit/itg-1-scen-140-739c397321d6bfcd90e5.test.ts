@@ -10,7 +10,7 @@ describe('SCEN-140: ドメイン部にハイフンが含まれた正当な形式
       emailAddress: 'user-name@example-domain.co.jp',
     };
 
-    const output: ValidateEmailAddressOutput = await validateEmailAddress(input);
+    const output = await validateEmailAddress(input);
 
     expect(output.isValid).toBe(true);
     expect(output.validatedEmailAddress).toBe('user-name@example-domain.co.jp');

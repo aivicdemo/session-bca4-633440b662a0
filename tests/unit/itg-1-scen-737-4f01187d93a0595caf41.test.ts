@@ -1,11 +1,8 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
 
-// テスト対象: SCEN-737
-// 営業日の定時実行時刻に判定実行される場合、shouldExecute=true が返される
-
-describe('SCEN-737: 営業日の定時実行時刻に達した場合の実行判定', () => {
-  it('現在時刻が営業日の定時17:00のとき、shouldExecute=true で実行条件が確定する', () => {
+describe('SCEN-737: 報告者5名全員が17:00までに日報を提出した場合、未提出者リストが空となり、リーダーへのアラートメールが送信されない', () => {
+  it('should return shouldExecute=true at scheduled execution time on business day', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:00:00+09:00',
       scheduledExecutionTime: '17:00',
@@ -15,10 +12,20 @@ describe('SCEN-737: 営業日の定時実行時刻に達した場合の実行判
 
     const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
+    // Expected conditions per SCEN-737:
+    // (1) shouldExecute = true
     expect(result.shouldExecute).toBe(true);
+
+    // (2) isBusinessDay = true
     expect(result.isBusinessDay).toBe(true);
+
+    // (3) isWithinExecutionWindow = true
     expect(result.isWithinExecutionWindow).toBe(true);
+
+    // (4) nextScheduledExecutionTime = null (executing now)
     expect(result.nextScheduledExecutionTime).toBeNull();
-    expect(result.executionReason).toMatch(/営業日|実行時刻/);
+
+    // (5) executionReason = '営業日の実行時刻内'
+    expect(result.executionReason).toBe('営業日の実行時刻内');
   });
 });

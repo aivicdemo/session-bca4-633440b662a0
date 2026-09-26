@@ -13,8 +13,8 @@ import {
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
 
 describe('SCEN-260: チームメンバーが空の場合の detectUnsubmittedMembers 処理を拒否する', () => {
   beforeEach(() => {
@@ -37,9 +37,16 @@ describe('SCEN-260: チームメンバーが空の場合の detectUnsubmittedMem
       teamId,
     };
 
-    const error = await detectNonSubmittedReportersAtDeadline(input).catch((e) => e);
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      NoActiveReportersError
+    );
 
-    expect(error).toBeInstanceOf(NoActiveReportersError);
-    expect(error.message).toBe('検知対象の有効な報告者が存在しません。');
+    try {
+      await detectNonSubmittedReportersAtDeadline(input);
+      fail('Should have thrown NoActiveReportersError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(NoActiveReportersError);
+      expect((error as NoActiveReportersError).message).toBe('検知対象の有効な報告者が存在しません。');
+    }
   });
 });

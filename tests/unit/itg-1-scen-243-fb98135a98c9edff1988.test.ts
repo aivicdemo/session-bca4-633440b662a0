@@ -13,7 +13,7 @@ jest.mock('../../src/logic/daily-report-persistence', () => ({
 import { detectNonSubmittedReportersAtDeadline, DeadlineNotReachedError } from '../../src/logic/daily-report-non-submission-detection';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
 
 describe('SCEN-243: 提出期限に達していない場合の検知をスキップする', () => {
   beforeEach(() => {
@@ -26,9 +26,7 @@ describe('SCEN-243: 提出期限に達していない場合の検知をスキッ
     const submissionDeadlineTime = '17:00';
     const teamId = 'team-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockReturnValue(false);
-
-    const error = new DeadlineNotReachedError('日報提出期限に達していないため、未提出者検知を実行できません。');
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(false);
 
     await expect(
       detectNonSubmittedReportersAtDeadline({
@@ -37,6 +35,6 @@ describe('SCEN-243: 提出期限に達していない場合の検知をスキッ
         submissionDeadlineTime,
         teamId,
       })
-    ).rejects.toThrow(error);
+    ).rejects.toThrow(new DeadlineNotReachedError('日報提出期限に達していないため、未提出者検知を実行できません。'));
   });
 });

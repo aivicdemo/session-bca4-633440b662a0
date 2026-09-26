@@ -18,9 +18,15 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
     jest.clearAllMocks();
   });
 
-  it('should correctly filter non-submitted reporters from registered reporters', () => {
+  it('should correctly filter non-submitted reporters from registered reporters', async () => {
     const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
-    mockJudgeScheduler.mockReturnValue(true);
+    mockJudgeScheduler.mockResolvedValue({
+      shouldExecute: true,
+      isBusinessDay: true,
+      isWithinExecutionWindow: true,
+      nextScheduledExecutionTime: null,
+      executionReason: 'Within deadline',
+    });
 
     const reporters = [
       { userId: 'user1', userName: 'User 1', emailAddress: 'user1@example.com', departmentId: 'dept-1' },
@@ -31,18 +37,31 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
     ];
 
     const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
-    mockGetReporters.mockReturnValue(reporters);
+    mockGetReporters.mockResolvedValue({
+      success: true,
+      reporters: reporters,
+      totalCount: reporters.length,
+      message: 'Retrieved active reporters',
+    });
 
     const mockCheckReport = jest.spyOn(persistence, 'checkDailyReportExistsForDate' as any);
-    mockCheckReport.mockImplementation(async (reporterId: string) => {
-      return ['user1', 'user3', 'user5'].includes(reporterId);
+    mockCheckReport.mockImplementation(async (input: any) => {
+      return ['user1', 'user3', 'user5'].includes(input.userId);
     });
 
     const mockRetrieveLogs = jest.spyOn(persistence, 'retrieveNonSubmissionDetectionLogsByDate' as any);
-    mockRetrieveLogs.mockReturnValue([]);
+    mockRetrieveLogs.mockResolvedValue({
+      detectionLogs: [],
+      totalCount: 0,
+      retrievedAt: '2024-01-15T17:30:00Z',
+    });
 
     const mockUpdateLog = jest.spyOn(persistence, 'updateNonSubmissionDetectionLogWithReminderStatus' as any);
-    mockUpdateLog.mockReturnValue({ detectionLogId: 'log-001' });
+    mockUpdateLog.mockResolvedValue({
+      detectionLogId: 'log-001',
+      reminderSent: false,
+      updatedAt: '2024-01-15T17:30:00Z',
+    });
 
     const input: DetectNonSubmittedReportersAtDeadlineInput = {
       targetDate: '2024-01-15',
@@ -51,7 +70,7 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
       teamId: 'team-001',
     };
 
-    const result = detectNonSubmittedReportersAtDeadline(input) as DetectNonSubmittedReportersAtDeadlineOutput;
+    const result = await detectNonSubmittedReportersAtDeadline(input);
 
     expect(result.nonSubmittedReporters).toHaveLength(2);
     expect(result.nonSubmittedReporters.map((r: any) => r.userId)).toEqual(['user2', 'user4']);

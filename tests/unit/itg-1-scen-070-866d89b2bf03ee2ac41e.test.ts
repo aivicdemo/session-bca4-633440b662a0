@@ -1,13 +1,12 @@
-jest.mock('../../src/agents/tx-6-imp-1/orchestrator-dependencies');
-
 import { runTx6Imp1Agent, Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
 
-describe('SCEN-070: 提出されたユーザー情報が0件の場合', () => {
-  const leaderUserId = 'leader001';
-  const executionTimestamp = new Date('2024-01-15T10:00:00Z');
-  const targetDate = new Date('2024-01-15');
+describe('SCEN-070: 提出されたユーザー情報が0件の場合、エージェントが正常に完了し各工程の件数が0で出力される', () => {
+  it('should complete successfully with zero counts when userInformationSubmissions is empty', async () => {
+    const leaderUserId = 'leader001';
+    const userInformationSubmissions: any[] = [];
+    const executionTimestamp = new Date('2024-01-15T10:00:00Z');
+    const targetDate = new Date('2024-01-15');
 
-  it('should complete successfully with all counts at zero for empty submissions', async () => {
     const mockAiClient: Tx6Imp1AiClient = {
       authenticateAndAuthorizeLeaderAccess: jest.fn().mockResolvedValue({ authorized: true }),
       validateUserInformationRequired: jest.fn().mockResolvedValue({ valid: true, errors: [] }),
@@ -17,11 +16,6 @@ describe('SCEN-070: 提出されたユーザー情報が0件の場合', () => {
         approved: 0,
         rejected: 0,
         details: [],
-      }),
-      retrieveUserInformationConfirmationStatus: jest.fn().mockResolvedValue({
-        confirmed: 0,
-        pending: 0,
-        rejected: 0,
       }),
       registerReporter: jest.fn().mockResolvedValue({ registered: 0, errors: [] }),
       updateReporter: jest.fn().mockResolvedValue({ updated: 0, errors: [] }),
@@ -36,7 +30,7 @@ describe('SCEN-070: 提出されたユーザー情報が0件の場合', () => {
     };
 
     const result = await runTx6Imp1Agent(
-      { leaderUserId, userInformationSubmissions: [], executionTimestamp, targetDate },
+      { leaderUserId, userInformationSubmissions, executionTimestamp, targetDate },
       mockAiClient
     );
 
@@ -50,8 +44,11 @@ describe('SCEN-070: 提出されたユーザー情報が0件の場合', () => {
     expect(result.reporterMasterUpdateResult.errors).toEqual([]);
     expect(result.nonSubmissionDetectionResult.detectedCount).toBe(0);
     expect(result.nonSubmissionDetectionResult.promptedCount).toBe(0);
+    expect(result.nonSubmissionDetectionResult.errors).toEqual([]);
     expect(result.notificationSendingResult.approvalNotificationsSent).toBe(0);
     expect(result.notificationSendingResult.promptNotificationsSent).toBe(0);
+    expect(result.notificationSendingResult.failedNotifications).toEqual([]);
     expect(result.exceptionCases).toEqual([]);
+    expect(result.executionLog).toBeTruthy();
   });
 });

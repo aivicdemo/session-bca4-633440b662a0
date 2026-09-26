@@ -1,3 +1,11 @@
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
   validateEmailAddressForDelivery,
@@ -7,17 +15,10 @@ import {
   SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
-  sendDailyReportSubmissionNotification: jest.fn(),
-}));
-
-const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
-const mockedBuildNotificationContent = buildNotificationContent as jest.Mock;
-const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.Mock;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.Mock;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
+const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.MockedFunction<any>;
+const mockedBuildNotificationContent = buildNotificationContent as jest.MockedFunction<any>;
+const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
 
 describe('SCEN-500: メール配信が技術的に失敗した場合、警告メッセージを返して管理者に通知する', () => {
   beforeEach(() => {

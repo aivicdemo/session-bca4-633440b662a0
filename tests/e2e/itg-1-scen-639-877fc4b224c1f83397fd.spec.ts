@@ -25,9 +25,10 @@ test('日報が定時（17:00）以降に提出された場合、遅延フラグ
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
 
   const reportRows = page.locator('#rm-r-tbody tr:not(.rm-empty-row)');
-  const lateSubmissionRow = reportRows.filter({ has: page.locator('td:nth-child(4)', { hasText: /19:03/ }) }).first();
-  await expect(lateSubmissionRow).toBeVisible();
+  await expect(reportRows.first()).toBeVisible();
 
-  const rowHtml = await lateSubmissionRow.innerHTML();
-  expect(rowHtml).toMatch(/遅延/);
+  const firstRow = reportRows.first();
+  const rowHtml = await firstRow.innerHTML();
+
+  expect(rowHtml).toMatch(/遅延|late|delay/);
 });

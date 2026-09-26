@@ -18,10 +18,10 @@ import {
 import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
 import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
 
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
-const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.Mock;
-const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.Mock;
-const mockedArchivePastDailyReports = archivePastDailyReports as jest.Mock;
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.MockedFunction<any>;
+const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.MockedFunction<any>;
+const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.MockedFunction<any>;
+const mockedArchivePastDailyReports = archivePastDailyReports as jest.MockedFunction<any>;
 
 describe('SCEN-387: 対象報告者が複数の過去日報を持つ場合、すべてアーカイブされ件数が返される', () => {
   const reporterId = 'reporter-001';
@@ -42,7 +42,43 @@ describe('SCEN-387: 対象報告者が複数の過去日報を持つ場合、す
     });
   });
 
-  it('success=true、archivedReportCount=5、callOrder: isReporterActiveAndValid → archivePastDailyReports → deactivateReporterInMaster → recordReporterMasterChangeHistory', async () => {
+  it('success=true、reporterId=reporter-001、archivedReportCount=5 を返す', async () => {
+    const result: DeactivateReporterOutput = await deactivateReporter({
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.reporterId).toBe('reporter-001');
+    expect(result.archivedReportCount).toBe(5);
+  });
+
+  it('message は処理成功を示すメッセージを返す', async () => {
+    const result: DeactivateReporterOutput = await deactivateReporter({
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    });
+
+    expect(result.message).toBeDefined();
+    expect(result.message).not.toBeNull();
+  });
+
+  it('changeHistoryId=history-001 を返す', async () => {
+    const result: DeactivateReporterOutput = await deactivateReporter({
+      reporterId,
+      teamLeaderId,
+      deactivationReason,
+      executionTimestamp,
+    });
+
+    expect(result.changeHistoryId).toBe('history-001');
+  });
+
+  it('呼び出し順序は isReporterActiveAndValid → archivePastDailyReports → deactivateReporterInMaster → recordReporterMasterChangeHistory', async () => {
     const callOrder: string[] = [];
 
     mockedIsReporterActiveAndValid.mockImplementation(() => {
@@ -62,17 +98,12 @@ describe('SCEN-387: 対象報告者が複数の過去日報を持つ場合、す
       return Promise.resolve({ changeHistoryId: 'history-001' });
     });
 
-    const result: DeactivateReporterOutput = await deactivateReporter({
+    await deactivateReporter({
       reporterId,
       teamLeaderId,
       deactivationReason,
       executionTimestamp,
     });
-
-    expect(result.success).toBe(true);
-    expect(result.reporterId).toBe('reporter-001');
-    expect(result.archivedReportCount).toBe(5);
-    expect(result.changeHistoryId).toBe('history-001');
 
     expect(callOrder).toEqual([
       'isReporterActiveAndValid',

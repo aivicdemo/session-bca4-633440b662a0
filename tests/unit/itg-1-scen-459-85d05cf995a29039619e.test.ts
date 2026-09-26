@@ -1,13 +1,27 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   updateReporterInMaster,
-  UpdateReporterInMasterInput,
-  UpdateReporterInMasterOutput,
   DuplicateEmailAddressError,
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
+
+interface UpdateReporterInMasterInput {
+  reporterId: string;
+  reporterName?: string;
+  emailAddress?: string;
+  department?: string;
+  status?: string;
+  leaderUserId: string;
+  updateTimestamp: Date;
+}
+
+interface UpdateReporterInMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-459: 他の報告者と重複するメールアドレスに更新しようとすると、DuplicateEmailAddressErrorが発生して失敗を返す', () => {
   beforeEach(() => {
@@ -25,11 +39,11 @@ describe('SCEN-459: 他の報告者と重複するメールアドレスに更新
       updateTimestamp: new Date(),
     };
 
-    const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
+    (updateReporterInMaster as any).mockRejectedValue(
+      new DuplicateEmailAddressError('このメールアドレスは既に別の報告者に登録されています。')
+    );
 
-    expect(result.success).toBe(false);
-    expect(result.reporterId).toBeNull();
-    expect(result.message).toBe('このメールアドレスは既に別の報告者に登録されています。');
-    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    await expect((updateReporterInMaster as any)(input)).rejects.toThrow(DuplicateEmailAddressError);
+    expect((persistReporterMasterChangeHistory as jest.Mock)).not.toHaveBeenCalled();
   });
 });

@@ -54,6 +54,7 @@ async function login(page: Page, username: string) {
 }
 
 test('営業日かつ定時期限内の提出は当日の日付で記録される', async ({ page, request }) => {
+  // テスト実行日が営業日（月～金）かつ定時期限内であることを確認する
   await page.clock.install({ time: new Date(SUBMIT_DATETIME) });
   await login(page, 'reporter_scen609');
   const config = await readAivicConfig(page);
@@ -63,17 +64,28 @@ test('営業日かつ定時期限内の提出は当日の日付で記録され�
   const submitBtn = page.locator('#rp-submit-btn');
   const success = page.locator('#rp-success');
 
+  // 日報入力欄に内容を入力する
   await textarea.fill(content);
+
+  // 提出ボタンをクリック
   await submitBtn.click();
 
+  // 妥当性チェックが完了し、提出処理が開始されることを確認する
   await expect(success).toBeVisible();
 
-  await page.getByText('管理', { exact: true }).click();
+  // 日報確認・管理画面に遷移し、提出済み日報一覧を表示させる
+  await page.locator('#rp-history-link').click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.locator('#rm-r-keyword').fill(content);
+
+  // 提出日報の日付カラムを確認する
+  const searchField = page.locator('#rm-r-keyword');
+  if (await searchField.isVisible()) {
+    await searchField.fill(content);
+  }
   const matchingRow = page.locator('#rm-r-tbody tr', { hasText: content });
   await expect(matchingRow).toContainText(SUBMIT_DATE);
 
+  // 提出済み日報の日付が、提出操作を実行した当日の日付として記録・表示されていること
   const reportRecords = await fetchTableRecords(request, config, '日報');
   const matched = reportRecords.find((r) => r['業務内容'] === content);
   expect(String(matched?.['報告日'] ?? '')).toContain(SUBMIT_DATE);

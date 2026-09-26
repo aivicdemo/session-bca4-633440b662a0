@@ -1,16 +1,10 @@
-jest.mock('../../src/logic/daily-report-persistence');
-
-import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
-import type { RetrieveDailyReportsForLeaderReviewInput, RetrieveDailyReportsForLeaderReviewOutput } from '../../src/logic/daily-report-persistence';
-
-const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.Mock;
+import {
+  retrieveDailyReportsForLeaderReview,
+  RetrieveDailyReportsForLeaderReviewInput,
+} from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-434: リーダーが提出状態を\'all\'に指定して検索し、全ての日報が返される', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
-
-  it('should return all reports submitted and draft when filterBySubmissionStatus is all', async () => {
+  it('提出状態を\'all\'に指定して検索し、全ての日報が返される', async () => {
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: 'leader-001',
       startDate: '2024-01-01',
@@ -22,28 +16,32 @@ describe('SCEN-434: リーダーが提出状態を\'all\'に指定して検索�
       pageSize: undefined,
     };
 
-    const expectedOutput: RetrieveDailyReportsForLeaderReviewOutput = {
-      dailyReports: [
-        { id: 'report-001', userId: 'user-001', reportDate: '2024-01-05', businessContent: 'Content 1', submittedAt: '2024-01-05T08:00:00Z' },
-        { id: 'report-002', userId: 'user-002', reportDate: '2024-01-10', businessContent: 'Content 2', submittedAt: '2024-01-10T09:00:00Z' },
-        { id: 'report-003', userId: 'user-003', reportDate: '2024-01-15', businessContent: 'Content 3', submittedAt: undefined },
-        { id: 'report-004', userId: 'user-001', reportDate: '2024-01-20', businessContent: 'Content 4', submittedAt: '2024-01-20T10:00:00Z' },
-      ],
-      totalCount: 4,
-      pageNumber: 1,
-      pageSize: 50,
-      retrievedAt: new Date().toISOString(),
-    };
-
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue(expectedOutput);
-
     const result = await retrieveDailyReportsForLeaderReview(input);
 
-    expect(result.dailyReports).toHaveLength(4);
-    expect(result.dailyReports.every((r) => r.businessContent !== undefined)).toBe(true);
-    expect(result.totalCount).toBe(4);
+    // 提出状態が'all'のため、提出済み・未提出を問わずすべての日報が返される
+    result.dailyReports.forEach((report) => {
+      expect(report.businessContent).toBeDefined();
+      expect(typeof report.businessContent).toBe('string');
+    });
+
+    // 各レコードが必須フィールドを含む
+    result.dailyReports.forEach((report) => {
+      expect(report.dailyReportId).toBeDefined();
+      expect(typeof report.dailyReportId).toBe('string');
+      expect(report.userId).toBeDefined();
+      expect(typeof report.userId).toBe('string');
+      expect(report.reportDate).toBeDefined();
+      expect(typeof report.reportDate).toBe('string');
+      expect(report.businessContent).toBeDefined();
+      expect(typeof report.businessContent).toBe('string');
+      expect(report.submittedAt).toBeDefined();
+      expect(typeof report.submittedAt).toBe('string');
+    });
+
+    expect(result.totalCount).toBe(result.dailyReports.length);
     expect(result.pageNumber).toBe(1);
     expect(result.pageSize).toBe(50);
-    expect(result.retrievedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(result.retrievedAt).toBeDefined();
+    expect(typeof result.retrievedAt).toBe('string');
   });
 });

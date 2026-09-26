@@ -1,19 +1,14 @@
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/notification-persistence');
 
 import {
   manageReminderNotificationSettings,
+  ManageReminderNotificationSettingsInput,
 } from '../../src/logic/daily-report-reminder-notification';
 
 describe('SCEN-318: チームリーダーが報告者のリマインダー通知を新規登録し、設定が保存される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('チームリーダーが報告者『valid-reporter-001』に対してリマインダー通知を新規登録したとき、success=true、新規発行された reminderSettingId（null でない UUID）、operation=\'register\'、appliedAt=操作実行日時、errorDetails=null が返却され、設定内容が保存永続化レイヤーの saveReminderNotificationSettings に正確に渡される', async () => {
     const now = new Date();
-    const input = {
-      operation: 'register' as const,
+    const input: ManageReminderNotificationSettingsInput = {
+      operation: 'register',
       reporterId: 'valid-reporter-001',
       reminderSettingId: null,
       enabledFlag: true,

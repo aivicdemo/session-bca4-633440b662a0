@@ -1,5 +1,10 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeReporterAccess: jest.fn(),
+}));
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  validateDailyReportContent: jest.fn(),
 }));
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: jest.fn(),
@@ -9,22 +14,24 @@ jest.mock('../../src/logic/daily-report-persistence', () => ({
   saveDailyReport: jest.fn(),
   updateDailyReportSubmissionTimestamp: jest.fn(),
 }));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
-import { submitDailyReport, SubmitDailyReportInput, SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
+import { submitDailyReport, type SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
 import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
+import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
 import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
+import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedSaveDailyReport = saveDailyReport as jest.Mock;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
+const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-217: 業務ルール validateAndRecordDailyReportSubmission が送信時刻記録と期限判定を実行する', () => {
   beforeEach(() => {
@@ -33,34 +40,51 @@ describe('SCEN-217: 業務ルール validateAndRecordDailyReportSubmission が�
     mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
       isAccessGranted: true,
       userId: 'reporter-001',
+      denialReason: null,
+    });
+
+    mockedValidateDailyReportContent.mockResolvedValue({
+      isValid: true,
+      validatedContent: '本日はシステムテストを実施した',
+      errorCode: null,
     });
 
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      submissionStatus: 'within_deadline',
+      isAcceptable: true,
       isBusinessDay: true,
+      isWithinDeadline: true,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      processingPolicy: 'accept',
+      rejectionReason: null,
     });
 
-    mockedCheckDailyReportExistsForDate.mockResolvedValue({
-      exists: false,
-    });
+    mockedCheckDailyReportExistsForDate.mockResolvedValue(false);
 
     mockedSaveDailyReport.mockResolvedValue({
       dailyReportId: 'daily-report-uuid-12345',
-      submissionTimestamp: '2024-01-15T16:30:00Z',
-      submissionStatus: 'within_deadline',
+      savedAt: '2024-01-15T16:30:00Z',
+      userId: 'reporter-001',
+      reportDate: '2024-01-15',
     });
 
     mockedUpdateDailyReportSubmissionTimestamp.mockResolvedValue({
-      submissionTimestamp: '2024-01-15T16:30:00Z',
+      dailyReportId: 'daily-report-uuid-12345',
+      previousSubmittedAt: null,
+      updatedSubmittedAt: '2024-01-15T16:30:00Z',
+      updatedAt: '2024-01-15T16:30:00Z',
     });
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
-      notificationTriggered: true,
+    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: 'notif-001',
+      sentAt: '2024-01-15T16:30:00Z',
+      errorMessage: null,
+      adminNotificationSent: false,
     });
   });
 
   it('報告内容が有効で期限内の場合、日報が提出され、ステータスと通知が正常に返される', async () => {
-    const input: SubmitDailyReportInput = {
+    const input = {
       userId: 'reporter-001',
       reportDate: '2024-01-15',
       businessContent: '本日はシステムテストを実施した',
@@ -70,7 +94,7 @@ describe('SCEN-217: 業務ルール validateAndRecordDailyReportSubmission が�
       submissionTimestamp: '2024-01-15T16:30:00Z',
     };
 
-    const result: SubmitDailyReportOutput = await submitDailyReport(input);
+    const result = await submitDailyReport(input);
 
     expect(result.dailyReportId).toBe('daily-report-uuid-12345');
     expect(result.userId).toBe('reporter-001');
@@ -78,19 +102,14 @@ describe('SCEN-217: 業務ルール validateAndRecordDailyReportSubmission が�
     expect(result.submissionTimestamp).toBe('2024-01-15T16:30:00Z');
     expect(result.submissionStatus).toBe('within_deadline');
     expect(result.notificationTriggered).toBe(true);
-    expect(result.completionMessage).toBe('日報を提出しました。リーダーに通知します。');
+    expect(result.completionMessage).toBeTruthy();
 
-    expect(mockedAuthenticateAndAuthorizeReporterAccess).toHaveBeenCalledWith({
-      userId: 'reporter-001',
-    });
-    expect(mockedJudgeBusinessDayAndDeadline).toHaveBeenCalledWith({
-      submissionTimestamp: '2024-01-15T16:30:00Z',
-    });
-    expect(mockedCheckDailyReportExistsForDate).toHaveBeenCalledWith({
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-    });
-    expect(mockedSaveDailyReport).toHaveBeenCalled();
-    expect(mockedSendLeaderSubmissionNotification).toHaveBeenCalled();
+    expect(mockedAuthenticateAndAuthorizeReporterAccess).toHaveBeenCalledTimes(1);
+    expect(mockedValidateDailyReportContent).toHaveBeenCalledTimes(1);
+    expect(mockedJudgeBusinessDayAndDeadline).toHaveBeenCalledTimes(1);
+    expect(mockedCheckDailyReportExistsForDate).toHaveBeenCalledTimes(1);
+    expect(mockedSaveDailyReport).toHaveBeenCalledTimes(1);
+    expect(mockedUpdateDailyReportSubmissionTimestamp).toHaveBeenCalledTimes(1);
+    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,7 @@ jest.mock('../../src/logic/input-validation-formatting', () => {
   };
 });
 
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   validateUserInformationRequired,
   validateEmailAddress,
@@ -13,7 +14,7 @@ import {
   ValidateUserInformationRequiredOutput,
 } from '../../src/logic/input-validation-formatting';
 
-const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
+const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
 
 describe('SCEN-154: チームリーダーが名前が空または空白のみの状態で検証した場合、名前を入力してくださいという指定文言でエラーになる', () => {
   beforeEach(() => {
@@ -25,14 +26,14 @@ describe('SCEN-154: チームリーダーが名前が空または空白のみの
     });
   });
 
-  test('should return UserNameEmptyError when userName is empty string', () => {
+  it('should return UserNameEmptyError when userName is empty string', async () => {
     const input: ValidateUserInformationRequiredInput = {
       userName: '',
       emailAddress: 'test@example.com',
       department: '営業部',
     };
 
-    const result: ValidateUserInformationRequiredOutput = validateUserInformationRequired(input);
+    const result: ValidateUserInformationRequiredOutput = await validateUserInformationRequired(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedUserName).toBeNull();

@@ -1,105 +1,103 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
+import { describe, it, expect, jest } from '@jest/globals';
 
-describe('SCEN-034: 複数リーダーへの個別通知', () => {
-  let mockJudgeSchedulerExecutionTiming: jest.Mock;
-  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
-  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
-  let mockJudgePromptNecessityAndMethod: jest.Mock;
-  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
-  let mockSendNonSubmissionPromptNotification: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveLeaderDashboardData: jest.Mock;
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/daily-report-non-submission-detection');
+jest.mock('../../src/logic/non-submission-prompt-decision');
+jest.mock('../../src/logic/daily-report-reminder-notification');
+jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/daily-report-management-view');
 
-  beforeEach(() => {
-    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
-    mockDetectNonSubmittedReportersAtDeadline = jest
-      .fn()
-      .mockReturnValue(['user-001', 'user-002', 'user-003', 'user-004', 'user-005']);
-    
-    const detectionResult = {
-      detectedReporters: ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'],
-      detectionLogId: 'log-001',
-      detectionTimestamp: 1705324800000,
-    };
-    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
-    
-    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue([
-      { reporterId: 'user-001', required: true },
-      { reporterId: 'user-002', required: true },
-      { reporterId: 'user-003', required: true },
-      { reporterId: 'user-004', required: true },
-      { reporterId: 'user-005', required: true },
-    ]);
-    
-    const leaderNotifications = [
-      { leaderId: 'leader-001', status: 'success', timestamp: 1705324800100 },
-      { leaderId: 'leader-002', status: 'success', timestamp: 1705324800200 },
-      { leaderId: 'leader-003', status: 'success', timestamp: 1705324800300 },
+import { runTx3Imp1Agent, type Tx3Imp1AgentInput, type Tx3Imp1AiClient } from '../../src/agents/tx-3-imp-1/orchestrator';
+
+describe('SCEN-034: 複数のリーダーに対して通知が個別に送信され、各リーダーのステータスが記録される', () => {
+  it('複数リーダーへの個別通知送信とステータス記録', async () => {
+    const targetDate = '2025-01-15';
+    const executionTimestamp = 1705324800000;
+    const leaderUserIds = ['leader-001', 'leader-002', 'leader-003'];
+
+    const mockNonSubmittedReporters = [
+      { userId: 'user-001', userName: 'User A', emailAddress: 'usera@example.com', promptPriority: 'high' },
+      { userId: 'user-002', userName: 'User B', emailAddress: 'userb@example.com', promptPriority: 'high' },
+      { userId: 'user-003', userName: 'User C', emailAddress: 'userc@example.com', promptPriority: 'high' },
+      { userId: 'user-004', userName: 'User D', emailAddress: 'userd@example.com', promptPriority: 'medium' },
+      { userId: 'user-005', userName: 'User E', emailAddress: 'usere@example.com', promptPriority: 'medium' },
     ];
-    mockSendLeaderNonSubmissionPromptNotification = jest
-      .fn()
-      .mockReturnValue(leaderNotifications);
-    
-    const promptNotifications = [
-      { reporterId: 'user-001', status: 'success', timestamp: 1705324800400 },
-      { reporterId: 'user-002', status: 'success', timestamp: 1705324800500 },
-      { reporterId: 'user-003', status: 'success', timestamp: 1705324800600 },
-      { reporterId: 'user-004', status: 'success', timestamp: 1705324800700 },
-      { reporterId: 'user-005', status: 'success', timestamp: 1705324800800 },
+
+    const mockLeaderNotifications = [
+      {
+        recipientUserId: 'leader-001',
+        notificationType: 'email',
+        sendStatus: 'success',
+        emailSendingHistoryId: 'history-001',
+        errorMessage: null,
+      },
+      {
+        recipientUserId: 'leader-002',
+        notificationType: 'email',
+        sendStatus: 'success',
+        emailSendingHistoryId: 'history-002',
+        errorMessage: null,
+      },
+      {
+        recipientUserId: 'leader-003',
+        notificationType: 'email',
+        sendStatus: 'success',
+        emailSendingHistoryId: 'history-003',
+        errorMessage: null,
+      },
     ];
-    mockSendNonSubmissionPromptNotification = jest.fn().mockReturnValue(promptNotifications);
-    
-    mockRetrieveDailyReportsForLeaderReview = jest.fn().mockReturnValue([]);
-    
-    const dashboardData = {
-      nonSubmittedCount: 5,
-      detectionLogId: 'log-001',
-      detectionTimestamp: 1705324800000,
-      leaderNotifications: [
-        { leaderId: 'leader-001', status: 'success' },
-        { leaderId: 'leader-002', status: 'success' },
-        { leaderId: 'leader-003', status: 'success' },
-      ],
-    };
-    mockRetrieveLeaderDashboardData = jest.fn().mockReturnValue(dashboardData);
-  });
 
-  it('複数リーダーへ異なるタイムスタンプで個別に通知', async () => {
-    const input = {
-      targetDate: '2025-01-15',
-      executionTimestamp: 1705324800000,
-      leaderUserIds: ['leader-001', 'leader-002', 'leader-003'],
-    };
+    const mockPromptNotifications = [
+      { recipientUserId: 'user-001', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-001' },
+      { recipientUserId: 'user-002', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-002' },
+      { recipientUserId: 'user-003', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-003' },
+      { recipientUserId: 'user-004', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-004' },
+      { recipientUserId: 'user-005', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-005' },
+    ];
 
-    const aiClient = {
-      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
-      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
-      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
-      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
-      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
-      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
-      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
-      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
+    let leaderNotificationCallCount = 0;
+    const mockAiClient: Tx3Imp1AiClient = {
+      judgeSchedulerExecutionTiming: async () => true,
+      detectNonSubmittedReportersAtDeadline: async () => ({ nonSubmittedReporterIds: ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'], detectionLogId: 'log-001', detectionCount: 5 }),
+      generateNonSubmissionDetectionResult: async () => ({ nonSubmittedReporterIds: ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'], detectionLogId: 'log-001', detectionCount: 5 }),
+      judgePromptNecessityAndMethod: async () => true,
+      sendLeaderNonSubmissionPromptNotification: async () => mockLeaderNotifications[leaderNotificationCallCount++],
+      sendNonSubmissionPromptNotification: async () => mockPromptNotifications,
+      retrieveDailyReportsForLeaderReview: async () => [],
+      retrieveLeaderDashboardData: async () => ({
+        submittedReportCount: 0,
+        nonSubmittedReporterCount: 5,
+        nonSubmittedReporters: mockNonSubmittedReporters,
+        promptNotificationStatus: { sent: 5, failed: 0 },
+      }),
     };
 
-    const output = await runTx3Imp1Agent(input, aiClient);
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
+    };
 
-    expect(output.executionStatus).toBe('success');
-    expect(output.detectionResult.detectedReporters).toHaveLength(5);
-    expect(output.leaderNotificationStatus).toHaveLength(3);
-    expect(output.leaderNotificationStatus[0].timestamp).toBe(1705324800100);
-    expect(output.leaderNotificationStatus[1].timestamp).toBe(1705324800200);
-    expect(output.leaderNotificationStatus[2].timestamp).toBe(1705324800300);
-    expect(output.leaderNotificationStatus[0].timestamp).not.toBe(
-      output.leaderNotificationStatus[1].timestamp
-    );
-    expect(output.leaderNotificationStatus[1].timestamp).not.toBe(
-      output.leaderNotificationStatus[2].timestamp
-    );
-    expect(output.leaderNotificationStatus.every((n: any) => n.status === 'success')).toBe(true);
-    expect(output.promptNotificationStatus).toHaveLength(5);
-    expect(output.dashboardData.leaderNotifications).toHaveLength(3);
-    expect(output.executionTimestamp).toBeGreaterThanOrEqual(input.executionTimestamp);
+    const result = await runTx3Imp1Agent(input, mockAiClient);
+
+    expect(result.executionStatus).toBe('success');
+    expect(result.detectionResult.nonSubmittedReporterIds).toHaveLength(5);
+    expect(result.detectionResult.detectionLogId).toBe('log-001');
+
+    expect(result.leaderNotificationStatus).toHaveLength(3);
+    expect(result.leaderNotificationStatus[0].recipientUserId).toBe('leader-001');
+    expect(result.leaderNotificationStatus[0].sendStatus).toBe('success');
+    expect(result.leaderNotificationStatus[1].recipientUserId).toBe('leader-002');
+    expect(result.leaderNotificationStatus[1].sendStatus).toBe('success');
+    expect(result.leaderNotificationStatus[2].recipientUserId).toBe('leader-003');
+    expect(result.leaderNotificationStatus[2].sendStatus).toBe('success');
+
+    expect(result.promptNotificationStatus).toHaveLength(5);
+    expect(result.promptNotificationStatus.every((ns) => ns.sendStatus === 'success')).toBe(true);
+
+    expect(result.dashboardData.nonSubmittedReporterCount).toBe(5);
+    expect(result.dashboardData.nonSubmittedReporters).toHaveLength(5);
+    expect(result.executionTimestamp).toBeGreaterThanOrEqual(executionTimestamp);
   });
 });

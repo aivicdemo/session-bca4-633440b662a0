@@ -1,37 +1,40 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
   NoActiveReportersError,
 } from '../../src/logic/daily-report-non-submission-detection';
-import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
-import * as reporterMaster from '../../src/logic/reporter-master-management';
 
-jest.mock('../../src/logic/business-day-deadline-judgment');
 jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
-describe('SCEN-235: チームメンバーIDが空の場合は処理を拒否する', () => {
+import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+
+describe('SCEN-235: detectNonSubmittedReportersAtDeadline - Empty Team ID', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw NoActiveReportersError when teamId is empty string', () => {
-    const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
-    mockJudgeScheduler.mockReturnValue(true);
+  it('should reject when team ID is empty', async () => {
+    // Mock judgeSchedulerExecutionTiming to return true
+    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
 
-    const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
-    mockGetReporters.mockReturnValue([]);
+    // Mock getActiveReportersForSubmissionCheck to return empty array for empty team ID
+    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue([]);
 
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
+    const input = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:30:00Z',
       submissionDeadlineTime: '17:00',
-      teamId: '',
+      teamId: '', // Empty team ID
     };
 
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(NoActiveReportersError);
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
-      /検知対象の有効な報告者が存在しません/
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      NoActiveReportersError
+    );
+
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      '検知対象の有効な報告者が存在しません。'
     );
   });
 });

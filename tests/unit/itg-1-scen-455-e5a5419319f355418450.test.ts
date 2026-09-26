@@ -1,19 +1,30 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   registerReporterToMaster,
-  RegisterReporterToMasterInput,
-  RegisterReporterToMasterOutput,
   DuplicateReporterEmailError,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
 
 import {
   validateUserInformationRequired,
   validateEmailAddress,
   detectDuplicateEmailAddress,
 } from '../../src/logic/input-validation-formatting';
+
+interface RegisterReporterToMasterInput {
+  reporterName: string;
+  emailAddress: string;
+  department: string;
+  leaderUserId: string;
+  registrationTimestamp: Date;
+}
+
+interface RegisterReporterToMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-455: 入力されたメールアドレスが既にマスタに登録されている場合、登録失敗を返す', () => {
   beforeEach(() => {
@@ -29,9 +40,9 @@ describe('SCEN-455: 入力されたメールアドレスが既にマスタに登
       registrationTimestamp: new Date('2024-01-15T10:00:00Z'),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(true) as any;
-    (validateEmailAddress as any).mockReturnValue(true) as any;
-    (detectDuplicateEmailAddress as any).mockReturnValue(true) as any;
+    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
+    (validateEmailAddress as any).mockReturnValue({ isValid: true } as any);
+    (detectDuplicateEmailAddress as any).mockReturnValue({ isValid: true } as any);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

@@ -10,15 +10,16 @@ jest.mock('../../src/logic/input-validation-formatting', () => ({
 
 import {
   confirmAndApproveUserInformation,
+  ConfirmAndApproveUserInformationInput,
   DuplicateEmailAddressDetectedError,
 } from '../../src/logic/user-information-input-confirmation';
 import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
 import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
 import { detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
 
-const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.Mock;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
+const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
 
 describe('SCEN-412: DuplicateEmailAddressDetectedError when email is already registered', () => {
   beforeEach(() => {
@@ -36,10 +37,10 @@ describe('SCEN-412: DuplicateEmailAddressDetectedError when email is already reg
       new DuplicateEmailAddressDetectedError('このメールアドレスは既に登録されています。')
     );
 
-    const input = {
+    const input: ConfirmAndApproveUserInformationInput = {
       leaderUserId: 'leader-001',
       userInformationId: 'user-info-123',
-      approvalDecision: 'approve' as const,
+      approvalDecision: 'approve',
       rejectionReason: null,
       approvalTimestamp: new Date(),
     };

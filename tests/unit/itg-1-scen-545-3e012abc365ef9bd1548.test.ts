@@ -1,20 +1,11 @@
-jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn().mockResolvedValue({ isValid: true }),
-  buildNotificationContent: jest.fn().mockResolvedValue({
-    subject: '日報の提出をお願いします',
-    body: 'お忙しいところ恐れ入りますが、日報の提出をお願いいたします。',
-  }),
-  recordEmailSendingHistory: jest.fn()
-    .mockResolvedValueOnce({ emailSendingHistoryId: 'hist-001' })
-    .mockResolvedValueOnce({ emailSendingHistoryId: 'hist-002' })
-    .mockResolvedValueOnce({ emailSendingHistoryId: 'hist-003' }),
-}));
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock('../../src/adapters/amazon-ses-adapter', () => ({
-  sendEmail: jest.fn().mockResolvedValue({ success: true }),
-}));
+jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/adapters/amazon-ses-adapter');
 
 import { sendNonSubmissionPromptNotification } from '../../src/logic/email-notification-management';
+
+const mockedSendNonSubmissionPromptNotification = sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
 
 describe('SCEN-545: successCountがメール送信に成功した対象者の数と一致する', () => {
   beforeEach(() => {
@@ -34,6 +25,17 @@ describe('SCEN-545: successCountがメール送信に成功した対象者の数
       promptReason: '定時リマインダー',
       targetDate: '2024-01-15',
     };
+
+    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+      success: true,
+      totalTargets: 3,
+      successCount: 3,
+      failureCount: 0,
+      emailSendingHistoryIds: ['hist-001', 'hist-002', 'hist-003'],
+      sentAt: '2024-01-15T14:30:45.123Z',
+      failedReporterIds: null,
+      errorMessage: null,
+    });
 
     const result = await sendNonSubmissionPromptNotification(input);
 

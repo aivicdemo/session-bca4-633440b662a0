@@ -13,7 +13,7 @@ describe('SCEN-223: 業務ルール recordAndValidateDailyReportSubmission で�
     jest.clearAllMocks();
   });
 
-  it('businessContent フィールドに空文字列を設定した SubmitDailyReportInput で DailyReportContentEmptyException が throw される', async () => {
+  it('DailyReportContentEmptyException が throw され、エラー文言が「日報内容を入力してください。」となること。入力値の永続化、提出時刻の記録、リーダー通知トリガーの発火は実行されないこと。', async () => {
     const input: SubmitDailyReportInput = {
       userId: 'reporter-001',
       reportDate: '2024-01-15',
@@ -24,103 +24,19 @@ describe('SCEN-223: 業務ルール recordAndValidateDailyReportSubmission で�
       submissionTimestamp: '2024-01-15T14:30:00Z',
     };
 
+    // DailyReportContentEmptyException がスローされ、エラー文言が正しいことを確認
     await expect(submitDailyReport(input)).rejects.toThrow(DailyReportContentEmptyException);
-  });
-
-  it('エラー文言が「日報内容を入力してください。」である', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-      businessContent: '',
-      achievements: null,
-      challenges: null,
-      tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
-    };
-
     await expect(submitDailyReport(input)).rejects.toThrow('日報内容を入力してください。');
-  });
 
-  it('SubmitDailyReportOutput は返されず、エラーが発生する', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-      businessContent: '',
-      achievements: null,
-      challenges: null,
-      tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
-    };
-
-    let output = undefined;
-    let errorOccurred = false;
-    try {
-      output = await submitDailyReport(input);
-    } catch (error) {
-      errorOccurred = true;
-    }
-
-    expect(errorOccurred).toBe(true);
-    expect(output).toBeUndefined();
-  });
-
-  it('入力値の永続化は実行されない', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-      businessContent: '',
-      achievements: null,
-      challenges: null,
-      tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
-    };
-
+    // 2回目の呼び出しで、永続化・記録・通知が実行されていないことを確認
     try {
       await submitDailyReport(input);
     } catch (error) {
       // Expected error
     }
 
-    expect((persistenceModule.saveDailyReport as jest.Mock)).not.toHaveBeenCalled();
-  });
-
-  it('提出時刻の記録は実行されない', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-      businessContent: '',
-      achievements: null,
-      challenges: null,
-      tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
-    };
-
-    try {
-      await submitDailyReport(input);
-    } catch (error) {
-      // Expected error
-    }
-
-    expect((persistenceModule.updateDailyReportSubmissionTimestamp as jest.Mock)).not.toHaveBeenCalled();
-  });
-
-  it('リーダー通知トリガーの発火は実行されない', async () => {
-    const input: SubmitDailyReportInput = {
-      userId: 'reporter-001',
-      reportDate: '2024-01-15',
-      businessContent: '',
-      achievements: null,
-      challenges: null,
-      tomorrowPlan: null,
-      submissionTimestamp: '2024-01-15T14:30:00Z',
-    };
-
-    try {
-      await submitDailyReport(input);
-    } catch (error) {
-      // Expected error
-    }
-
-    expect((notificationModule.sendDailyReportSubmissionNotification as jest.Mock)).not.toHaveBeenCalled();
+    expect((persistenceModule.saveDailyReport as jest.MockedFunction<any>)).not.toHaveBeenCalled();
+    expect((persistenceModule.updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>)).not.toHaveBeenCalled();
+    expect((notificationModule.sendDailyReportSubmissionNotification as jest.MockedFunction<any>)).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,5 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeSchedulerExecutionTiming: jest.fn(),
 }));
@@ -12,20 +14,26 @@ jest.mock('../../src/logic/daily-report-submission', () => ({
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
   sendLeaderSubmissionNotification: jest.fn(),
+  sendLeaderNonSubmissionPromptNotification: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
+  detectNonSubmittedReportersAtDeadline: jest.fn(),
 }));
 
-import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
+import { runTx1Imp1Agent, type Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
 import { submitDailyReport } from '../../src/logic/daily-report-submission';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
+import { sendLeaderSubmissionNotification, sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
+import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedSubmitDailyReport = submitDailyReport as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedSubmitDailyReport = submitDailyReport as jest.MockedFunction<any>;
+const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.MockedFunction<any>;
+const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
 
 const REPORTERS = [
   { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
@@ -91,6 +99,12 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
         errorDetails: null,
       })
     );
+
+    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+      success: true,
+      nonSubmittedReporters: [],
+      totalDetected: 0,
+    });
   });
 
   it('報告者5名全員が入力を促され、提出・通知が完結し、催促が発生しない', async () => {
@@ -108,6 +122,6 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
     expect(result.promptsSent).toBe(0);
     expect(result.leaderNotificationsSent).toBe(5);
     expect(result.errors ?? []).toEqual([]);
-    expect(result.executionSummary).toMatch(/5/);
+    expect(result.executionSummary).toContain('5名全員');
   });
 });

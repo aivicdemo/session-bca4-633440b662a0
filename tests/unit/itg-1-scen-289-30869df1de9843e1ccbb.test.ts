@@ -14,7 +14,7 @@ describe('SCEN-289: 提出期限の時刻がHH:MM形式以外の場合、エラ�
     jest.clearAllMocks();
   });
 
-  it('submissionDeadlineTime が "17:3" （HH:MM形式以外の不正な形式）の場合、InvalidDeadlineConfiguration エラーがスローされる', async () => {
+  it('提出期限の時刻がHH:MM形式以外の場合、InvalidDeadlineConfigurationエラーが発生し、エラー文言が正しい', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',
@@ -22,9 +22,18 @@ describe('SCEN-289: 提出期限の時刻がHH:MM形式以外の場合、エラ�
       submissionDeadlineTime: '17:3',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidDeadlineConfiguration);
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow('提出期限の設定が不正です。');
+
+    try {
+      await judgePromptNecessityAndMethod(input);
+    } catch (error) {
+      if (error instanceof InvalidDeadlineConfiguration) {
+        expect(error.message).toBe('提出期限の設定が不正です。');
+      } else {
+        throw error;
+      }
+    }
   });
 });

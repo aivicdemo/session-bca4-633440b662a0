@@ -18,7 +18,7 @@ describe('SCEN-396: 報告者が有効なアカウントで必須項目をすべ
     jest.clearAllMocks();
   });
 
-  test('Valid input returns success with userInformationId, confirmationStatus, leaderNotificationSent, and approvalDeadline', () => {
+  test('Valid input returns success with userInformationId, confirmationStatus, leaderNotificationSent, and approvalDeadline', async () => {
     const now = new Date();
     const approvalDeadline = new Date(now);
     approvalDeadline.setDate(approvalDeadline.getDate() + 3);
@@ -32,12 +32,12 @@ describe('SCEN-396: 報告者が有効なアカウントで必須項目をすべ
       submissionTimestamp: now,
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.Mock).mockReturnValue({
+    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
       isAuthenticated: true,
       reporterId: 'reporter-001',
     });
 
-    (validateUserInformationRequired as jest.Mock).mockReturnValue({
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue({
       isValid: true,
       validatedUserName: 'user-name-001',
       validatedEmailAddress: 'reporter@example.com',
@@ -45,24 +45,25 @@ describe('SCEN-396: 報告者が有効なアカウントで必須項目をすべ
       validatedDepartment: '営業部',
     });
 
-    (detectDuplicateEmailAddress as jest.Mock).mockReturnValue({
+    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue({
       isDuplicate: false,
     });
 
-    (saveDailyReportRecord as jest.Mock).mockReturnValue({
+    (saveDailyReportRecord as jest.MockedFunction<any>).mockResolvedValue({
       userInformationId: 'user-info-2024-001',
       confirmationStatus: 'pending_approval',
       approvalDeadline,
     });
 
-    (sendLeaderSubmissionNotification as jest.Mock).mockReturnValue({
+    (sendLeaderSubmissionNotification as jest.MockedFunction<any>).mockResolvedValue({
       leaderNotificationSent: true,
     });
 
-    const result: SubmitUserInformationForConfirmationOutput = submitUserInformationForConfirmation(input);
+    const result = await submitUserInformationForConfirmation(input);
 
     expect(result.success).toBe(true);
     expect(result.userInformationId).toBe('user-info-2024-001');
+    expect(result.userInformationId).not.toBeNull();
     expect(result.confirmationStatus).toBe('pending_approval');
     expect(result.leaderNotificationSent).toBe(true);
     expect(result.approvalDeadline).toEqual(approvalDeadline);

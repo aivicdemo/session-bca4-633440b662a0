@@ -12,25 +12,17 @@ import type {
 
 jest.mock('../../src/logic/email-notification-management');
 
+const mockModule = require('../../src/logic/email-notification-management');
+const mockValidateEmailAddressForDelivery = mockModule.validateEmailAddressForDelivery as jest.MockedFunction<typeof validateEmailAddressForDelivery>;
+const mockBuildNotificationContent = mockModule.buildNotificationContent as jest.MockedFunction<typeof buildNotificationContent>;
+const mockRecordEmailSendingHistory = mockModule.recordEmailSendingHistory as jest.MockedFunction<typeof recordEmailSendingHistory>;
+
 describe('SCEN-552: 却下理由が指定された場合、却下結果をリーダーにメール送信する', () => {
   beforeEach(() => {
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(true);
-    jest.mocked(buildNotificationContent).mockResolvedValue({
-      subject: '【却下】ユーザー情報が却下されました',
-      body: 'ユーザー情報が却下されました。却下理由：記入内容が不十分です',
-    });
-    jest.mocked(recordEmailSendingHistory).mockResolvedValue('history-001');
+    jest.clearAllMocks();
   });
 
   it('却下理由が指定された場合、却下結果をリーダーにメール送信する', async () => {
-    jest.mocked(sendUserInformationApprovalNotification).mockResolvedValueOnce({
-      success: true,
-      emailSendingHistoryId: 'history-001',
-      sentAt: '2024-01-15T14:30:05Z',
-      errorMessage: null,
-      adminNotificationSent: false,
-    });
-
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',
@@ -42,6 +34,24 @@ describe('SCEN-552: 却下理由が指定された場合、却下結果をリー
       confirmingLeaderUserId: 'leader-002',
     };
 
+    mockValidateEmailAddressForDelivery.mockResolvedValue({
+      isValid: true,
+      reason: null,
+      errorCode: null,
+    });
+
+    mockBuildNotificationContent.mockResolvedValue({
+      subject: '【却下】ユーザー情報が却下されました',
+      body: 'ユーザー情報が却下されました。却下理由：記入内容が不十分です',
+    });
+
+    mockRecordEmailSendingHistory.mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: 'history-001',
+      recordedAt: '2024-01-15T14:30:05Z',
+      errorMessage: null,
+    });
+
     const result: SendUserInformationApprovalNotificationOutput = await sendUserInformationApprovalNotification(input);
 
     expect(result.success).toBe(true);
@@ -49,5 +59,23 @@ describe('SCEN-552: 却下理由が指定された場合、却下結果をリー
     expect(result.sentAt).toBe('2024-01-15T14:30:05Z');
     expect(result.errorMessage).toBeNull();
     expect(result.adminNotificationSent).toBe(false);
+
+    expect(mockValidateEmailAddressForDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAddress: 'leader@example.com',
+        recipientType: 'leader',
+      })
+    );
+
+    expect(mockBuildNotificationContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notificationType: 'user_information_approval',
+        approvalStatus: 'rejected',
+        rejectionReason: '記入内容が不十分です',
+        reporterName: '山田太郎',
+      })
+    );
+
+    expect(mockRecordEmailSendingHistory).toHaveBeenCalled();
   });
 });

@@ -3,48 +3,50 @@ import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
-  ReporterNotFoundError,
 } from '../../src/logic/daily-report-reminder-notification';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+import {
+  retrieveReminderNotificationSettingsByUserId,
+  saveReminderNotificationSettings,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
+const mockedRetrieve = retrieveReminderNotificationSettingsByUserId as jest.MockedFunction<any>;
+const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
+
 describe('SCEN-321: システムマスタに存在しない報告者IDでリマインダー設定を登録しようとすると、エラーが返される', () => {
+  const nonexistentReporterId = 'reporter-nonexistent-999';
+  const now = new Date();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('存在しない報告者IDでリマインダー設定を登録するとReporterNotFoundErrorが返される', () => {
-    const mockRetrieve = jest.spyOn(
-      userMasterPersistence,
-      'retrieveReminderNotificationSettingsByUserId' as any
-    );
-    mockRetrieve.mockReturnValue([]);
-
-    const mockSave = jest.spyOn(
-      userMasterPersistence,
-      'saveReminderNotificationSettings' as any
-    );
+  it('存在しない報告者IDでリマインダー設定を登録するとReporterNotFoundErrorが返される', async () => {
+    mockedRetrieve.mockResolvedValueOnce({
+      success: false,
+      reminderSetting: null,
+      message: '指定された報告者が見つかりません。',
+    });
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
-      reporterId: 'reporter-nonexistent-999',
+      reporterId: nonexistentReporterId,
       reminderSettingId: null,
       enabledFlag: true,
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 2, 3, 4, 5],
       deliveryMethod: 'email',
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: now,
     };
 
-    const result: ManageReminderNotificationSettingsOutput =
-      manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
-    expect(result.reminderSettingId).toBe(null);
+    expect(result.reminderSettingId).toBeNull();
     expect(result.operation).toBe('register');
-    expect(result.appliedAt).toBe(null);
+    expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('指定された報告者が見つかりません。');
-    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockedSave).not.toHaveBeenCalled();
   });
 });

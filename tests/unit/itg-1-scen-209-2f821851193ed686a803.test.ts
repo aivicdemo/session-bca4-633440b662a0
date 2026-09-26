@@ -15,13 +15,13 @@ describe('SCEN-209: 提出時刻が期限内である場合、submissionStatus �
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
-    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
-    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
-    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(false);
-    (persistenceModule.saveDailyReport as jest.Mock).mockResolvedValue({ dailyReportId: 'report-123' });
-    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.Mock).mockResolvedValue({ updated: true });
-    (notificationModule.sendDailyReportSubmissionNotification as jest.Mock).mockResolvedValue({ triggered: true });
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.MockedFunction<any>).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.MockedFunction<any>).mockResolvedValue(false);
+    (persistenceModule.saveDailyReport as jest.MockedFunction<any>).mockResolvedValue({ dailyReportId: 'report-123' });
+    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>).mockResolvedValue({ updated: true });
+    (notificationModule.sendDailyReportSubmissionNotification as jest.MockedFunction<any>).mockResolvedValue({ triggered: true });
   });
 
   it('提出時刻が期限内のとき、submissionStatus が within_deadline で返される', async () => {

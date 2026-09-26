@@ -55,6 +55,7 @@ async function login(page: Page, username: string) {
 }
 
 test('営業日外に提出した日報は翌営業日の日付で記録される', async ({ page, request }) => {
+  // システム日時を営業日外（祝日）に設定する
   await page.clock.install({ time: new Date(HOLIDAY_DATETIME) });
   await login(page, 'reporter_scen607');
   const config = await readAivicConfig(page);
@@ -64,20 +65,32 @@ test('営業日外に提出した日報は翌営業日の日付で記録され�
   const submitBtn = page.locator('#rp-submit-btn');
   const success = page.locator('#rp-success');
 
+  // 日報入力・提出画面で、入力項目に日報内容を入力する
   await textarea.fill(content);
+
+  // 提出ボタンをクリックして日報を提出する
   await submitBtn.click();
 
+  // 画面上に提出完了メッセージが表示されることを確認する
   await expect(success).toBeVisible();
   await expect(page.locator('#rp-validation.is-error')).toHaveCount(0);
 
+  // システム日時を翌営業日に進める
   await page.clock.setFixedTime(new Date(NEXT_BUSINESS_DAY_DATETIME));
 
-  await page.getByText('管理', { exact: true }).click();
+  // 日報確認・管理画面にアクセスする
+  await page.locator('#rp-history-link').click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.locator('#rm-r-keyword').fill(content);
+
+  // 提出済み日報一覧から、提出した日報を検索して、記録日付が翌営業日になっていることを確認する
+  const searchField = page.locator('#rm-r-keyword');
+  if (await searchField.isVisible()) {
+    await searchField.fill(content);
+  }
   const matchingRow = page.locator('#rm-r-tbody tr', { hasText: content });
   await expect(matchingRow).toContainText(NEXT_BUSINESS_DAY);
 
+  // 記録日付フィールドに翌営業日の日付が表示される
   const reportRecords = await fetchTableRecords(request, config, '日報');
   const matched = reportRecords.find((r) => r['業務内容'] === content);
   expect(String(matched?.['報告日'] ?? '')).toContain(NEXT_BUSINESS_DAY);

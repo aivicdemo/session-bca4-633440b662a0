@@ -10,11 +10,12 @@ describe('SCEN-587: 自身のチーム以外の検知ログにアクセスしよ
     jest.clearAllMocks();
   });
 
-  it('チームに属していない検知ログにアクセスするとUnauthorizedLeaderAccessエラーが発生する', async () => {
+  it('リーダーAがリーダーBのチームの検知ログにアクセスするとUnauthorizedLeaderAccessエラーが発生する', async () => {
     const detectionLogIdTeamB = 'log-team-b-001';
     const leaderIdTeamA = 'leader-a';
 
-    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue([
+    // モック: リーダーAのチームに属さない検知ログ（リーダーBのチーム）を返す
+    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate' as any).mockResolvedValue([
       {
         detectionLogId: detectionLogIdTeamB,
         targetDate: '2024-01-15',
@@ -27,24 +28,18 @@ describe('SCEN-587: 自身のチーム以外の検知ログにアクセスしよ
           },
         ],
       },
-    ]);
+    ] as any);
 
-    await expect(
-      retrieveNonSubmissionDetectionDetails({
-        detectionLogId: detectionLogIdTeamB,
-        leaderId: leaderIdTeamA,
-      })
-    ).rejects.toThrow(UnauthorizedLeaderAccess);
-
+    // エラーが発生することを確認
     try {
       await retrieveNonSubmissionDetectionDetails({
         detectionLogId: detectionLogIdTeamB,
         leaderId: leaderIdTeamA,
       });
+      fail('Expected UnauthorizedLeaderAccess to be thrown');
     } catch (error) {
-      if (error instanceof UnauthorizedLeaderAccess) {
-        expect(error.message).toContain('このログへのアクセス権限がありません');
-      }
+      expect(error).toBeInstanceOf(UnauthorizedLeaderAccess);
+      expect((error as Error).message).toBe('このログへのアクセス権限がありません。');
     }
   });
 });

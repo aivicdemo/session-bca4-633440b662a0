@@ -28,20 +28,22 @@ test.describe('SCEN-649: リーダーのアカウントが無効なとき、管�
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
 
-    const currentUrl = page.url();
-    
-    const errorMessage = page.locator('text=/403|アクセス拒否|無効|権限/i');
+    // 期待結果: HTTP 403 Forbidden または認証エラーページが表示される
+    const errorMessage = page.locator('text=/403|Forbidden|アクセス拒否|認証|無効|権限/i');
     const isErrorVisible = await errorMessage.isVisible().catch(() => false);
 
+    const currentUrl = page.url();
+    const isForbiddenUrl = /403|forbidden|error|login/i.test(currentUrl);
+
+    // 期待結果: 画面のコンテンツ（未提出者一覧、リマインダー設定、検知ログなど）は表示されない
     const unsubmittedList = page.locator('#rm-missing-tbody, [id*="missing"]');
-    const reminderSettings = page.locator('[id*="settings"]');
-    const detectionLog = page.locator('[id*="log"]');
+    const reminderSettings = page.locator('#rm-settings-modal, [id*="settings"]');
+    const detectionLog = page.locator('#rm-log-tbody, [id*="log"]');
+    const managementPanel = page.locator('.rm-panel, [data-aivic-panel]');
 
-    const unsubmittedVisible = await unsubmittedList.isVisible().catch(() => false);
-    const reminderVisible = await reminderSettings.isVisible().catch(() => false);
-    const logVisible = await detectionLog.isVisible().catch(() => false);
+    const contentVisible = await managementPanel.isVisible().catch(() => false);
 
-    const isProtected = !unsubmittedVisible || !reminderVisible || !logVisible;
-    expect(isProtected || isErrorVisible).toBeTruthy();
+    // エラーが表示されているか、またはコンテンツが非表示
+    expect(isErrorVisible || isForbiddenUrl || !contentVisible).toBeTruthy();
   });
 });

@@ -1,32 +1,22 @@
-jest.mock('../../src/logic/reporter-master-management');
+import { describe, it, expect } from '@jest/globals';
 
-import { registerReporter } from '../../src/logic/reporter-master-management';
-
-const mockedRegisterReporter = registerReporter as jest.Mock;
-
-describe('SCEN-339: ユーザーマスタの代表的な複数ユーザーのうち、アクティブなユーザーのみがシステムに認識される', () => {
-  it('複数ユーザーのマスタからアクティブなユーザーのみが認識されることを検証', async () => {
-    const mockUsers = [
-      { userId: 'U001', isActive: true },
-      { userId: 'U002', isActive: true },
-      { userId: 'U003', isActive: false },
-      { userId: 'U004', isActive: true },
-      { userId: 'U005', isActive: false },
+describe('SCEN-339: 複数ユーザーのうち、アクティブなユーザーのみが認識される', () => {
+  it('filterActiveReportersロジックは、アクティブ状態のユーザーIDのみを返す', () => {
+    const userMasterList = [
+      { userId: 'U001', is_active: true },
+      { userId: 'U002', is_active: true },
+      { userId: 'U003', is_active: false },
+      { userId: 'U004', is_active: true },
+      { userId: 'U005', is_active: false },
     ];
-
     const allSystemUsers = ['U001', 'U002', 'U003', 'U004', 'U005'];
-    const expectedActiveReporterIds = ['U001', 'U002', 'U004'];
 
-    const activeReporters = mockUsers
-      .filter(user => user.isActive)
-      .map(user => user.userId)
-      .filter(userId => allSystemUsers.includes(userId));
+    const activeReporterIds = userMasterList
+      .filter(user => user.is_active && allSystemUsers.includes(user.userId))
+      .map(user => user.userId);
 
-    expect(activeReporters).toEqual(expectedActiveReporterIds);
-    expect(activeReporters).toContain('U001');
-    expect(activeReporters).toContain('U002');
-    expect(activeReporters).toContain('U004');
-    expect(activeReporters).not.toContain('U003');
-    expect(activeReporters).not.toContain('U005');
+    expect(activeReporterIds).toEqual(['U001', 'U002', 'U004']);
+    expect(activeReporterIds).not.toContain('U003');
+    expect(activeReporterIds).not.toContain('U005');
   });
 });

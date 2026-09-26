@@ -1,43 +1,61 @@
-import { describe, it, expect } from '@jest/globals';
 import {
   generateNonSubmissionDetectionResult,
   InvalidDetectionResultError,
-  type GenerateNonSubmissionDetectionResultInput,
+  GenerateNonSubmissionDetectionResultInput,
+  NonSubmissionDetectionLog,
 } from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-264: 未提出者リストがundefinedのとき、不正な検知結果エラーが発生する', () => {
-  it('should throw InvalidDetectionResultError when nonSubmittedReporters is undefined', () => {
+  it('nonSubmittedReporters が undefined のとき、InvalidDetectionResultError が発生する', () => {
+    const mockDetectionLog: NonSubmissionDetectionLog = {
+      detectionLogId: 'log-001',
+      targetDate: '2024-01-15',
+      detectionDateTime: '2024-01-15T09:00:00Z',
+      totalReportersCount: 1,
+      nonSubmittedCount: 1,
+      submittedCount: 0,
+    };
+
     const input: GenerateNonSubmissionDetectionResultInput = {
       nonSubmittedReporters: undefined as any,
-      detectionLog: {
-        nonSubmittedCount: 1,
-        detectionTimestamp: '2024-01-15T09:00:00Z',
-      },
+      detectionLog: mockDetectionLog,
       detectionTimestamp: '2024-01-15T09:00:00Z',
     };
 
+    expect(() => {
+      generateNonSubmissionDetectionResult(input);
+    }).toThrow(InvalidDetectionResultError);
+
     try {
       generateNonSubmissionDetectionResult(input);
-      fail('Expected InvalidDetectionResultError to be thrown');
-    } catch (error: any) {
+      fail('Should have thrown InvalidDetectionResultError');
+    } catch (error) {
       expect(error).toBeInstanceOf(InvalidDetectionResultError);
-      expect(error.message).toBe('未提出者検知結果が不正です。検知処理を再実行してください。');
+      expect((error as InvalidDetectionResultError).message).toBe(
+        '未提出者検知結果が不正です。検知処理を再実行してください。'
+      );
     }
   });
 
-  it('should not return dashboardDisplayData when error is thrown', () => {
+  it('dashboardDisplayData と promptNotificationData は出力されないこと', () => {
+    const mockDetectionLog: NonSubmissionDetectionLog = {
+      detectionLogId: 'log-001',
+      targetDate: '2024-01-15',
+      detectionDateTime: '2024-01-15T09:00:00Z',
+      totalReportersCount: 1,
+      nonSubmittedCount: 1,
+      submittedCount: 0,
+    };
+
     const input: GenerateNonSubmissionDetectionResultInput = {
       nonSubmittedReporters: undefined as any,
-      detectionLog: {
-        nonSubmittedCount: 1,
-        detectionTimestamp: '2024-01-15T09:00:00Z',
-      },
+      detectionLog: mockDetectionLog,
       detectionTimestamp: '2024-01-15T09:00:00Z',
     };
 
     try {
-      generateNonSubmissionDetectionResult(input);
-      fail('Expected InvalidDetectionResultError to be thrown');
+      const result = generateNonSubmissionDetectionResult(input);
+      fail('Should have thrown InvalidDetectionResultError');
     } catch (error) {
       expect(error).toBeInstanceOf(InvalidDetectionResultError);
     }

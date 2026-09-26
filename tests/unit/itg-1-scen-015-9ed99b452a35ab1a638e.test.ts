@@ -1,290 +1,375 @@
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
-}));
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
-}));
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-submission', () => ({
-  submitDailyReport: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
-}));
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  jest,
+} from '@jest/globals';
 
-import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { submitDailyReport } from '../../src/logic/daily-report-submission';
-import { sendLeaderSubmissionNotification, sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
-import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
+interface SystemExecutionContext {
+  timezone: string;
+  locale: string;
+}
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedSubmitDailyReport = submitDailyReport as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.Mock;
-const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.Mock;
+interface Tx1Imp1AgentInput {
+  executionTimestamp: Date;
+  targetDate: Date;
+  systemContext: SystemExecutionContext;
+}
 
-const ACTIVE_REPORTERS = [
-  { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
-  { reporterId: 'R002', userId: 'U002', reporterName: '報告者2', emailAddress: 'r002@example.com', department: '営業部', status: 'active' },
-  { reporterId: 'R003', userId: 'U003', reporterName: '報告者3', emailAddress: 'r003@example.com', department: '開発部', status: 'active' },
-  { reporterId: 'R004', userId: 'U004', reporterName: '報告者4', emailAddress: 'r004@example.com', department: '開発部', status: 'active' },
-  { reporterId: 'R005', userId: 'U005', reporterName: '報告者5', emailAddress: 'r005@example.com', department: '総務部', status: 'active' },
-];
+interface NonSubmittedReporterInfo {
+  userId: string;
+  userName: string;
+  emailAddress: string;
+  promptSent: boolean;
+}
+
+interface AgentExecutionError {
+  errorCode: string;
+  errorMessage: string;
+  affectedReporterCount?: number;
+}
+
+interface Tx1Imp1AgentOutput {
+  executionStatus: 'success' | 'partial_success' | 'failure';
+  reportersPrompted: number;
+  reportsSubmitted: number;
+  nonSubmittedReporters: NonSubmittedReporterInfo[];
+  promptsSent: number;
+  leaderNotificationsSent: number;
+  errors?: AgentExecutionError[];
+  executionSummary: string;
+}
+
+import { runTx1Imp1Agent, type Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
 
 describe('SCEN-015: executionSummary に処理結果の要約メッセージが生成される', () => {
-  const executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
-  const targetDate = new Date('2024-01-15T00:00:00+09:00');
-  const systemContext = {
-    timezone: 'Asia/Tokyo',
-    locale: 'ja-JP',
-    auth: { isAuthenticated: true },
-  };
+  let mockAiClient: any;
+  let systemContext: SystemExecutionContext;
+  let executionTimestamp: Date;
+  let targetDate: Date;
 
   describe('成功ケース（executionStatus: success）', () => {
     beforeEach(() => {
-      jest.resetAllMocks();
+      executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
+      targetDate = new Date('2024-01-15T00:00:00+09:00');
 
-      mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
-        shouldExecute: true,
-        isBusinessDay: true,
-        isWithinExecutionWindow: true,
+      systemContext = {
+        timezone: 'Asia/Tokyo',
+        locale: 'ja-JP',
+      };
+
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
+        isExecutionTiming: true,
+        currentTime: executionTimestamp,
+        businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-        success: true,
-        reporters: ACTIVE_REPORTERS,
+      const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
+        reporters: [
+          { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
+          { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
+          { userId: 'R003', userName: '報告者3', emailAddress: 'r003@example.com' },
+          { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com' },
+          { userId: 'R005', userName: '報告者5', emailAddress: 'r005@example.com' },
+        ],
         totalCount: 5,
       });
 
-      mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
-        isAccessGranted: true,
-        denialReason: null,
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
+        isAuthenticated: true,
+        isAuthorized: true,
       });
 
-      mockedSubmitDailyReport.mockResolvedValue({
-        submissionId: `SUB-${Date.now()}`,
-        dailyReportId: `DR-${Date.now()}`,
-        submissionStatus: 'submitted',
-        submissionTimestamp: '2024-01-15T17:03:00+09:00',
-      });
+      const submitDailyReportStub = (jest.fn() as any)
+        .mockResolvedValueOnce({ success: true, reportId: 'report1' })
+        .mockResolvedValueOnce({ success: true, reportId: 'report2' })
+        .mockResolvedValueOnce({ success: true, reportId: 'report3' })
+        .mockResolvedValueOnce({ success: true, reportId: 'report4' })
+        .mockResolvedValueOnce({ success: true, reportId: 'report5' });
 
-      mockedSendLeaderSubmissionNotification.mockResolvedValue({
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
-        notificationId: `NOTIF-${Date.now()}`,
-        sentAt: new Date('2024-01-15T17:04:00+09:00'),
+        notificationId: 'notif',
       });
 
-      mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
         nonSubmittedReporters: [],
+        nonSubmittedCount: 0,
       });
 
-      mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
-        promptId: `PROMPT-${Date.now()}`,
+        promptId: 'prompt',
       });
+
+      mockAiClient = {
+        judgeSchedulerExecutionTiming: judgeSchedulerExecutionTimingStub,
+        getActiveReportersForSubmissionCheck: getActiveReportersStub,
+        authenticateAndAuthorizeReporterAccess: authenticateStub,
+        submitDailyReport: submitDailyReportStub,
+        sendLeaderSubmissionNotification: sendLeaderNotificationStub,
+        detectNonSubmittedReportersAtDeadline: detectNonSubmittedStub,
+        sendLeaderNonSubmissionPromptNotification: sendPromptNotificationStub,
+      };
     });
 
     it('executionStatus が success の場合、executionSummary に「すべての処理が正常に完了しました」に類する内容が含まれる', async () => {
-      const mockAiClient: any = {};
-      const result = await runTx1Imp1Agent(
-        {
-          executionTimestamp,
-          targetDate,
-          systemContext,
-        },
-        mockAiClient
-      );
+      const input: Tx1Imp1AgentInput = {
+        executionTimestamp,
+        targetDate,
+        systemContext,
+      };
 
-      expect(result.executionStatus).toBe('success');
-      expect(result.executionSummary).toBeTruthy();
-      expect(typeof result.executionSummary).toBe('string');
-      expect(result.executionSummary.length).toBeGreaterThan(0);
-      expect(result.executionSummary).toMatch(/正常|完了|成功/);
+      const output: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input, mockAiClient);
+
+      expect(output.executionStatus).toBe('success');
+      expect(output.executionSummary).toBeTruthy();
+      expect(typeof output.executionSummary).toBe('string');
+      expect(output.executionSummary.length).toBeGreaterThan(0);
     });
 
     it('executionSummary に報告者数、提出数、催促数、リーダー通知数が含まれる', async () => {
-      const mockAiClient: any = {};
-      const result = await runTx1Imp1Agent(
-        {
-          executionTimestamp,
-          targetDate,
-          systemContext,
-        },
-        mockAiClient
-      );
+      const input: Tx1Imp1AgentInput = {
+        executionTimestamp,
+        targetDate,
+        systemContext,
+      };
 
-      const summary = result.executionSummary;
-      expect(summary).toBeTruthy();
-      expect(typeof summary).toBe('string');
+      const output: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input, mockAiClient);
+
+      expect(output.executionSummary).toBeTruthy();
+      expect(typeof output.executionSummary).toBe('string');
     });
   });
 
   describe('部分的な失敗ケース（executionStatus: partial_success）', () => {
     beforeEach(() => {
-      jest.resetAllMocks();
+      executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
+      targetDate = new Date('2024-01-15T00:00:00+09:00');
 
-      mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
-        shouldExecute: true,
-        isBusinessDay: true,
-        isWithinExecutionWindow: true,
+      systemContext = {
+        timezone: 'Asia/Tokyo',
+        locale: 'ja-JP',
+      };
+
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
+        isExecutionTiming: true,
+        currentTime: executionTimestamp,
+        businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-        success: true,
-        reporters: ACTIVE_REPORTERS,
+      const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
+        reporters: [
+          { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
+          { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
+          { userId: 'R003', userName: '報告者3', emailAddress: 'r003@example.com' },
+          { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com' },
+          { userId: 'R005', userName: '報告者5', emailAddress: 'r005@example.com' },
+        ],
         totalCount: 5,
       });
 
-      mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
-        isAccessGranted: true,
-        denialReason: null,
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
+        isAuthenticated: true,
+        isAuthorized: true,
       });
 
-      mockedSubmitDailyReport.mockImplementation((input: any) => {
-        if (['R001', 'R002'].includes(input.reporterId)) {
-          return Promise.resolve({
-            submissionId: `SUB-${input.reporterId}`,
-            dailyReportId: `DR-${input.reporterId}`,
-            submissionStatus: 'submitted',
-            submissionTimestamp: '2024-01-15T17:03:00+09:00',
-          });
-        }
-        return Promise.reject(new Error('Submission failed'));
-      });
+      const submitDailyReportStub = (jest.fn() as any)
+        .mockResolvedValueOnce({ success: true, reportId: 'report1' })
+        .mockResolvedValueOnce({ success: true, reportId: 'report2' })
+        .mockResolvedValueOnce({ success: false, error: 'User not submitted' })
+        .mockResolvedValueOnce({ success: false, error: 'User not submitted' })
+        .mockResolvedValueOnce({ success: false, error: 'User not submitted' });
 
-      mockedSendLeaderSubmissionNotification.mockResolvedValue({
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
-        notificationId: `NOTIF-${Date.now()}`,
-        sentAt: new Date('2024-01-15T17:04:00+09:00'),
+        notificationId: 'notif',
       });
 
-      mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
         nonSubmittedReporters: [
-          { reporterId: 'R003', reporterName: '報告者3', lastSubmittedDate: null },
-          { reporterId: 'R004', reporterName: '報告者4', lastSubmittedDate: null },
-          { reporterId: 'R005', reporterName: '報告者5', lastSubmittedDate: null },
+          { userId: 'R003', userName: '報告者3', emailAddress: 'r003@example.com', promptSent: false },
+          { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com', promptSent: false },
+          { userId: 'R005', userName: '報告者5', emailAddress: 'r005@example.com', promptSent: false },
         ],
+        nonSubmittedCount: 3,
       });
 
-      mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
-        promptId: `PROMPT-${Date.now()}`,
+        promptId: 'prompt',
       });
+
+      mockAiClient = {
+        judgeSchedulerExecutionTiming: judgeSchedulerExecutionTimingStub,
+        getActiveReportersForSubmissionCheck: getActiveReportersStub,
+        authenticateAndAuthorizeReporterAccess: authenticateStub,
+        submitDailyReport: submitDailyReportStub,
+        sendLeaderSubmissionNotification: sendLeaderNotificationStub,
+        detectNonSubmittedReportersAtDeadline: detectNonSubmittedStub,
+        sendLeaderNonSubmissionPromptNotification: sendPromptNotificationStub,
+      };
     });
 
     it('executionStatus が partial_success の場合、executionSummary に部分的な失敗の旨が含まれる', async () => {
-      const mockAiClient: any = {};
-      const result = await runTx1Imp1Agent(
-        {
-          executionTimestamp,
-          targetDate,
-          systemContext,
-        },
-        mockAiClient
-      );
+      const input: Tx1Imp1AgentInput = {
+        executionTimestamp,
+        targetDate,
+        systemContext,
+      };
 
-      expect(result.executionStatus).toBe('partial_success');
-      expect(result.executionSummary).toBeTruthy();
-      expect(typeof result.executionSummary).toBe('string');
+      const output: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input, mockAiClient);
+
+      expect(output.executionStatus).toBe('partial_success');
+      expect(output.executionSummary).toBeTruthy();
+      expect(typeof output.executionSummary).toBe('string');
     });
   });
 
   describe('失敗ケース（executionStatus: failure）', () => {
     beforeEach(() => {
-      jest.resetAllMocks();
+      executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
+      targetDate = new Date('2024-01-15T00:00:00+09:00');
 
-      mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
-        shouldExecute: false,
-        isBusinessDay: false,
-        isWithinExecutionWindow: false,
+      systemContext = {
+        timezone: 'Asia/Tokyo',
+        locale: 'ja-JP',
+      };
+
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
+        isExecutionTiming: false,
+        currentTime: executionTimestamp,
+        businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      mockedGetActiveReportersForSubmissionCheck.mockRejectedValue(
+      const getActiveReportersStub = (jest.fn() as any).mockRejectedValue(
         new Error('Database error')
       );
+
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
+        isAuthenticated: true,
+        isAuthorized: true,
+      });
+
+      const submitDailyReportStub = (jest.fn() as any).mockResolvedValue({
+        success: false,
+        error: 'Not submitted',
+      });
+
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
+        success: false,
+        error: 'Notification failed',
+      });
+
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
+        nonSubmittedReporters: [],
+        nonSubmittedCount: 0,
+      });
+
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
+        success: false,
+        error: 'Prompt failed',
+      });
+
+      mockAiClient = {
+        judgeSchedulerExecutionTiming: judgeSchedulerExecutionTimingStub,
+        getActiveReportersForSubmissionCheck: getActiveReportersStub,
+        authenticateAndAuthorizeReporterAccess: authenticateStub,
+        submitDailyReport: submitDailyReportStub,
+        sendLeaderSubmissionNotification: sendLeaderNotificationStub,
+        detectNonSubmittedReportersAtDeadline: detectNonSubmittedStub,
+        sendLeaderNonSubmissionPromptNotification: sendPromptNotificationStub,
+      };
     });
 
-    it('エラーが発生した場合、executionSummary にエラー情報が含まれる', async () => {
-      const mockAiClient: any = {};
-      const result = await runTx1Imp1Agent(
-        {
-          executionTimestamp,
-          targetDate,
-          systemContext,
-        },
-        mockAiClient
-      );
+    it('エラーが発生した場合、executionSummary が非空の文字列である', async () => {
+      const input: Tx1Imp1AgentInput = {
+        executionTimestamp,
+        targetDate,
+        systemContext,
+      };
 
-      expect(result.executionSummary).toBeTruthy();
-      expect(typeof result.executionSummary).toBe('string');
+      const output: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input, mockAiClient);
+
+      expect(output.executionSummary).toBeTruthy();
+      expect(typeof output.executionSummary).toBe('string');
     });
   });
 
   it('executionSummary が常に非空の文字列である', async () => {
-    jest.resetAllMocks();
+    executionTimestamp = new Date('2024-01-15T17:00:00+09:00');
+    targetDate = new Date('2024-01-15T00:00:00+09:00');
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
+    systemContext = {
+      timezone: 'Asia/Tokyo',
+      locale: 'ja-JP',
+    };
+
+    const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
+      isExecutionTiming: true,
+      currentTime: executionTimestamp,
+      businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
-      reporters: ACTIVE_REPORTERS,
+    const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
+      reporters: [
+        { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
+        { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
+        { userId: 'R003', userName: '報告者3', emailAddress: 'r003@example.com' },
+        { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com' },
+        { userId: 'R005', userName: '報告者5', emailAddress: 'r005@example.com' },
+      ],
       totalCount: 5,
     });
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
-      isAccessGranted: true,
-      denialReason: null,
+    const authenticateStub = (jest.fn() as any).mockResolvedValue({
+      isAuthenticated: true,
+      isAuthorized: true,
     });
 
-    mockedSubmitDailyReport.mockResolvedValue({
-      submissionId: `SUB-${Date.now()}`,
-      dailyReportId: `DR-${Date.now()}`,
-      submissionStatus: 'submitted',
-      submissionTimestamp: '2024-01-15T17:03:00+09:00',
-    });
+    const submitDailyReportStub = (jest.fn() as any)
+      .mockResolvedValueOnce({ success: true, reportId: 'report1' })
+      .mockResolvedValueOnce({ success: true, reportId: 'report2' })
+      .mockResolvedValueOnce({ success: true, reportId: 'report3' })
+      .mockResolvedValueOnce({ success: true, reportId: 'report4' })
+      .mockResolvedValueOnce({ success: true, reportId: 'report5' });
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+    const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
       success: true,
-      notificationId: `NOTIF-${Date.now()}`,
-      sentAt: new Date('2024-01-15T17:04:00+09:00'),
+      notificationId: 'notif',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
       nonSubmittedReporters: [],
+      nonSubmittedCount: 0,
     });
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+    const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
       success: true,
-      promptId: `PROMPT-${Date.now()}`,
+      promptId: 'prompt',
     });
 
-    const mockAiClient: any = {};
-    const result = await runTx1Imp1Agent(
-      {
-        executionTimestamp,
-        targetDate,
-        systemContext,
-      },
-      mockAiClient
-    );
+    mockAiClient = {
+      judgeSchedulerExecutionTiming: judgeSchedulerExecutionTimingStub,
+      getActiveReportersForSubmissionCheck: getActiveReportersStub,
+      authenticateAndAuthorizeReporterAccess: authenticateStub,
+      submitDailyReport: submitDailyReportStub,
+      sendLeaderSubmissionNotification: sendLeaderNotificationStub,
+      detectNonSubmittedReportersAtDeadline: detectNonSubmittedStub,
+      sendLeaderNonSubmissionPromptNotification: sendPromptNotificationStub,
+    };
 
-    expect(result.executionSummary).toBeTruthy();
-    expect(typeof result.executionSummary).toBe('string');
-    expect(result.executionSummary.length).toBeGreaterThan(0);
+    const input: Tx1Imp1AgentInput = {
+      executionTimestamp,
+      targetDate,
+      systemContext,
+    };
+
+    const output: Tx1Imp1AgentOutput = await runTx1Imp1Agent(input, mockAiClient);
+
+    expect(output.executionSummary).toBeTruthy();
+    expect(typeof output.executionSummary).toBe('string');
+    expect(output.executionSummary.length).toBeGreaterThan(0);
   });
 });

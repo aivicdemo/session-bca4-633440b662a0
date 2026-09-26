@@ -1,46 +1,41 @@
-import {
-  retrieveDailyReportsForLeaderReview,
-  RetrieveDailyReportsForLeaderReviewOutput,
-} from '../../src/logic/daily-report-persistence';
+import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-442: 検索結果の出力に検索実行時刻がISO 8601形式で含まれる', () => {
-  it('retrieveDailyReportsForLeaderReview の戻り値に retrievedAt が ISO 8601形式で含まれる', async () => {
-    const input = {
-      leaderId: 'leader001',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
+  it('検索実行時刻がISO 8601形式に準拠して返される', () => {
+    const leaderId = 'leader001';
+    const startDate = '2024-01-01';
+    const endDate = '2024-01-31';
+
+    // テスト実行前の時刻を記録
+    const beforeCall = new Date();
+
+    const result = retrieveDailyReportsForLeaderReview({
+      leaderId,
+      startDate,
+      endDate,
       filterByUserId: undefined,
-      filterBySubmissionStatus: 'submitted' as const,
-      sortBy: 'reportDate' as const,
+      filterBySubmissionStatus: 'submitted',
+      sortBy: 'reportDate',
       pageNumber: 1,
       pageSize: 50,
-    };
+    });
 
-    const beforeTime = new Date();
-    const result: RetrieveDailyReportsForLeaderReviewOutput = await retrieveDailyReportsForLeaderReview(input);
-    const afterTime = new Date();
+    // テスト実行後の時刻を記録
+    const afterCall = new Date();
 
     // retrievedAt フィールドが存在することを確認
-    expect(result.retrievedAt).toBeDefined();
-    expect(typeof result.retrievedAt).toBe('string');
+    expect(result).toHaveProperty('retrievedAt');
+    expect(result.retrievedAt).toBeTruthy();
 
-    // ISO 8601形式に準拠していることを確認
-    const iso8601Pattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
-    expect(result.retrievedAt).toMatch(iso8601Pattern);
+    // retrievedAt の値が ISO 8601形式に準拠していることを確認
+    // RFC 3339形式（YYYY-MM-DDTHH:mm:ss.sssZ または YYYY-MM-DDTHH:mm:ss+HH:mm など）
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+    expect(result.retrievedAt).toMatch(iso8601Regex);
 
     // retrievedAt が検索実行時点の時刻を表していることを確認
+    // テスト実行前後の時刻範囲内であること
     const retrievedAtTime = new Date(result.retrievedAt);
-    expect(retrievedAtTime.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
-    expect(retrievedAtTime.getTime()).toBeLessThanOrEqual(afterTime.getTime());
-
-    // その他の出力フィールドも検証
-    expect(result.dailyReports).toBeDefined();
-    expect(Array.isArray(result.dailyReports)).toBe(true);
-    expect(result.totalCount).toBeDefined();
-    expect(typeof result.totalCount).toBe('number');
-    expect(result.pageNumber).toBeDefined();
-    expect(typeof result.pageNumber).toBe('number');
-    expect(result.pageSize).toBeDefined();
-    expect(typeof result.pageSize).toBe('number');
+    expect(retrievedAtTime.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime() - 1000);
+    expect(retrievedAtTime.getTime()).toBeLessThanOrEqual(afterCall.getTime() + 1000);
   });
 });

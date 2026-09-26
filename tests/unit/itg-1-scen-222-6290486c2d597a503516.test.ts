@@ -1,37 +1,40 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeReporterAccess: jest.fn(),
+}));
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  validateDailyReportContent: jest.fn(),
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   checkDailyReportExistsForDate: jest.fn(),
   saveDailyReport: jest.fn(),
   updateDailyReportSubmissionTimestamp: jest.fn(),
 }));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
 import { submitDailyReport, SubmitDailyReportInput, DailyReportContentEmptyException } from '../../src/logic/daily-report-submission';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
+import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
+import { saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
+import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedSaveDailyReport = saveDailyReport as jest.Mock;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
+const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
+const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
+const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
-describe('SCEN-222: 業務ルール recordAndValidateDailyReportSubmission で報告内容が空のときエラーが発生する', () => {
+describe('SCEN-222: 報告内容が空のときエラーが発生する', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
-      isAccessGranted: true,
-      userId: 'reporter001',
-    });
   });
 
-  it('businessContent が空文字列の場合、DailyReportContentEmptyException がスローされ、後続の処理は実行されない', async () => {
+  it('空の日報内容でDailyReportContentEmptyExceptionがスロー', async () => {
+    // Arrange
     const input: SubmitDailyReportInput = {
       userId: 'reporter001',
       reportDate: '2024-01-15',
@@ -42,12 +45,19 @@ describe('SCEN-222: 業務ルール recordAndValidateDailyReportSubmission で�
       submissionTimestamp: '2024-01-15T14:30:00Z',
     };
 
-    await expect(submitDailyReport(input)).rejects.toThrow(DailyReportContentEmptyException);
-    await expect(submitDailyReport(input)).rejects.toThrow('日報内容を入力してください。');
+    // スタブ設定
+    const exceptionMessage = '日報内容を入力してください。';
+    mockedValidateDailyReportContent.mockRejectedValue(
+      new DailyReportContentEmptyException(exceptionMessage)
+    );
 
+    // Act & Assert
+    await expect(submitDailyReport(input)).rejects.toThrow(DailyReportContentEmptyException);
+
+    // saveDailyReport、updateDailyReportSubmissionTimestamp、
+    // sendDailyReportSubmissionNotification が呼び出されていないことを確認
     expect(mockedSaveDailyReport).not.toHaveBeenCalled();
-    expect(mockedCheckDailyReportExistsForDate).not.toHaveBeenCalled();
     expect(mockedUpdateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
-    expect(mockedSendLeaderSubmissionNotification).not.toHaveBeenCalled();
+    expect(mockedSendDailyReportSubmissionNotification).not.toHaveBeenCalled();
   });
 });

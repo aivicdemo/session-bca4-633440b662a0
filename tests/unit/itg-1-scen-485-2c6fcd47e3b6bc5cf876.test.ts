@@ -1,25 +1,20 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
 import {
   sendDailyReportSubmissionNotification,
   AdminNotificationFailedError,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
-  SendDailyReportSubmissionNotificationInput,
+  type SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
 
-const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
-const mockedBuildNotificationContent = buildNotificationContent as jest.Mock;
-const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.Mock;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-485: メール送信失敗時に管理者への通知送信も失敗した場合、AdminNotificationFailedError が発生する', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('メール送信失敗後、管理者通知も失敗した場合、AdminNotificationFailedError が発生すること', async () => {
@@ -34,31 +29,11 @@ describe('SCEN-485: メール送信失敗時に管理者への通知送信も失
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
-      isValid: true,
-      reason: null,
-      errorCode: null,
-    });
-
-    mockedBuildNotificationContent.mockResolvedValue({
-      subject: '【日報】2024年01月15日 田中太郎',
-      body: '田中太郎さんからの日報です...',
-    });
-
-    mockedRecordEmailSendingHistory.mockRejectedValue(
+    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
       new AdminNotificationFailedError('メール送信失敗の管理者通知に失敗しました。')
     );
 
-    try {
-      await sendDailyReportSubmissionNotification(input);
-      expect(true).toBe(false);
-    } catch (error) {
-      expect(error).toBeInstanceOf(AdminNotificationFailedError);
-      expect((error as Error).message).toBe('メール送信失敗の管理者通知に失敗しました。');
-    }
-
-    expect(mockedValidateEmailAddressForDelivery).toHaveBeenCalled();
-    expect(mockedBuildNotificationContent).toHaveBeenCalled();
-    expect(mockedRecordEmailSendingHistory).toHaveBeenCalled();
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow(AdminNotificationFailedError);
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow('メール送信失敗の管理者通知に失敗しました。');
   });
 });

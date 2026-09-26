@@ -1,49 +1,49 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  retrieveLeaderDashboardData,
-  TargetDateInvalidError,
-  RetrieveLeaderDashboardDataInput,
-} from '../../src/logic/daily-report-management-view';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { retrieveLeaderDashboardData, TargetDateInvalidError } from '../../src/logic/daily-report-management-view';
 
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
+const judgeBusinessDayAndDeadlineMock = jest.fn();
 
-describe('SCEN-561: TargetDate invalid - business day judgment fails', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: any;
-  let mockJudgeBusinessDayAndDeadline: any;
-  let mockRetrieveDailyReportsForLeaderReview: any;
-  let mockRetrieveNonSubmissionDetectionLogsByDate: any;
-  let mockRetrieveEmailSendingHistoryByDateRange: any;
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  retrieveDailyReportsForLeaderReview: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+}));
+jest.mock('../../src/logic/email-notification-management', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
 
+describe('SCEN-561: 指定された対象日付が営業日判定に失敗した場合', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization').authenticateAndAuthorizeLeaderAccess;
-    mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment').judgeBusinessDayAndDeadline;
-    mockRetrieveDailyReportsForLeaderReview = require('../../src/logic/daily-report-persistence').retrieveDailyReportsForLeaderReview;
-    mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
-    mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
-
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(false);
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
   });
 
-  it('should throw TargetDateInvalidError with message "指定された日付は無効です。" when business day judgment fails', async () => {
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2024-02-30',
+  it('TargetDateInvalidError が発生し、エラー文言として「指定された日付は無効です。」が返される', async () => {
+    const leaderId = 'leader-001';
+    const targetDate = '2024-02-30';
+
+    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+      isAccessGranted: true,
+      userId: leaderId,
+    });
+
+    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+      isAcceptable: false,
+      isBusinessDay: false,
+      isWithinDeadline: false,
+    });
+
+    const input = {
+      leaderId,
+      targetDate,
     };
 
-    try {
-      await retrieveLeaderDashboardData(input);
-      throw new Error('Should have thrown TargetDateInvalidError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(TargetDateInvalidError);
-      expect((error as TargetDateInvalidError).message).toBe('指定された日付は無効です。');
-    }
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(TargetDateInvalidError);
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow('指定された日付は無効です。');
   });
 });

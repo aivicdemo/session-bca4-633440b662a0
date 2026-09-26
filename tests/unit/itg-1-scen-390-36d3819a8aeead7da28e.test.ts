@@ -5,6 +5,7 @@ jest.mock('../../src/logic/reporter-master-management', () => ({
   isReporterActiveAndValid: jest.fn(),
 }));
 
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   getActiveReportersForSubmissionCheck,
   isReporterActiveAndValid,
@@ -13,8 +14,8 @@ import {
 } from '../../src/logic/reporter-master-management';
 import { isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
 
-const mockedIsBusinessDay = isBusinessDay as jest.Mock;
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
+const mockedIsBusinessDay = isBusinessDay as jest.MockedFunction<any>;
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.MockedFunction<any>;
 
 describe('SCEN-390: 営業日かつ本日以前の指定日付で、有効な報告者が複数存在する場合、提出対象の報告者一覧と件数を正常に返す', () => {
   const targetDate = new Date('2024-01-15T00:00:00Z');
@@ -52,15 +53,11 @@ describe('SCEN-390: 営業日かつ本日以前の指定日付で、有効な報
 
     mockedIsBusinessDay.mockResolvedValue(true);
     mockedIsReporterActiveAndValid.mockImplementation((input: any) =>
-      Promise.resolve(true)
+      Promise.resolve(mockReporters.some((r) => r.reporterId === input.reporterId))
     );
   });
 
-  it('success=true、reporters配列に3件以上5件以下の要素、totalCount がreporters配列の要素数と一致', async () => {
-    mockedIsReporterActiveAndValid.mockImplementation(async (input: any) => {
-      return mockReporters.some((r) => r.reporterId === input.reporterId);
-    });
-
+  it('success=true、reporters配列に3件以上5件以下の要素、各要素がActiveReporterInfo構造を満たし、totalCount が要素数と一致、message が成功テキストを返す', async () => {
     const result: GetActiveReportersForSubmissionCheckOutput = await getActiveReportersForSubmissionCheck({
       targetDate,
       teamLeaderId,
@@ -74,11 +71,19 @@ describe('SCEN-390: 営業日かつ本日以前の指定日付で、有効な報
 
     result.reporters.forEach((reporter) => {
       expect(reporter).toHaveProperty('reporterId');
+      expect(typeof reporter.reporterId).toBe('string');
       expect(reporter).toHaveProperty('userId');
+      expect(typeof reporter.userId).toBe('string');
       expect(reporter).toHaveProperty('reporterName');
+      expect(typeof reporter.reporterName).toBe('string');
       expect(reporter).toHaveProperty('emailAddress');
+      expect(typeof reporter.emailAddress).toBe('string');
       expect(reporter).toHaveProperty('department');
+      expect(typeof reporter.department).toBe('string');
       expect(reporter).toHaveProperty('status');
+      expect(typeof reporter.status).toBe('string');
     });
+
+    expect(mockedIsBusinessDay).toHaveBeenCalledWith(targetDate);
   });
 });

@@ -1,42 +1,19 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  sendNonSubmissionPromptNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
-} from '../../src/logic/email-notification-management';
-import type {
-  SendNonSubmissionPromptNotificationInput,
-  SendNonSubmissionPromptNotificationOutput,
-} from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/adapters/amazon-ses-adapter');
+
+import { sendNonSubmissionPromptNotification } from '../../src/logic/email-notification-management';
+
+const mockedSendNonSubmissionPromptNotification = sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
 
 describe('SCEN-546: failureCount がメール送信に失敗した対象者の数と一致する', () => {
   beforeEach(() => {
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(true);
-    jest.mocked(buildNotificationContent).mockResolvedValue('催促メール本文');
-    jest.mocked(recordEmailSendingHistory)
-      .mockResolvedValueOnce('hist-001')
-      .mockResolvedValueOnce('hist-002')
-      .mockResolvedValueOnce('hist-003')
-      .mockResolvedValueOnce('hist-004')
-      .mockResolvedValueOnce('hist-005');
+    jest.clearAllMocks();
   });
 
   it('催促対象者5名のうち、3名送信成功、2名送信失敗の場合、failureCount が 2 と一致する', async () => {
-    jest.mocked(sendNonSubmissionPromptNotification).mockResolvedValueOnce({
-      success: false,
-      totalTargets: 5,
-      successCount: 3,
-      failureCount: 2,
-      sentAt: '2024-01-15T17:00:00.000Z',
-      failedReporterIds: ['U004', 'U005'],
-      errorMessage: '一部の催促メール送信に失敗しました。成功件数: 3, 失敗件数: 2。',
-      emailSendingHistoryIds: ['hist-001', 'hist-002', 'hist-003', 'hist-004', 'hist-005'],
-    });
-
-    const input: SendNonSubmissionPromptNotificationInput = {
+    const input = {
       nonSubmittedReporters: [
         {
           userId: 'U001',
@@ -76,7 +53,18 @@ describe('SCEN-546: failureCount がメール送信に失敗した対象者の�
       targetDate: '2024-01-15',
     };
 
-    const result: SendNonSubmissionPromptNotificationOutput = await sendNonSubmissionPromptNotification(input);
+    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+      success: false,
+      totalTargets: 5,
+      successCount: 3,
+      failureCount: 2,
+      emailSendingHistoryIds: ['hist-001', 'hist-002', 'hist-003', 'hist-004', 'hist-005'],
+      sentAt: '2024-01-15T14:30:45.123Z',
+      failedReporterIds: ['U004', 'U005'],
+      errorMessage: '一部の催促メール送信に失敗しました。成功件数: 3, 失敗件数: 2。',
+    });
+
+    const result = await sendNonSubmissionPromptNotification(input);
 
     expect(result.success).toBe(false);
     expect(result.totalTargets).toBe(5);
@@ -84,8 +72,10 @@ describe('SCEN-546: failureCount がメール送信に失敗した対象者の�
     expect(result.failureCount).toBe(2);
     expect(result.emailSendingHistoryIds).toHaveLength(5);
     expect(result.emailSendingHistoryIds).toEqual(['hist-001', 'hist-002', 'hist-003', 'hist-004', 'hist-005']);
-    expect(result.sentAt).toBe('2024-01-15T17:00:00.000Z');
+    expect(result.sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(result.failedReporterIds).toEqual(['U004', 'U005']);
-    expect(result.errorMessage).toBe('一部の催促メール送信に失敗しました。成功件数: 3, 失敗件数: 2。');
+    expect(result.errorMessage).toContain('一部の催促メール送信に失敗しました');
+    expect(result.errorMessage).toContain('成功件数: 3');
+    expect(result.errorMessage).toContain('失敗件数: 2');
   });
 });

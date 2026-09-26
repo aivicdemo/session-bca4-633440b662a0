@@ -16,7 +16,7 @@ describe('SCEN-397: ユーザー名が空文字列の場合、入力形式不正
     jest.clearAllMocks();
   });
 
-  test('Empty userName throws InvalidUserInformationFormatError', () => {
+  test('Empty userName throws InvalidUserInformationFormatError', async () => {
     const now = new Date();
 
     const input: SubmitUserInformationForConfirmationInput = {
@@ -28,23 +28,18 @@ describe('SCEN-397: ユーザー名が空文字列の場合、入力形式不正
       submissionTimestamp: now,
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.Mock).mockReturnValue({
+    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
       isAuthenticated: true,
       reporterId: 'reporter-001',
     });
 
-    (validateUserInformationRequired as jest.Mock).mockImplementation(() => {
-      throw new InvalidUserInformationFormatError(
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockRejectedValue(
+      new InvalidUserInformationFormatError(
         'ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。'
-      );
-    });
+      )
+    );
 
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow(InvalidUserInformationFormatError);
-
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow('ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。');
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow(InvalidUserInformationFormatError);
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow('ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。');
   });
 });

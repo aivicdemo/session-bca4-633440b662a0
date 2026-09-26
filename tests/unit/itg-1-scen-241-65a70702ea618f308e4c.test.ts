@@ -19,15 +19,22 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
-const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.MockedFunction<any>;
 
 describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正しく識別して返す', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+      shouldExecute: true,
+      isBusinessDay: true,
+      isWithinExecutionWindow: true,
+      nextScheduledExecutionTime: null,
+      executionReason: 'Deadline reached',
+    });
   });
 
   it('未提出者と提出済み者を正しく識別し、未提出者のみを返す', async () => {
@@ -36,9 +43,9 @@ describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正し
     const teamId = 'team-001';
     const currentDateTime = '2024-01-15T17:30:00Z';
 
-    mockedJudgeSchedulerExecutionTiming.mockReturnValue(true);
-
-    mockedGetActiveReportersForSubmissionCheck.mockReturnValue([
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+      success: true,
+      reporters: [
       {
         userId: 'reporter-001',
         userName: '太郎',
@@ -69,25 +76,32 @@ describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正し
         emailAddress: 'kenta@example.com',
         department: '営業部',
       },
-    ]);
-
-    mockedCheckDailyReportExistsForDate.mockReturnValue({
-      'reporter-001': { submitted: true, submittedAt: '2024-01-15T16:45:00Z' },
-      'reporter-002': { submitted: true, submittedAt: '2024-01-15T17:15:00Z' },
-      'reporter-003': { submitted: false },
-      'reporter-004': { submitted: true, submittedAt: '2024-01-15T16:30:00Z' },
-      'reporter-005': { submitted: false },
+      ],
+      totalCount: 5,
+      message: 'Retrieved reporters',
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockReturnValue([]);
+    mockedCheckDailyReportExistsForDate.mockImplementation(async (input: any) => {
+      const submissionMap: any = {
+        'reporter-001': true,
+        'reporter-002': true,
+        'reporter-003': false,
+        'reporter-004': true,
+        'reporter-005': false,
+      };
+      return submissionMap[input.userId];
+    });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockReturnValue({
+    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+      detectionLogs: [],
+      totalCount: 0,
+      retrievedAt: '2024-01-15T17:30:00Z',
+    });
+
+    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue({
       detectionLogId: 'log-001',
-      targetDate: '2024-01-15',
-      detectionDateTime: '2024-01-15T17:30:00Z',
-      totalReportersCount: 5,
-      nonSubmittedCount: 2,
-      submittedCount: 3,
+      reminderSent: false,
+      updatedAt: '2024-01-15T17:30:00Z',
     });
 
     const result = await detectNonSubmittedReportersAtDeadline({
@@ -116,13 +130,11 @@ describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正し
     expect(ids).not.toContain('reporter-002');
     expect(ids).not.toContain('reporter-004');
 
-    expect(result.detectionLog).toMatchObject({
-      targetDate: '2024-01-15',
-      detectionDateTime: '2024-01-15T17:30:00Z',
-      totalReportersCount: 5,
-      nonSubmittedCount: 2,
-      submittedCount: 3,
-    });
+    expect(result.detectionLog).toHaveProperty('targetDate', '2024-01-15');
+    expect(result.detectionLog).toHaveProperty('detectionDateTime', '2024-01-15T17:30:00Z');
+    expect(result.detectionLog).toHaveProperty('totalReportersCount', 5);
+    expect(result.detectionLog).toHaveProperty('nonSubmittedCount', 2);
+    expect(result.detectionLog).toHaveProperty('submittedCount', 3);
 
     expect(result.detectionTimestamp).toBe('2024-01-15T17:30:00Z');
   });

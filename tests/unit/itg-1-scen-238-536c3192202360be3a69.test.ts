@@ -15,12 +15,23 @@ describe('SCEN-238: チームに報告者が登録されていない場合は検
     jest.clearAllMocks();
   });
 
-  it('should throw NoActiveReportersError when no active reporters exist', () => {
+  it('should throw NoActiveReportersError when no active reporters exist', async () => {
     const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
-    mockJudgeScheduler.mockReturnValue(true);
+    mockJudgeScheduler.mockResolvedValue({
+      shouldExecute: true,
+      isBusinessDay: true,
+      isWithinExecutionWindow: true,
+      nextScheduledExecutionTime: null,
+      executionReason: 'Deadline reached',
+    });
 
     const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
-    mockGetReporters.mockReturnValue([]);
+    mockGetReporters.mockResolvedValue({
+      success: true,
+      reporters: [],
+      totalCount: 0,
+      message: 'No active reporters',
+    });
 
     const input: DetectNonSubmittedReportersAtDeadlineInput = {
       targetDate: '2024-01-15',
@@ -29,8 +40,8 @@ describe('SCEN-238: チームに報告者が登録されていない場合は検
       teamId: 'team-001',
     };
 
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(NoActiveReportersError);
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(NoActiveReportersError);
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
       /検知対象の有効な報告者が存在しません/
     );
   });

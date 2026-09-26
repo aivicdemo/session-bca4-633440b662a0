@@ -10,51 +10,27 @@ describe('SCEN-105: ログイン済みのチームリーダーがリーダー権
     jest.clearAllMocks();
   });
 
-  it('有効なチームリーダーアカウントでアクセスが許可される', async () => {
-    const userId = 'leader-001';
-    const isAuthenticated = true;
+  it('ログイン済みのチームリーダーがリーダー権限を持つ場合、アクセスが許可される', async () => {
+    jest.mocked(validateUserAccountActiveStatus as any).mockResolvedValue({
+      isActive: true,
+      userId: 'leader-001',
+    });
 
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
-      isValid: true,
-      userId,
-    } as any);
-
-    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
-      hasRole: true,
-      userId,
-    } as any);
+    jest.mocked(validateUserHasLeaderRole as any).mockResolvedValue({
+      hasLeaderRole: true,
+      userId: 'leader-001',
+    });
 
     const result = await authenticateAndAuthorizeLeaderAccess({
-      userId,
-      isAuthenticated,
+      userId: 'leader-001',
+      isAuthenticated: true,
     });
 
     expect(result.isAccessGranted).toBe(true);
     expect(result.userId).toBe('leader-001');
     expect(result.denialReason).toBeNull();
-  });
 
-  it('戻り値の isAccessGranted は true、userId は入力値と同じ、denialReason は null', async () => {
-    const userId = 'leader-001';
-    const isAuthenticated = true;
-
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
-      isValid: true,
-      userId,
-    } as any);
-
-    jest.mocked(validateUserHasLeaderRole).mockResolvedValue({
-      hasRole: true,
-      userId,
-    } as any);
-
-    const result = await authenticateAndAuthorizeLeaderAccess({
-      userId,
-      isAuthenticated,
-    });
-
-    expect(result.isAccessGranted).toBe(true);
-    expect(result.userId).toBe(userId);
-    expect(result.denialReason).toBeNull();
+    expect(validateUserAccountActiveStatus).toHaveBeenCalledWith({ userId: 'leader-001' });
+    expect(validateUserHasLeaderRole).toHaveBeenCalledWith({ userId: 'leader-001' });
   });
 });

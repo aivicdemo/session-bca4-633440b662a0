@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
@@ -10,31 +10,22 @@ import {
 
 jest.mock('../../src/logic/email-notification-management');
 
-describe('SCEN-516: buildNotificationContent が正常にメール本文を生成した場合', () => {
+describe('SCEN-516: buildNotificationContent が正常にメール本文を生成した場合、recordEmailSendingHistory に渡される', () => {
+  let mockValidateEmailAddressForDelivery: jest.MockedFunction<any>;
+  let mockBuildNotificationContent: jest.MockedFunction<any>;
+  let mockRecordEmailSendingHistory: jest.MockedFunction<any>;
+  let mockSendDailyReportSubmissionNotification: jest.MockedFunction<any>;
+
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.MockedFunction<any>;
+    mockBuildNotificationContent = buildNotificationContent as jest.MockedFunction<any>;
+    mockRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
+    mockSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
   });
 
-  it('recordEmailSendingHistory に渡される', () => {
-    const mockValidateEmail = jest.mocked(validateEmailAddressForDelivery);
-    const mockBuildContent = jest.mocked(buildNotificationContent);
-    const mockRecordHistory = jest.mocked(recordEmailSendingHistory);
-    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-
-    mockValidateEmail.mockReturnValue(true);
-
-    const emailBody = '山田太郎さんからの日報です\n\n顧客A社のシステム要件定義会議を実施。基本設計書のドラフト完了。明日は詳細設計に着手予定。';
-    mockBuildContent.mockReturnValue({
-      subject: '【日報】2024年01月15日 山田太郎',
-      body: emailBody,
-      toAddress: 'leader@example.com',
-    });
-
-    mockRecordHistory.mockReturnValue({
-      emailSendingHistoryId: 'HIST202401150001',
-      sentAt: '2024-01-15T09:30:05Z',
-    });
-
+  it('recordEmailSendingHistory に渡される', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'RPT001',
       dailyReportId: 'DR20240115001',
@@ -46,22 +37,42 @@ describe('SCEN-516: buildNotificationContent が正常にメール本文を生�
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    mockSend.mockImplementation(() => ({
+    mockValidateEmailAddressForDelivery.mockResolvedValue({
+      isValid: true,
+      reason: null,
+      errorCode: null,
+    });
+
+    mockBuildNotificationContent.mockResolvedValue({
+      subject: '【日報】2024年01月15日 山田太郎',
+      body: '山田太郎さんからの日報です\n\n顧客A社のシステム要件定義会議を実施。基本設計書のドラフト完了。明日は詳細設計に着手予定。',
+    });
+
+    mockRecordEmailSendingHistory.mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: 'HIST202401150001',
+      recordedAt: '2024-01-15T09:30:05Z',
+      errorMessage: null,
+    });
+
+    const expectedOutput: SendDailyReportSubmissionNotificationOutput = {
       success: true,
       emailSendingHistoryId: 'HIST202401150001',
       sentAt: '2024-01-15T09:30:05Z',
       errorMessage: null,
       adminNotificationSent: false,
-    }));
+    };
 
-    const result = mockSend(input) as SendDailyReportSubmissionNotificationOutput;
+    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+
+    const result = await sendDailyReportSubmissionNotification(input);
 
     expect(result.success).toBe(true);
     expect(result.emailSendingHistoryId).toBe('HIST202401150001');
     expect(result.sentAt).toBe('2024-01-15T09:30:05Z');
     expect(result.errorMessage).toBeNull();
     expect(result.adminNotificationSent).toBe(false);
-    expect(mockBuildContent).toHaveBeenCalled();
-    expect(mockRecordHistory).toHaveBeenCalled();
+    expect(mockBuildNotificationContent).toHaveBeenCalled();
+    expect(mockRecordEmailSendingHistory).toHaveBeenCalled();
   });
 });

@@ -1,23 +1,9 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
+import { archivePastDailyReports, type ArchivePastDailyReportsOutput } from '../../src/logic/daily-report-persistence';
 
-jest.mock('../../src/logic/daily-report-persistence');
-
-import {
-  archivePastDailyReports,
-  ArchivePastDailyReportsInput,
-  ArchivePastDailyReportsOutput,
-} from '../../src/logic/daily-report-persistence';
-
-describe('SCEN-451: 指定ユーザーの過去日報が1件だけ存在するとき、アーカイブして件数1で返す', () => {
-  it('出力型のフィールド値が正しく返される', async () => {
-    const mockOutput: ArchivePastDailyReportsOutput = {
-      userId: 'user-001',
-      archivedReportCount: 1,
-      archivedAt: '2024-01-15T09:00:00Z',
-    };
-    (archivePastDailyReports as jest.Mock).mockResolvedValueOnce(mockOutput);
-
-    const input: ArchivePastDailyReportsInput = {
+describe('SCEN-451: archivePastDailyReports - Edge case: single report archive', () => {
+  it('should archive and return count 1 when exactly one unarchived report exists', async () => {
+    const input = {
       userId: 'user-001',
       archivedAt: '2024-01-15T09:00:00Z',
     };

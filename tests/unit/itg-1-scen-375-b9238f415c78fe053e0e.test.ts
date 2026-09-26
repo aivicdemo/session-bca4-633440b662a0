@@ -1,45 +1,26 @@
-import {
-  updateReporter,
-  UpdateReporterInput,
-  InvalidEmailFormatError,
-} from '../../src/logic/reporter-master-management';
-import {
-  validateEmailAddress,
-} from '../../src/logic/input-validation-formatting';
+import { updateReporter, InvalidEmailFormatError } from '../../src/logic/reporter-master-management';
+import * as validationModule from '../../src/logic/input-validation-formatting';
 
 jest.mock('../../src/logic/input-validation-formatting');
 
-describe('SCEN-375: 更新されたメールアドレスが標準的なメール形式に合致しないと、InvalidEmailFormatErrorが発生する', () => {
+describe('SCEN-375: updateReporter with invalid email format', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('メールアドレスが無効な形式の場合、InvalidEmailFormatErrorが発生する', () => {
-    const reporterId = 'reporter-001';
-    const teamLeaderId = 'leader-001';
-    const invalidEmail = 'invalid-email-format';
-    const executionTimestamp = new Date('2024-01-15T10:00:00Z');
+  it('should throw InvalidEmailFormatError when email address format is invalid', async () => {
+    const input = {
+      reporterId: 'reporter-001',
+      emailAddress: 'invalid-email-format',
+      teamLeaderId: 'leader-001',
+      executionTimestamp: new Date('2024-01-15T10:00:00Z'),
+    };
 
-    (validateEmailAddress as jest.Mock).mockImplementation(() => {
+    (validationModule.validateEmailAddress as jest.Mock).mockImplementation(() => {
       throw new InvalidEmailFormatError('メールアドレスの形式が正しくありません。');
     });
 
-    const input: UpdateReporterInput = {
-      reporterId,
-      emailAddress: invalidEmail,
-      reporterName: undefined,
-      department: undefined,
-      status: undefined,
-      teamLeaderId,
-      executionTimestamp,
-    };
-
-    expect(() => {
-      updateReporter(input);
-    }).toThrow(InvalidEmailFormatError);
-
-    expect(() => {
-      updateReporter(input);
-    }).toThrow('メールアドレスの形式が正しくありません。');
+    await expect(updateReporter(input)).rejects.toThrow(InvalidEmailFormatError);
+    await expect(updateReporter(input)).rejects.toThrow('メールアドレスの形式が正しくありません。');
   });
 });

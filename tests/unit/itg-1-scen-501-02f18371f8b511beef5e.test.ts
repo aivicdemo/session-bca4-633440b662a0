@@ -1,3 +1,11 @@
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
+}));
+
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
   validateEmailAddressForDelivery,
@@ -7,17 +15,10 @@ import {
   SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
-  sendDailyReportSubmissionNotification: jest.fn(),
-}));
-
-const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.Mock;
-const mockedBuildNotificationContent = buildNotificationContent as jest.Mock;
-const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.Mock;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.Mock;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
+const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.MockedFunction<any>;
+const mockedBuildNotificationContent = buildNotificationContent as jest.MockedFunction<any>;
+const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
 
 describe('SCEN-501: 有効なリーダーメールアドレスに対してメール通知の全検証が成功する場合の代表値として、validateAndSendLeaderNotification は送信可能を返す', () => {
   beforeEach(() => {

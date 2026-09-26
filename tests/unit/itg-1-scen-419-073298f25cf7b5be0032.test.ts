@@ -1,12 +1,9 @@
-import { describe, test, expect } from '@jest/globals';
-import {
-  saveDailyReport,
-  SaveDailyReportInput,
-  SaveDailyReportOutput,
-} from '../../src/logic/daily-report-persistence';
+import { describe, it, expect } from '@jest/globals';
+import { saveDailyReport } from '../../src/logic/daily-report-persistence';
+import type { SaveDailyReportInput, SaveDailyReportOutput } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-419: 有効なユーザーID・営業日・業務内容で日報を保存すると日報IDと保存タイムスタンプが返される', () => {
-  test('should return dailyReportId and savedAt when saving with valid inputs', async () => {
+  it('should return dailyReportId and savedAt when saving with valid inputs', async () => {
     const input: SaveDailyReportInput = {
       userId: 'user-001',
       reportDate: '2024-01-15',
@@ -23,7 +20,7 @@ describe('SCEN-419: 有効なユーザーID・営業日・業務内容で日報�
 
     expect(output.savedAt).toBeDefined();
     expect(typeof output.savedAt).toBe('string');
-    expect(output.savedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+    expect(output.savedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
 
     expect(output.userId).toBe('user-001');
     expect(output.reportDate).toBe('2024-01-15');

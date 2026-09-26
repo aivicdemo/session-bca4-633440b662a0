@@ -69,7 +69,7 @@ async function login(page: Page, username: string) {
   await page.waitForURL(/panels\/scr-1790147087109\.html/);
 }
 
-test('報告者マスタの更新操作で変更前後の値が同じとき、保存をスキップする', async ({ page, request }) => {
+test('SCEN-715: 報告者マスタの更新操作で変更前後の値が同じとき、保存をスキップする', async ({ page, request }) => {
   const reporterId = 'reporter_001';
   const name = '田中太郎';
   const email = 'tanaka@example.com';
@@ -93,39 +93,53 @@ test('報告者マスタの更新操作で変更前後の値が同じとき、�
     作成者: 'system',
   });
 
-  // 手順2: 報告者マスタ管理機能を開く
+  // 手順1-2: 管理画面にアクセスし、報告者マスタ管理機能を開く
   await page.getByText('管理', { exact: true }).click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.getByText('報告者マスタ管理').click();
+  await page.waitForLoadState('networkidle');
 
-  // 手順3: 既存の報告者レコードを編集モードで開く
+  // 手順3: 既存の報告者レコード（ID=reporter_001、名前='田中太郎'、メール='tanaka@example.com'）を編集モードで開く
   const targetRow = page.getByRole('row', { name: new RegExp(name) });
   await targetRow.click();
+  await page.waitForLoadState('networkidle');
 
-  // 手順4: すべての入力項目を変更を加えずに現在値のままにする
-  const nameInput = page.getByLabel('氏名');
-  const emailInput = page.getByLabel('メールアドレス');
+  // 手順4: すべての入力項目を確認し、変更を加えずに現在値のままにする
+  const nameInput = page.getByLabel('氏名', { exact: true });
+  const emailInput = page.getByLabel('メールアドレス', { exact: true });
   await expect(nameInput).toHaveValue(name);
   await expect(emailInput).toHaveValue(email);
 
-  // 手順5-6: 保存ボタンをクリックする。データベースへのUPDATE操作が実行されないか、
-  // 実行されても影響行数が0であることをネットワークタブで確認する。
+  // UPDATE リクエストが送信されたかどうかを追跡
   let updateRequestSent = false;
+  let updateRequestBody: Record<string, unknown> | null = null;
   page.on('request', (req) => {
     if (req.method() === 'PUT' && req.url().includes(`/api/`)) {
       updateRequestSent = true;
+      req.postDataJSON().then((body) => {
+        updateRequestBody = body;
+      }).catch(() => {});
     }
   });
+
+  // 手順5: 保存ボタンをクリック
   await page.getByRole('button', { name: '保存' }).click();
+  await page.waitForTimeout(1500);
 
   // 手順7/期待結果: 画面に「保存完了」または「変更がありません」のいずれかのメッセージが表示される
   await expect(page.getByText(/保存完了|変更がありません/)).toBeVisible();
 
-  // 期待結果: 報告者マスタレコードは一切更新されない（更新日時が変化しない）。
+  // 期待結果: データベースへのUPDATE操作が実行されない、または実行されても影響行数が0
+  // 報告者マスタレコードは一切更新されない（更新日時が変化しない）
   const records = await fetchTableRecords(request, config, 'ユーザー');
   const persisted = records.find((r) => r['ユーザーID'] === reporterId);
+
+  // 更新日時が変わっていないことで、実際の更新が行われなかったことを確認
   expect(persisted?.['更新日時']).toBe(initialUpdatedAt);
+
+  // UPDATE リクエストが送信された場合でも、影響行数は 0 であるべき
+  // （この確認は更新日時の比較で十分）
   if (updateRequestSent) {
+    // 仮にリクエストが送信されても、DB 上では更新されていない状態を確認
     expect(persisted?.['更新日時']).toBe(initialUpdatedAt);
   }
 });

@@ -1,13 +1,13 @@
-import { validateDailyReportContent, ValidateDailyReportContentInput, ValidateDailyReportContentOutput } from '../../src/logic/input-validation-formatting';
+import { validateDailyReportContent, type ValidateDailyReportContentInput, type ValidateDailyReportContentOutput } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-114: エラー：9文字のテキストが入力されたとき、InsufficientContentLengthErrorを返す', () => {
-  it('9文字のテキストが入力されたとき、isValidがfalse、validatedContentがnull、errorCodeが\'InsufficientContentLengthError\'である', () => {
+  it('should return InsufficientContentLengthError when 9-character text is provided', async () => {
     const input: ValidateDailyReportContentInput = {
       content: '123456789',
       minimumCharacterLength: 10,
     };
 
-    const result: ValidateDailyReportContentOutput = validateDailyReportContent(input);
+    const result: ValidateDailyReportContentOutput = await validateDailyReportContent(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedContent).toBeNull();

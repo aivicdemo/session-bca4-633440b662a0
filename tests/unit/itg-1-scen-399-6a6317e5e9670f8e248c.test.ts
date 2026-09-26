@@ -15,7 +15,7 @@ describe('SCEN-399: 報告者がログインしていない場合、認証エラ
     jest.clearAllMocks();
   });
 
-  test('Unauthenticated reporter throws ReporterNotAuthenticatedError', () => {
+  test('Unauthenticated reporter throws ReporterNotAuthenticatedError', async () => {
     const now = new Date();
 
     const input: SubmitUserInformationForConfirmationInput = {
@@ -27,18 +27,13 @@ describe('SCEN-399: 報告者がログインしていない場合、認証エラ
       submissionTimestamp: now,
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.Mock).mockImplementation(() => {
-      throw new ReporterNotAuthenticatedError(
+    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockRejectedValue(
+      new ReporterNotAuthenticatedError(
         'ユーザー情報を送信するには、有効なアカウントでログインしている必要があります。'
-      );
-    });
+      )
+    );
 
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow(ReporterNotAuthenticatedError);
-
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow('ユーザー情報を送信するには、有効なアカウントでログインしている必要があります。');
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow(ReporterNotAuthenticatedError);
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow('ユーザー情報を送信するには、有効なアカウントでログインしている必要があります。');
   });
 });

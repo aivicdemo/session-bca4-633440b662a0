@@ -1,36 +1,38 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  authenticateAndAuthorizeReporterAccess,
-  validateUserAccountActiveStatus,
-  validateUserHasReporterRole,
-  UserLacksReporterRoleException,
-  type AuthenticateReporterAccessInput,
-} from '../../src/logic/user-authentication-authorization';
+import * as userAuth from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-085: 報告者ロールを持たないユーザーがアクセスを試みるとUserLacksReporterRoleExceptionが発生', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw UserLacksReporterRoleException when user lacks reporter role', async () => {
-    const input: AuthenticateReporterAccessInput = {
+  it('報告者ロールを持たないユーザーがアクセスを試みると、UserLacksReporterRoleExceptionが発生する', async () => {
+    // authenticateAndAuthorizeReporterAccessの入力値を準備：userId='user-002'、isAuthenticated=true
+    const input = {
       userId: 'user-002',
       isAuthenticated: true,
     };
 
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+    // validateUserAccountActiveStatusをスタブ化：エラーを発生させずに戻る
+    jest.spyOn(userAuth, 'validateUserAccountActiveStatus').mockResolvedValue({
       isActive: true,
+      userId: 'user-002',
+      inactiveReason: null,
     });
 
-    jest.mocked(validateUserHasReporterRole).mockImplementation(() => {
-      throw new UserLacksReporterRoleException('日報入力画面へのアクセス権限がありません。');
+    // validateUserHasReporterRoleをスタブ化：UserLacksReporterRoleExceptionをthrowするよう設定
+    jest.spyOn(userAuth, 'validateUserHasReporterRole').mockImplementation(() => {
+      throw new userAuth.UserLacksReporterRoleException('日報入力画面へのアクセス権限がありません。');
     });
 
-    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
-      UserLacksReporterRoleException
-    );
+    // 発生した例外をキャッチして検証
+    await expect(
+      userAuth.authenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(userAuth.UserLacksReporterRoleException);
 
-    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+    // エラーメッセージを検証
+    await expect(
+      userAuth.authenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(
       '日報入力画面へのアクセス権限がありません。'
     );
   });

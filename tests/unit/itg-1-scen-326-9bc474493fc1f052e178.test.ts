@@ -3,25 +3,24 @@ import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
-  PersistenceFailureError,
 } from '../../src/logic/daily-report-reminder-notification';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+import {
+  saveReminderNotificationSettings,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
+const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
+
 describe('SCEN-326: リマインダー設定の保存中にデータベース障害が発生すると、永続化失敗エラーが返される', () => {
+  const now = new Date();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('saveReminderNotificationSettingsがPersistenceFailureErrorをthrowするとエラー詳細が返される', () => {
-    const mockSave = jest.spyOn(
-      userMasterPersistence,
-      'saveReminderNotificationSettings' as any
-    );
-    mockSave.mockImplementation(() => {
-      throw new PersistenceFailureError('Database connection failed');
-    });
+  it('saveReminderNotificationSettingsがPersistenceFailureErrorをthrowするとエラー詳細が返される', async () => {
+    mockedSave.mockRejectedValueOnce(new Error('Database connection failed'));
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
@@ -31,16 +30,15 @@ describe('SCEN-326: リマインダー設定の保存中にデータベース障
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 3, 5],
       deliveryMethod: 'email',
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: now,
     };
 
-    const result: ManageReminderNotificationSettingsOutput =
-      manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
-    expect(result.reminderSettingId).toBe(null);
+    expect(result.reminderSettingId).toBeNull();
     expect(result.operation).toBe('register');
-    expect(result.appliedAt).toBe(null);
+    expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('リマインダー設定の保存に失敗しました。');
   });
 });

@@ -43,7 +43,7 @@ interface Tx1Imp1AgentOutput {
 }
 
 // Import the actual function from orchestrator
-import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
+import { runTx1Imp1Agent, type Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
 
 describe('SCEN-012: runTx1Imp1Agent reports correct counts', () => {
   let mockAiClient: any;

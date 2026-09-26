@@ -1,42 +1,40 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  authenticateAndAuthorizeReporterAccess,
-  validateUserAccountActiveStatus,
-  validateUserHasReporterRole,
-  UserNotRegisteredAsReporterException,
-  type AuthenticateReporterAccessInput,
-} from '../../src/logic/user-authentication-authorization';
+import * as userAuth from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-086: 報告者マスタに登録されていないユーザーがアクセスを試みるとUserNotRegisteredAsReporterExceptionが発生', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw UserNotRegisteredAsReporterException when user is not registered in reporter master', async () => {
-    const input: AuthenticateReporterAccessInput = {
+  it('報告者マスタに登録されていないユーザーがアクセスを試みると、UserNotRegisteredAsReporterExceptionが発生する', async () => {
+    // テスト用のユーザーID（例：'reporter-001'）とisAuthenticated=trueを入力値として準備
+    const input = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
 
-    jest.mocked(validateUserAccountActiveStatus).mockResolvedValue({
+    // スタブ validateUserAccountActiveStatus を、戻り値 { isActive: true } で設定
+    jest.spyOn(userAuth, 'validateUserAccountActiveStatus').mockResolvedValue({
       isActive: true,
+      userId: 'reporter-001',
+      inactiveReason: null,
     });
 
-    jest.mocked(validateUserHasReporterRole).mockResolvedValue({
-      hasRole: true,
+    // スタブ validateUserHasReporterRole を、戻り値 { hasReporterRole: true } で設定
+    jest.spyOn(userAuth, 'validateUserHasReporterRole').mockResolvedValue({
+      hasReporterRole: true,
+      userId: 'reporter-001',
+      denialReason: null,
     });
 
-    jest.mocked(authenticateAndAuthorizeReporterAccess).mockImplementation(() => {
-      throw new UserNotRegisteredAsReporterException(
-        'このユーザーは日報提出対象として登録されていません。'
-      );
-    });
+    // 関数を実行して例外が発生することを確認
+    await expect(
+      userAuth.authenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(userAuth.UserNotRegisteredAsReporterException);
 
-    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
-      UserNotRegisteredAsReporterException
-    );
-
-    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+    // エラーメッセージを検証
+    await expect(
+      userAuth.authenticateAndAuthorizeReporterAccess(input)
+    ).rejects.toThrow(
       'このユーザーは日報提出対象として登録されていません。'
     );
   });

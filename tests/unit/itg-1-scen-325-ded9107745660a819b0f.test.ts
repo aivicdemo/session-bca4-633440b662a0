@@ -3,32 +3,33 @@ import {
   manageReminderNotificationSettings,
   ManageReminderNotificationSettingsInput,
   ManageReminderNotificationSettingsOutput,
-  SettingNotFoundError,
 } from '../../src/logic/daily-report-reminder-notification';
-import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+import {
+  retrieveReminderNotificationSettingsByUserId,
+  saveReminderNotificationSettings,
+} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
 
+const mockedRetrieve = retrieveReminderNotificationSettingsByUserId as jest.MockedFunction<any>;
+const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
+
 describe('SCEN-325: 削除操作時に指定されたリマインダー設定IDが存在しない場合、エラーが返される', () => {
+  const now = new Date();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('存在しないreminderSettingIdで削除操作を実行するとSettingNotFoundErrorが返される', () => {
-    const mockRetrieve = jest.spyOn(
-      userMasterPersistence,
-      'retrieveReminderNotificationSettingsByUserId' as any
-    );
-    mockRetrieve.mockReturnValue(null);
-
-    const mockSave = jest.spyOn(
-      userMasterPersistence,
-      'saveReminderNotificationSettings' as any
-    );
+  it('存在しないreminderSettingIdで削除操作を実行するとSettingNotFoundErrorが返される', async () => {
+    mockedRetrieve.mockResolvedValueOnce({
+      success: false,
+      reminderSetting: null,
+      message: '指定されたリマインダー設定が見つかりません。',
+    });
 
     const testReporterId = 'valid-reporter-id';
     const nonExistentSettingId = 'non-existent-setting-uuid';
-    const currentTimestamp = new Date().toISOString();
 
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'delete',
@@ -38,17 +39,16 @@ describe('SCEN-325: 削除操作時に指定されたリマインダー設定ID�
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 2, 3, 4, 5],
       deliveryMethod: 'email',
-      executionTimestamp: currentTimestamp,
+      executionTimestamp: now,
     };
 
-    const result: ManageReminderNotificationSettingsOutput =
-      manageReminderNotificationSettings(input);
+    const result: ManageReminderNotificationSettingsOutput = await manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(false);
-    expect(result.reminderSettingId).toBe(null);
+    expect(result.reminderSettingId).toBeNull();
     expect(result.operation).toBe('delete');
-    expect(result.appliedAt).toBe(null);
+    expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('指定されたリマインダー設定が見つかりません。');
-    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockedSave).not.toHaveBeenCalled();
   });
 });

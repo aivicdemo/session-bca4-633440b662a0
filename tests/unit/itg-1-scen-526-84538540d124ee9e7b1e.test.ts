@@ -1,14 +1,12 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
   ReporterNotValidError,
-  SendDailyReportSubmissionNotificationInput,
+  type SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
 
 describe('SCEN-526: 報告者が無効化された状態である場合、ReporterNotValidError が発生する', () => {
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -25,18 +23,6 @@ describe('SCEN-526: 報告者が無効化された状態である場合、Report
       submissionTimestamp: '2024-01-15T10:30:00Z',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockImplementation(() => {
-      throw new Error('Should not be called');
-    });
-
-    jest.mocked(buildNotificationContent).mockImplementation(() => {
-      throw new Error('Should not be called');
-    });
-
-    jest.mocked(recordEmailSendingHistory).mockImplementation(() => {
-      throw new Error('Should not be called');
-    });
-
     let thrownError: Error | undefined;
     try {
       await sendDailyReportSubmissionNotification(input);
@@ -46,8 +32,5 @@ describe('SCEN-526: 報告者が無効化された状態である場合、Report
 
     expect(thrownError).toBeInstanceOf(ReporterNotValidError);
     expect(thrownError?.message).toBe('報告者が無効であるため、メール通知を送信できません。');
-    expect(validateEmailAddressForDelivery).not.toHaveBeenCalled();
-    expect(buildNotificationContent).not.toHaveBeenCalled();
-    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

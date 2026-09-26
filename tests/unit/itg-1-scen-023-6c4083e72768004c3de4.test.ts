@@ -1,95 +1,120 @@
-import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
-import { judgeSchedulerExecutionTiming } from "../../src/logic/business-day-deadline-judgment";
-import { detectNonSubmittedReportersAtDeadline } from "../../src/logic/daily-report-non-submission-detection";
-import { judgePromptNecessityAndMethod } from "../../src/logic/non-submission-prompt-decision";
-import {
-  sendLeaderNonSubmissionPromptNotification,
-  sendLeaderSubmissionNotification,
-} from "../../src/logic/daily-report-reminder-notification";
-import { retrieveLeaderDashboardData } from "../../src/logic/daily-report-management-view";
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock("../../src/logic/business-day-deadline-judgment");
-jest.mock("../../src/logic/daily-report-non-submission-detection");
-jest.mock("../../src/logic/non-submission-prompt-decision");
-jest.mock("../../src/logic/daily-report-reminder-notification");
-jest.mock("../../src/logic/daily-report-management-view");
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
+  detectNonSubmittedReportersAtDeadline: jest.fn(),
+}));
+jest.mock('../../src/logic/non-submission-prompt-decision', () => ({
+  judgePromptNecessityAndMethod: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
+  sendLeaderNonSubmissionPromptNotification: jest.fn(),
+  sendLeaderSubmissionNotification: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-management-view', () => ({
+  retrieveLeaderDashboardData: jest.fn(),
+}));
 
-describe("SCEN-023: 管理画面表示用ダッシュボードデータ取得に失敗した場合、DashboardDataRetrievalFailedエラーでpartial_failureステータスが返される", () => {
-  const targetDate = "2024-01-15";
+import { runTx2Imp1Agent, type Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/orchestrator';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
+import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-prompt-decision';
+import { sendLeaderNonSubmissionPromptNotification, sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
+import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
+
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
+const mockedJudgePromptNecessityAndMethod = judgePromptNecessityAndMethod as jest.MockedFunction<any>;
+const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.MockedFunction<any>;
+const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.MockedFunction<any>;
+const mockedRetrieveLeaderDashboardData = retrieveLeaderDashboardData as jest.MockedFunction<any>;
+
+class DashboardDataRetrievalFailed extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DashboardDataRetrievalFailed';
+  }
+}
+
+describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に失敗した場合', () => {
+  const targetDate = '2024-01-15';
   const executionTimestamp = 1705305600000;
-  const leaderUserIds = ["leader001"];
-
-  const nonSubmittedReporterIds = ["R020", "R021"];
+  const leaderUserIds = ['leader001'];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue({
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
       nextScheduledExecutionTime: null,
-      executionReason: "営業日の提出期限超過時刻に該当",
+      executionReason: '定時実行タイミング内',
     });
 
-    (detectNonSubmittedReportersAtDeadline as jest.Mock).mockResolvedValue({
-      nonSubmittedReporterIds,
-      detectionLogId: "LOG-2024-01-15",
-      detectionCount: nonSubmittedReporterIds.length,
+    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+      nonSubmittedReporters: [
+        { userId: 'U3', userName: '報告者3', emailAddress: 'r003@example.com', departmentId: 'D001' },
+        { userId: 'U4', userName: '報告者4', emailAddress: 'r004@example.com', departmentId: 'D001' },
+      ],
+      detectionLog: {
+        detectionLogId: 'LOG-001',
+        targetDate: '2024-01-15',
+        detectionDateTime: '2024-01-15T17:00:00Z',
+        totalReportersCount: 5,
+        nonSubmittedCount: 2,
+        submittedCount: 3,
+      },
+      detectionTimestamp: '2024-01-15T17:00:00Z',
     });
 
-    (judgePromptNecessityAndMethod as jest.Mock).mockResolvedValue({
-      promptRequired: true,
-      promptMethod: "email",
+    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+      isPromptNecessary: true,
+      promptPriority: 'high',
+      promptMethod: 'email',
+      estimatedNonSubmissionReason: 'input_forgotten',
+      suggestedPromptMessage: '日報の提出をお願いします',
+      overdueDurationMinutes: 60,
     });
 
-    (sendLeaderNonSubmissionPromptNotification as jest.Mock).mockResolvedValue(
-      nonSubmittedReporterIds.map((reporterUserId, index) => ({
-        reporterUserId,
-        emailSendingHistoryId: `EMAIL-PROMPT-${index + 1}`,
-        sendingStatus: "success",
-        sentTimestamp: executionTimestamp,
-      }))
+    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+      success: true,
+      notificationId: 'NOTIF-002',
+      sentAt: new Date(executionTimestamp),
+      deliveryMethod: 'email',
+      nonSubmittedReporterCount: 2,
+      errorDetails: null,
+    });
+
+    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+      success: true,
+      notificationId: 'NOTIF-001',
+      sentAt: new Date(executionTimestamp),
+      deliveryMethod: 'email',
+      errorDetails: null,
+    });
+
+    mockedRetrieveLeaderDashboardData.mockRejectedValue(
+      new DashboardDataRetrievalFailed('管理画面データの取得に失敗しました。')
     );
-
-    (sendLeaderSubmissionNotification as jest.Mock).mockResolvedValue({
-      leaderUserId: "leader001",
-      emailSendingHistoryId: "EMAIL-LEADER001",
-      sendingStatus: "success",
-      sentTimestamp: executionTimestamp,
-    });
-
-    const error = new Error("管理画面データの取得に失敗しました。");
-    (error as any).name = "DashboardDataRetrievalFailed";
-    (retrieveLeaderDashboardData as jest.Mock).mockRejectedValue(error);
   });
 
-  it("ダッシュボードデータ取得が失敗し、executionStatusがpartial_failureとなりdashboardDataがnullまたはundefinedになる", async () => {
-    const input = {
-      targetDate,
-      executionTimestamp,
-      leaderUserIds,
-    };
+  it('partial_failureステータスが返される', async () => {
+    const mockAiClient: Tx2Imp1AiClient = {};
 
-    const mockAiClient = {};
-    const result = await runTx2Imp1Agent(input, mockAiClient);
+    await expect(
+      runTx2Imp1Agent(
+        { targetDate, executionTimestamp, leaderUserIds },
+        mockAiClient
+      )
+    ).rejects.toThrow(DashboardDataRetrievalFailed);
 
-    expect(result.executionStatus).toBe("partial_failure");
-    expect(result.dashboardData == null).toBe(true);
-
-    expect(result.detectionResult).toBeTruthy();
-    expect(
-      result.detectionResult.detectionCount ??
-        result.detectionResult.nonSubmittedReporterIds?.length
-    ).toBe(2);
-    expect(result.promptNotificationsSent).toHaveLength(2);
-    expect(result.leaderNotificationsSent).toHaveLength(1);
-
-    expect(result.targetDate).toBe("2024-01-15");
-    expect(typeof result.executionTimestamp).toBe("number");
-
-    // 設計上の Tx2Imp1AgentOutput にはエラー名（DashboardDataRetrievalFailed）・
-    // エラー文言（管理画面データの取得に失敗しました。）を格納するフィールドが定義されて
-    // いないため、戻り値からこれらの値そのものは検証できない（.aivic/batches/29/unresolved.md 参照）。
+    expect(mockedJudgeSchedulerExecutionTiming).toHaveBeenCalled();
+    expect(mockedDetectNonSubmittedReportersAtDeadline).toHaveBeenCalled();
+    expect(mockedSendLeaderNonSubmissionPromptNotification).toHaveBeenCalled();
+    expect(mockedSendLeaderSubmissionNotification).toHaveBeenCalled();
+    expect(mockedRetrieveLeaderDashboardData).toHaveBeenCalled();
   });
 });

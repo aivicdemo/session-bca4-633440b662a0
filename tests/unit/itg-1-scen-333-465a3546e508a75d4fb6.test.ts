@@ -7,12 +7,12 @@ import { validateEmailAddress, validateReporterNameFormat, detectDuplicateEmailA
 import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
 import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
 
-const mockedValidateEmailAddress = validateEmailAddress as jest.Mock;
-const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.Mock;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.Mock;
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.Mock;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.Mock;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.Mock;
+const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
+const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
+const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
+const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
+const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
 describe('SCEN-333: 入力されたメールアドレスが既にマスタに登録されている場合、DuplicateEmailAddressDetectedエラーを返す', () => {
   const userId = 'USER001';
@@ -24,10 +24,10 @@ describe('SCEN-333: 入力されたメールアドレスが既にマスタに登
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue(true);
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
+    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
+    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: true, validatedEmailAddress: emailAddress, errorCode: null });
+    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true, userId, inactiveReason: null });
     mockedRegisterReporterToMaster.mockRejectedValue(new Error('Should not be called'));
     mockedPersistReporterMasterChangeHistory.mockRejectedValue(new Error('Should not be called'));
   });

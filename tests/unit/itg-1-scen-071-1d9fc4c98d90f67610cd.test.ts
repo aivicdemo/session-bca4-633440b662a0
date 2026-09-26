@@ -1,13 +1,12 @@
-jest.mock('../../src/agents/tx-6-imp-1/orchestrator-dependencies');
-
 import { runTx6Imp1Agent, Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
 
-describe('SCEN-071: targetDateで指定された営業日に未提出者が0人の場合', () => {
-  const leaderUserId = 'leader001';
-  const executionTimestamp = new Date('2024-01-15T10:00:00Z');
-  const targetDate = new Date('2024-01-15');
-
+describe('SCEN-071: targetDateで指定された営業日に未提出者が0人の場合、nonSubmissionDetectionResultのdetectedCountが0で出力される', () => {
   it('should return zero detectedCount when no non-submitted reporters on target date', async () => {
+    const leaderUserId = 'leader001';
+    const userInformationSubmissions: any[] = [];
+    const executionTimestamp = new Date('2024-01-15T10:00:00Z');
+    const targetDate = new Date('2024-01-15');
+
     const mockAiClient: Tx6Imp1AiClient = {
       authenticateAndAuthorizeLeaderAccess: jest.fn().mockResolvedValue({ authorized: true }),
       validateUserInformationRequired: jest.fn().mockResolvedValue({ valid: true, errors: [] }),
@@ -17,11 +16,6 @@ describe('SCEN-071: targetDateで指定された営業日に未提出者が0人�
         approved: 0,
         rejected: 0,
         details: [],
-      }),
-      retrieveUserInformationConfirmationStatus: jest.fn().mockResolvedValue({
-        confirmed: 0,
-        pending: 0,
-        rejected: 0,
       }),
       registerReporter: jest.fn().mockResolvedValue({ registered: 0, errors: [] }),
       updateReporter: jest.fn().mockResolvedValue({ updated: 0, errors: [] }),
@@ -39,7 +33,7 @@ describe('SCEN-071: targetDateで指定された営業日に未提出者が0人�
     };
 
     const result = await runTx6Imp1Agent(
-      { leaderUserId, userInformationSubmissions: [], executionTimestamp, targetDate },
+      { leaderUserId, userInformationSubmissions, executionTimestamp, targetDate },
       mockAiClient
     );
 
@@ -54,6 +48,7 @@ describe('SCEN-071: targetDateで指定された営業日に未提出者が0人�
     expect(result.reporterMasterUpdateResult.deactivated).toBe(0);
     expect(result.notificationSendingResult.approvalNotificationsSent).toBe(0);
     expect(result.notificationSendingResult.promptNotificationsSent).toBe(0);
+    expect(result.notificationSendingResult.failedNotifications).toEqual([]);
     expect(result.exceptionCases).toEqual([]);
   });
 });

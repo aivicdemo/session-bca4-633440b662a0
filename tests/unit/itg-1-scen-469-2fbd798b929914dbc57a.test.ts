@@ -1,40 +1,27 @@
-import {
-  deactivateReporterInMaster,
-  InvalidLeaderUserIdError,
-  type DeactivateReporterInMasterInput,
-} from '../../src/logic/user-master-persistence';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { deactivateReporterInMaster, persistReporterMasterChangeHistory, InvalidLeaderUserIdError } from '../../src/logic/user-master-persistence';
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  persistReporterMasterChangeHistory: jest.fn(),
+}));
 
 describe('SCEN-469: チームリーダーのユーザーIDがnullのため操作が拒否される', () => {
-  it('leaderUserIdがnullの場合、InvalidLeaderUserIdErrorをスロー', () => {
-    const input: DeactivateReporterInMasterInput = {
-      reporterId: 'reporter-001',
-      leaderUserId: null,
-      deactivationTimestamp: new Date('2025-01-15T10:30:00Z'),
-      deactivationReason: '異動',
-    };
-
-    expect(() => deactivateReporterInMaster(input)).toThrow(InvalidLeaderUserIdError);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('エラー文言が「チームリーダーのユーザーIDが指定されていません。」である', () => {
-    const input: DeactivateReporterInMasterInput = {
+  it('should reject when leaderUserId is null', async () => {
+    const input = {
       reporterId: 'reporter-001',
       leaderUserId: null,
-      deactivationTimestamp: new Date('2025-01-15T10:30:00Z'),
+      deactivationTimestamp: new Date(),
       deactivationReason: '異動',
     };
 
-    let caughtError: InvalidLeaderUserIdError | undefined;
+    await expect(deactivateReporterInMaster(input as any)).rejects.toThrow(InvalidLeaderUserIdError);
+    await expect(deactivateReporterInMaster(input as any)).rejects.toThrow('チームリーダーのユーザーIDが指定されていません。');
 
-    try {
-      deactivateReporterInMaster(input);
-    } catch (error) {
-      if (error instanceof InvalidLeaderUserIdError) {
-        caughtError = error;
-      }
-    }
-
-    expect(caughtError).toBeDefined();
-    expect(caughtError?.message).toBe('チームリーダーのユーザーIDが指定されていません。');
+    const mockPersist = persistReporterMasterChangeHistory as jest.Mock;
+    expect(mockPersist).not.toHaveBeenCalled();
   });
 });

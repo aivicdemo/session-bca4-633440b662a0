@@ -15,13 +15,13 @@ describe('SCEN-208: リーダー通知トリガーの発火に失敗した場合
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
-    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
-    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
-    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(false);
-    (persistenceModule.saveDailyReport as jest.Mock).mockResolvedValue({ dailyReportId: 'report-001' });
-    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.Mock).mockResolvedValue({ updated: true });
-    (notificationModule.sendDailyReportSubmissionNotification as jest.Mock).mockRejectedValue(
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.MockedFunction<any>).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.MockedFunction<any>).mockResolvedValue(false);
+    (persistenceModule.saveDailyReport as jest.MockedFunction<any>).mockResolvedValue({ dailyReportId: 'report-001' });
+    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>).mockResolvedValue({ updated: true });
+    (notificationModule.sendDailyReportSubmissionNotification as jest.MockedFunction<any>).mockRejectedValue(
       new NotificationTriggerFailedException()
     );
   });

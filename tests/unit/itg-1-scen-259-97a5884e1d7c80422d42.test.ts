@@ -14,7 +14,9 @@ import {
   detectNonSubmittedReportersAtDeadline,
   DetectNonSubmittedReportersAtDeadlineInput,
   DetectNonSubmittedReportersAtDeadlineOutput,
+  NonSubmissionDetectionLog,
 } from '../../src/logic/daily-report-non-submission-detection';
+import type { NonSubmittedReporter } from '../../src/agents/tx-3-imp-1/orchestrator';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 import {
@@ -23,11 +25,11 @@ import {
   updateNonSubmissionDetectionLogWithReminderStatus,
 } from '../../src/logic/daily-report-persistence';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
-const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.MockedFunction<any>;
 
 describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおりに働く', () => {
   beforeEach(() => {
@@ -43,32 +45,37 @@ describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおり�
     const mockReporters = [
       {
         userId: 'reporter-001',
-        name: 'Reporter One',
-        email: 'reporter-001@example.com',
+        userName: 'Reporter One',
+        emailAddress: 'reporter-001@example.com',
+        promptPriority: 'high',
         department: 'Engineering',
       },
       {
         userId: 'reporter-002',
-        name: 'Reporter Two',
-        email: 'reporter-002@example.com',
+        userName: 'Reporter Two',
+        emailAddress: 'reporter-002@example.com',
+        promptPriority: 'high',
         department: 'Engineering',
       },
       {
         userId: 'reporter-003',
-        name: 'Reporter Three',
-        email: 'reporter-003@example.com',
+        userName: 'Reporter Three',
+        emailAddress: 'reporter-003@example.com',
+        promptPriority: 'high',
         department: 'Sales',
       },
       {
         userId: 'reporter-004',
-        name: 'Reporter Four',
-        email: 'reporter-004@example.com',
+        userName: 'Reporter Four',
+        emailAddress: 'reporter-004@example.com',
+        promptPriority: 'high',
         department: 'Sales',
       },
       {
         userId: 'reporter-005',
-        name: 'Reporter Five',
-        email: 'reporter-005@example.com',
+        userName: 'Reporter Five',
+        emailAddress: 'reporter-005@example.com',
+        promptPriority: 'high',
         department: 'Marketing',
       },
     ];
@@ -78,7 +85,7 @@ describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおり�
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
       const submittedUserIds = ['reporter-001', 'reporter-002', 'reporter-003'];
-      return Promise.resolve(submittedUserIds.includes(userId));
+      return Promise.resolve({ exists: submittedUserIds.includes(userId) });
     });
 
     mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
@@ -87,8 +94,9 @@ describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおり�
       detectionLogId: 'log-001',
       targetDate,
       detectionDateTime: currentDateTime,
-      targetCount: 5,
+      totalReportersCount: 5,
       nonSubmittedCount: 2,
+      submittedCount: 3,
     });
 
     const input: DetectNonSubmittedReportersAtDeadlineInput = {
@@ -102,19 +110,26 @@ describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおり�
       await detectNonSubmittedReportersAtDeadline(input);
 
     expect(result.nonSubmittedReporters).toHaveLength(2);
-    expect(result.nonSubmittedReporters[0].userId).toBe('reporter-004');
-    expect(result.nonSubmittedReporters[0].name).toBe('Reporter Four');
-    expect(result.nonSubmittedReporters[0].email).toBe('reporter-004@example.com');
-    expect(result.nonSubmittedReporters[0].department).toBe('Sales');
 
-    expect(result.nonSubmittedReporters[1].userId).toBe('reporter-005');
-    expect(result.nonSubmittedReporters[1].name).toBe('Reporter Five');
-    expect(result.nonSubmittedReporters[1].email).toBe('reporter-005@example.com');
-    expect(result.nonSubmittedReporters[1].department).toBe('Marketing');
+    // Verify reporter-004
+    const reporter004 = result.nonSubmittedReporters.find(r => r.userId === 'reporter-004');
+    expect(reporter004).toBeDefined();
+    expect(reporter004?.userId).toBe('reporter-004');
+    expect(reporter004?.userName).toBe('Reporter Four');
+    expect(reporter004?.emailAddress).toBe('reporter-004@example.com');
+    expect(reporter004?.department).toBe('Sales');
+
+    // Verify reporter-005
+    const reporter005 = result.nonSubmittedReporters.find(r => r.userId === 'reporter-005');
+    expect(reporter005).toBeDefined();
+    expect(reporter005?.userId).toBe('reporter-005');
+    expect(reporter005?.userName).toBe('Reporter Five');
+    expect(reporter005?.emailAddress).toBe('reporter-005@example.com');
+    expect(reporter005?.department).toBe('Marketing');
 
     expect(result.detectionLog.detectionDateTime).toBe(currentDateTime);
     expect(result.detectionLog.targetDate).toBe(targetDate);
-    expect(result.detectionLog.targetCount).toBe(5);
+    expect(result.detectionLog.totalReportersCount).toBe(5);
     expect(result.detectionLog.nonSubmittedCount).toBe(2);
 
     expect(result.detectionTimestamp).toBe(currentDateTime);

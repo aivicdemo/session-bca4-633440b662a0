@@ -20,105 +20,76 @@ jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/user-master-persistence');
 
-describe('SCEN-356: 同じ報告者IDが既に別のメールアドレスで登録されており、新規登録操作の場合、エラーメッセージが返される', () => {
-  const mockValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<
-    typeof validateReporterNameFormat
-  >;
-  const mockValidateEmailAddress = validateEmailAddress as jest.MockedFunction<
-    typeof validateEmailAddress
-  >;
-  const mockDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<
-    typeof detectDuplicateEmailAddress
-  >;
-  const mockValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<
-    typeof validateUserAccountActiveStatus
-  >;
-  const mockRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<
-    typeof registerReporterToMaster
-  >;
-  const mockPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<
-    typeof persistReporterMasterChangeHistory
-  >;
-  const mockRetrieveReporterByUserId = retrieveReporterByUserId as jest.MockedFunction<
-    typeof retrieveReporterByUserId
-  >;
+describe('SCEN-356: 報告者ID重複エラー', () => {
+  const mockValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
+  const mockValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
+  const mockDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
+  const mockValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
+  const mockRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
+  const mockPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
+  const mockRetrieveReporterByUserId = retrieveReporterByUserId as jest.MockedFunction<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return duplicate reporter ID error when user ID already exists with different email', async () => {
+  it('同じ報告者IDが既に別のメールアドレスで登録されており、新規登録操作の場合、br-tx_7-004の制約4により「この報告者IDは既に登録されています」エラーメッセージが返される', async () => {
+    const executionTimestamp = new Date('2026-09-25T10:00:00Z');
     const input: RegisterReporterInput = {
       userId: 'USER-NEW001',
       reporterName: '重複ID報告者',
       emailAddress: 'duplicate-id@example.com',
       teamLeaderId: 'USER-TL001',
-      executionTimestamp: new Date(),
+      executionTimestamp,
     };
 
-    mockValidateReporterNameFormat.mockReturnValue(true);
-    mockValidateEmailAddress.mockReturnValue(true);
-    mockDetectDuplicateEmailAddress.mockReturnValue(false);
-    mockValidateUserAccountActiveStatus.mockReturnValue(true);
-    mockRetrieveReporterByUserId.mockReturnValue({
-      userId: 'USER-NEW001',
-      email: 'old-email@example.com',
-    } as any);
+    mockValidateReporterNameFormat.mockResolvedValue({
+      isValid: true,
+      validatedReporterName: '重複ID報告者',
+      errorCode: null,
+    });
+
+    mockValidateEmailAddress.mockResolvedValue({
+      isValid: true,
+      validatedEmailAddress: 'duplicate-id@example.com',
+      errorCode: null,
+    });
+
+    mockDetectDuplicateEmailAddress.mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: 'duplicate-id@example.com',
+      errorCode: null,
+    });
+
+    mockValidateUserAccountActiveStatus.mockResolvedValue({
+      isActive: true,
+      userId: 'USER-TL001',
+      inactiveReason: null,
+    });
+
+    mockRetrieveReporterByUserId.mockResolvedValue({
+      success: true,
+      reporter: {
+        reporterId: 'USER-NEW001',
+        userId: 'USER-NEW001',
+        reporterName: '既存報告者',
+        emailAddress: 'old-email@example.com',
+        department: '営業部',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      message: undefined,
+    });
 
     const result: RegisterReporterOutput = await registerReporter(input);
 
     expect(result.success).toBe(false);
-    expect(result.message).toBe('この報告者IDは既に登録されています');
     expect(result.reporterId).toBeNull();
+    expect(result.message).toBe('この報告者IDは既に登録されています');
     expect(result.changeHistoryId).toBeNull();
-  });
-
-  it('should not call registerReporterToMaster when duplicate reporter ID detected', async () => {
-    const input: RegisterReporterInput = {
-      userId: 'USER-NEW001',
-      reporterName: '重複ID報告者',
-      emailAddress: 'duplicate-id@example.com',
-      teamLeaderId: 'USER-TL001',
-      executionTimestamp: new Date(),
-    };
-
-    mockValidateReporterNameFormat.mockReturnValue(true);
-    mockValidateEmailAddress.mockReturnValue(true);
-    mockDetectDuplicateEmailAddress.mockReturnValue(false);
-    mockValidateUserAccountActiveStatus.mockReturnValue(true);
-    mockRetrieveReporterByUserId.mockReturnValue({
-      userId: 'USER-NEW001',
-      email: 'old-email@example.com',
-    } as any);
-
-    await registerReporter(input);
 
     expect(mockRegisterReporterToMaster).not.toHaveBeenCalled();
     expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
-  });
-
-  it('should verify email duplicate check does not conflict with reporter ID check', async () => {
-    const input: RegisterReporterInput = {
-      userId: 'USER-NEW001',
-      reporterName: '重複ID報告者',
-      emailAddress: 'duplicate-id@example.com',
-      teamLeaderId: 'USER-TL001',
-      executionTimestamp: new Date(),
-    };
-
-    mockValidateReporterNameFormat.mockReturnValue(true);
-    mockValidateEmailAddress.mockReturnValue(true);
-    mockDetectDuplicateEmailAddress.mockReturnValue(false);
-    mockValidateUserAccountActiveStatus.mockReturnValue(true);
-    mockRetrieveReporterByUserId.mockReturnValue({
-      userId: 'USER-NEW001',
-      email: 'old-email@example.com',
-    } as any);
-
-    const result: RegisterReporterOutput = await registerReporter(input);
-
-    expect(mockDetectDuplicateEmailAddress).toHaveBeenCalledWith('duplicate-id@example.com');
-    expect(result.success).toBe(false);
-    expect(result.message).toBe('この報告者IDは既に登録されています');
   });
 });

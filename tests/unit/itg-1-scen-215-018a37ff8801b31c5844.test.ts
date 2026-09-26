@@ -1,9 +1,4 @@
-import { submitDailyReport, SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
-import * as authModule from '../../src/logic/user-authentication-authorization';
-import * as validationModule from '../../src/logic/input-validation-formatting';
-import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
-import * as persistenceModule from '../../src/logic/daily-report-persistence';
-import * as notificationModule from '../../src/logic/email-notification-management';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/input-validation-formatting');
@@ -11,22 +6,55 @@ jest.mock('../../src/logic/business-day-deadline-judgment');
 jest.mock('../../src/logic/daily-report-persistence');
 jest.mock('../../src/logic/email-notification-management');
 
+import { submitDailyReport, type SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
+
 describe('SCEN-215: システムが自動記録した提出時刻がレスポンスの submissionTimestamp に含まれる', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
-    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
-    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
-    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(false);
-    (persistenceModule.saveDailyReport as jest.Mock).mockResolvedValue({ 
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'reporter001',
+      denialReason: null,
+    });
+    (validationModule.validateDailyReportContent as jest.MockedFunction<any>).mockResolvedValue({
+      isValid: true,
+      validatedContent: '本日は顧客Aシステムの仕様確認とテスト環境構築を実施した',
+      errorCode: null,
+    });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>).mockResolvedValue({
+      isAcceptable: true,
+      isBusinessDay: true,
+      isWithinDeadline: true,
+      submissionDeadlineForTargetDate: '2024-01-15T18:00:00Z',
+      processingPolicy: 'accept',
+      rejectionReason: null,
+    });
+    (persistenceModule.checkDailyReportExistsForDate as jest.MockedFunction<any>).mockResolvedValue(false);
+    (persistenceModule.saveDailyReport as jest.MockedFunction<any>).mockResolvedValue({
       dailyReportId: 'report-unique-id',
-      recordedTimestamp: '2024-01-15T14:30:15Z'
+      savedAt: '2024-01-15T14:30:15Z',
+      userId: 'reporter001',
+      reportDate: '2024-01-15',
     });
-    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.Mock).mockResolvedValue({ 
-      recordedTimestamp: '2024-01-15T14:30:15Z'
+    (persistenceModule.updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>).mockResolvedValue({
+      dailyReportId: 'report-unique-id',
+      previousSubmittedAt: null,
+      updatedSubmittedAt: '2024-01-15T14:30:15Z',
+      updatedAt: '2024-01-15T14:30:15Z',
     });
-    (notificationModule.sendDailyReportSubmissionNotification as jest.Mock).mockResolvedValue({ triggered: true });
+    (notificationModule.sendDailyReportSubmissionNotification as jest.MockedFunction<any>).mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: 'notif-001',
+      sentAt: '2024-01-15T14:30:15Z',
+      errorMessage: null,
+      adminNotificationSent: false,
+    });
   });
 
   it('submissionTimestamp がシステムが自動記録した時刻を含む', async () => {

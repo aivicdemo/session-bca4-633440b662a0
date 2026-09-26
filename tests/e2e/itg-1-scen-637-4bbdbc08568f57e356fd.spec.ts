@@ -28,5 +28,15 @@ test('日報の提出時刻が『HH:MM』形式で表示される', async ({ pag
   await expect(page.locator('#rm-view-modal')).toHaveClass(/is-visible/);
 
   const submittedAtText = await page.locator('#rm-view-modal-body').innerText();
-  expect(submittedAtText).toMatch(/\d{2}:\d{2}/);
+  const timeMatch = submittedAtText.match(/(\d{2}):(\d{2})/);
+  expect(timeMatch).toBeTruthy();
+
+  if (timeMatch) {
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    expect(hours).toBeGreaterThanOrEqual(0);
+    expect(hours).toBeLessThan(24);
+    expect(minutes).toBeGreaterThanOrEqual(0);
+    expect(minutes).toBeLessThan(60);
+  }
 });

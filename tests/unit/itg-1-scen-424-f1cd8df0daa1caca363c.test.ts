@@ -1,13 +1,9 @@
-import { describe, test, expect } from '@jest/globals';
-import {
-  saveDailyReport,
-  SaveDailyReportInput,
-  EmptyContentError,
-} from '../../src/logic/daily-report-persistence';
+import { describe, it, expect } from '@jest/globals';
+import { saveDailyReport, EmptyContentError } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-424: 空白のみの業務内容で日報保存を試みるとEmptyContentErrorが発生する', () => {
-  test('should throw EmptyContentError when businessContent is whitespace only', async () => {
-    const input: SaveDailyReportInput = {
+  it('should throw EmptyContentError when businessContent is spaces only', async () => {
+    const input = {
       userId: 'user-001',
       reportDate: '2024-01-15',
       businessContent: '   ',
@@ -15,8 +11,6 @@ describe('SCEN-424: 空白のみの業務内容で日報保存を試みるとEmp
     };
 
     await expect(saveDailyReport(input)).rejects.toThrow(EmptyContentError);
-    await expect(saveDailyReport(input)).rejects.toThrow(
-      '業務内容は必須項目です。'
-    );
+    await expect(saveDailyReport(input)).rejects.toThrow('業務内容は必須項目です。');
   });
 });

@@ -1,18 +1,13 @@
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/notification-persistence');
 
 import {
   sendLeaderNonSubmissionPromptNotification,
   LeaderNotFoundError,
+  SendLeaderNonSubmissionPromptNotificationInput,
 } from '../../src/logic/daily-report-reminder-notification';
 
 describe('SCEN-313: LeaderNotFoundError when specified leader does not exist or lacks leader role', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should throw LeaderNotFoundError with message "Leader not found or does not have leader role." when leader does not exist', async () => {
-    const input = {
+    const input: SendLeaderNonSubmissionPromptNotificationInput = {
       leaderId: 'non-existent-leader',
       targetDate: new Date('2024-01-15'),
       nonSubmittedReporterIds: ['reporter-001'],

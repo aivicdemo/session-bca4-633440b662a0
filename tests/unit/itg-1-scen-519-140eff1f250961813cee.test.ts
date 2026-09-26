@@ -3,9 +3,6 @@ import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
   SendDailyReportSubmissionNotificationOutput,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
 } from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/email-notification-management');
@@ -15,20 +12,7 @@ describe('SCEN-519: メール送信に失敗し管理者への通知も失敗し
     jest.clearAllMocks();
   });
 
-  it('success=false でadminNotificationSent=false になる', () => {
-    const mockValidateEmail = jest.mocked(validateEmailAddressForDelivery);
-    const mockBuildContent = jest.mocked(buildNotificationContent);
-    const mockRecordHistory = jest.mocked(recordEmailSendingHistory);
-    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-
-    mockValidateEmail.mockReturnValue(true);
-    mockBuildContent.mockReturnValue({
-      subject: '【日報】2025年01月15日 報告者太郎',
-      body: '報告者太郎さんからの日報です\n\n今日の業務内容',
-      toAddress: 'leader@example.com',
-    });
-    mockRecordHistory.mockReturnValue(null);
-
+  it('success=false でadminNotificationSent=false になる', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'R001',
       dailyReportId: 'DR001',
@@ -40,16 +24,18 @@ describe('SCEN-519: メール送信に失敗し管理者への通知も失敗し
       submissionTimestamp: '2025-01-15T10:30:00Z',
     };
 
-    mockSend.mockImplementation(() => ({
+    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
+    mockSend.mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,
       errorMessage: 'メール送信に失敗しました。管理者に通知します。',
       adminNotificationSent: false,
-    }));
+    } as SendDailyReportSubmissionNotificationOutput);
 
-    const result = mockSend(input) as SendDailyReportSubmissionNotificationOutput;
+    const result = await sendDailyReportSubmissionNotification(input);
 
+    expect(result).toBeDefined();
     expect(result.success).toBe(false);
     expect(result.emailSendingHistoryId).toBeNull();
     expect(result.sentAt).toBeNull();

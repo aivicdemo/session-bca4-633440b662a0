@@ -10,7 +10,7 @@ describe('SCEN-141: メールアドレスの前後に空白がある場合、ト
       emailAddress: '  user@example.com  ',
     };
 
-    const output: ValidateEmailAddressOutput = await validateEmailAddress(input);
+    const output = await validateEmailAddress(input);
 
     expect(output.isValid).toBe(true);
     expect(output.validatedEmailAddress).toBe('user@example.com');

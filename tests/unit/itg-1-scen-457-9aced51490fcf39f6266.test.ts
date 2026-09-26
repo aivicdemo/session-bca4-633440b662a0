@@ -1,12 +1,26 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   updateReporterInMaster,
-  UpdateReporterInMasterInput,
-  UpdateReporterInMasterOutput,
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
+
+interface UpdateReporterInMasterInput {
+  reporterId: string;
+  reporterName?: string;
+  emailAddress?: string;
+  department?: string;
+  status?: string;
+  leaderUserId: string;
+  updateTimestamp: Date;
+}
+
+interface UpdateReporterInMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-457: チームリーダーが報告者の名前とメールアドレスを更新すると、変更が報告者マスタに反映され成功を返す', () => {
   beforeEach(() => {
@@ -25,7 +39,7 @@ describe('SCEN-457: チームリーダーが報告者の名前とメールアド
       updateTimestamp: timestamp,
     };
 
-    (persistReporterMasterChangeHistory as any).mockResolvedValue({ success: true }) as any;
+    (persistReporterMasterChangeHistory as any).mockResolvedValue({ success: true });
 
     const result: UpdateReporterInMasterOutput = await updateReporterInMaster(input);
 

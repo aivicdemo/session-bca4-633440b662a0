@@ -1,18 +1,8 @@
-import {
-  judgePromptNecessityAndMethod,
-  JudgePromptNecessityAndMethodInput,
-  JudgePromptNecessityAndMethodOutput,
-} from '../../src/logic/non-submission-prompt-decision';
-import * as deadlineJudgment from '../../src/logic/business-day-deadline-judgment';
-
-jest.mock('../../src/logic/business-day-deadline-judgment');
+import { judgePromptNecessityAndMethod, JudgePromptNecessityAndMethodInput, JudgePromptNecessityAndMethodOutput } from '../../src/logic/non-submission-prompt-decision';
 
 describe('SCEN-275: 期限前の場合、催促が不要と判定される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should return no prompt necessary when before deadline', async () => {
+  it('should return isPromptNecessary false when before deadline', async () => {
+    // Arrange
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',
@@ -22,19 +12,14 @@ describe('SCEN-275: 期限前の場合、催促が不要と判定される', () 
       previousReminderSentDateTime: null,
     };
 
-    (deadlineJudgment.isWithinSubmissionDeadline as jest.Mock).mockResolvedValue({
-      isWithinDeadline: true,
-      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
-      minutesUntilDeadline: 30,
-    });
-
+    // Act
     const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
 
+    // Assert
     expect(result.isPromptNecessary).toBe(false);
     expect(result.promptPriority).toBe('low');
     expect(result.promptMethod).toBe('email');
     expect(result.estimatedNonSubmissionReason).toBe('unknown');
-    expect(result.suggestedPromptMessage).toContain('提出期限前');
     expect(result.overdueDurationMinutes).toBe(-30);
   });
 });

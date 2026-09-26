@@ -1,156 +1,85 @@
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  isReporterActiveAndValid: jest.fn(),
-  recordReporterMasterChangeHistory: jest.fn(),
-  deactivateReporter: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  archivePastDailyReports: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  deactivateReporterInMaster: jest.fn(),
-}));
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import {
+  deactivateReporter,
+  DeactivateReporterInput,
+  ReporterNotFoundError,
+} from '../../src/logic/reporter-master-management';
+import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
-import { deactivateReporter, isReporterActiveAndValid, recordReporterMasterChangeHistory, ReporterNotFoundError } from '../../src/logic/reporter-master-management';
-import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
-import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
-
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
-const mockedArchivePastDailyReports = archivePastDailyReports as jest.Mock;
-const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.Mock;
-const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.Mock;
-const mockedDeactivateReporter = deactivateReporter as jest.Mock;
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-381: 指定された報告者が存在しないか既に無効化されている場合、エラーで拒否される', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
-  it('reporterId="RPT-999"が存在しないか無効化されている場合、ReporterNotFoundErrorをスローする', async () => {
-    const reporterId = 'RPT-999';
-    const teamLeaderId = 'TL-001';
-    const deactivationReason = '異動';
-    const executionTimestamp = Date.now();
-
-    mockedIsReporterActiveAndValid.mockReturnValue(false);
-    mockedDeactivateReporter.mockImplementation(() => {
-      throw new ReporterNotFoundError('報告者が見つかりません。');
-    });
-
-    const input = {
-      reporterId,
-      teamLeaderId,
-      deactivationReason,
-      executionTimestamp,
-    };
-
-    await expect(deactivateReporter(input)).rejects.toThrow(ReporterNotFoundError);
-  });
-
-  it('エラーメッセージが「報告者が見つかりません。」であること', async () => {
-    const reporterId = 'RPT-999';
-    const teamLeaderId = 'TL-001';
-    const deactivationReason = '異動';
-    const executionTimestamp = Date.now();
-
-    mockedIsReporterActiveAndValid.mockReturnValue(false);
-    mockedDeactivateReporter.mockImplementation(() => {
-      throw new ReporterNotFoundError('報告者が見つかりません。');
-    });
-
-    const input = {
-      reporterId,
-      teamLeaderId,
-      deactivationReason,
-      executionTimestamp,
+  it('should throw ReporterNotFoundError when reporter does not exist', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: 'RPT-999',
+      teamLeaderId: 'TL-001',
+      deactivationReason: '異動',
+      executionTimestamp: new Date(),
     };
 
     try {
       await deactivateReporter(input);
-      fail('Should have thrown ReporterNotFoundError');
+      fail('Expected ReporterNotFoundError to be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(ReporterNotFoundError);
       expect((error as Error).message).toBe('報告者が見つかりません。');
     }
   });
 
-  it('archivePastDailyReportsが呼び出されないこと', async () => {
-    const reporterId = 'RPT-999';
-    const teamLeaderId = 'TL-001';
-    const deactivationReason = '異動';
-    const executionTimestamp = Date.now();
-
-    mockedIsReporterActiveAndValid.mockReturnValue(false);
-    mockedDeactivateReporter.mockImplementation(() => {
-      throw new ReporterNotFoundError('報告者が見つかりません。');
-    });
-
-    const input = {
-      reporterId,
-      teamLeaderId,
-      deactivationReason,
-      executionTimestamp,
+  it('should not call archivePastDailyReports when reporter not found', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: 'RPT-999',
+      teamLeaderId: 'TL-001',
+      deactivationReason: '異動',
+      executionTimestamp: new Date(),
     };
 
     try {
       await deactivateReporter(input);
     } catch (error) {
-      // エラーが予期される
+      // expected
     }
 
-    expect(mockedArchivePastDailyReports).not.toHaveBeenCalled();
+    expect(dailyReportPersistence.archivePastDailyReports).not.toHaveBeenCalled();
   });
 
-  it('deactivateReporterInMasterが呼び出されないこと', async () => {
-    const reporterId = 'RPT-999';
-    const teamLeaderId = 'TL-001';
-    const deactivationReason = '異動';
-    const executionTimestamp = Date.now();
-
-    mockedIsReporterActiveAndValid.mockReturnValue(false);
-    mockedDeactivateReporter.mockImplementation(() => {
-      throw new ReporterNotFoundError('報告者が見つかりません。');
-    });
-
-    const input = {
-      reporterId,
-      teamLeaderId,
-      deactivationReason,
-      executionTimestamp,
+  it('should not call deactivateReporterInMaster when reporter not found', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: 'RPT-999',
+      teamLeaderId: 'TL-001',
+      deactivationReason: '異動',
+      executionTimestamp: new Date(),
     };
 
     try {
       await deactivateReporter(input);
     } catch (error) {
-      // エラーが予期される
+      // expected
     }
 
-    expect(mockedDeactivateReporterInMaster).not.toHaveBeenCalled();
+    expect(userMasterPersistence.deactivateReporterInMaster).not.toHaveBeenCalled();
   });
 
-  it('recordReporterMasterChangeHistoryが呼び出されないこと', async () => {
-    const reporterId = 'RPT-999';
-    const teamLeaderId = 'TL-001';
-    const deactivationReason = '異動';
-    const executionTimestamp = Date.now();
-
-    mockedIsReporterActiveAndValid.mockReturnValue(false);
-    mockedDeactivateReporter.mockImplementation(() => {
-      throw new ReporterNotFoundError('報告者が見つかりません。');
-    });
-
-    const input = {
-      reporterId,
-      teamLeaderId,
-      deactivationReason,
-      executionTimestamp,
+  it('should not call recordReporterMasterChangeHistory when reporter not found', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: 'RPT-999',
+      teamLeaderId: 'TL-001',
+      deactivationReason: '異動',
+      executionTimestamp: new Date(),
     };
 
     try {
       await deactivateReporter(input);
     } catch (error) {
-      // エラーが予期される
+      // expected
     }
 
-    expect(mockedRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(userMasterPersistence.persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

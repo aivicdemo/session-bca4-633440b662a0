@@ -2,29 +2,17 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
   LeaderEmailAddressNotFoundError,
 } from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/email-notification-management');
 
-describe('SCEN-524: リーダーメールアドレスが null の場合', () => {
+describe('SCEN-524: リーダーメールアドレスが null の場合、送信を中止してエラーを返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('送信を中止してエラーを返す', () => {
-    const mockValidateEmail = jest.mocked(validateEmailAddressForDelivery);
-    const mockBuildContent = jest.mocked(buildNotificationContent);
-    const mockRecordHistory = jest.mocked(recordEmailSendingHistory);
-    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-
-    mockValidateEmail.mockImplementation(() => {
-      throw new LeaderEmailAddressNotFoundError('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。');
-    });
-
+  it('LeaderEmailAddressNotFoundError がスロー（throw）される', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-1',
       dailyReportId: 'report-001',
@@ -36,11 +24,14 @@ describe('SCEN-524: リーダーメールアドレスが null の場合', () => 
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    mockSend.mockImplementation(() => {
-      throw new LeaderEmailAddressNotFoundError('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。');
-    });
+    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
+    mockSend.mockRejectedValue(
+      new LeaderEmailAddressNotFoundError('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。')
+    );
 
-    expect(() => mockSend(input)).toThrow(LeaderEmailAddressNotFoundError);
-    expect(mockRecordHistory).not.toHaveBeenCalled();
+    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(LeaderEmailAddressNotFoundError);
+    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
+      'チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。'
+    );
   });
 });

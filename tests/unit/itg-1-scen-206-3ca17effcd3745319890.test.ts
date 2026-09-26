@@ -15,10 +15,10 @@ describe('SCEN-206: 同一報告者が同一報告日に既に提出済みの場
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (authModule.authenticateAndAuthorizeReporterAccess as jest.Mock).mockResolvedValue({ authorized: true });
-    (validationModule.validateDailyReportContent as jest.Mock).mockResolvedValue({ valid: true });
-    (deadlineModule.judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({ status: 'within_deadline' });
-    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockResolvedValue(true);
+    (authModule.authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({ authorized: true });
+    (validationModule.validateDailyReportContent as jest.MockedFunction<any>).mockResolvedValue({ valid: true });
+    (deadlineModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>).mockResolvedValue({ status: 'within_deadline' });
+    (persistenceModule.checkDailyReportExistsForDate as jest.MockedFunction<any>).mockResolvedValue(true);
   });
 
   it('同一報告者が同一報告日に既に提出済みの場合、DuplicateSubmissionForDateException が発生する', async () => {

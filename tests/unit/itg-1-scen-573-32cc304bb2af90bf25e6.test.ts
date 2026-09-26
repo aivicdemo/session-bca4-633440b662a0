@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveLeaderDashboardData,
   RetrieveLeaderDashboardDataInput,
+  DataRetrievalFailedError,
 } from '../../src/logic/daily-report-management-view';
 
 jest.mock('../../src/logic/user-authentication-authorization');
@@ -9,7 +10,7 @@ jest.mock('../../src/logic/business-day-deadline-judgment');
 jest.mock('../../src/logic/daily-report-persistence');
 jest.mock('../../src/logic/user-master-persistence');
 
-describe('SCEN-573: validateAndDeliverLeaderNotification exception handling', () => {
+describe('SCEN-573: ダッシュボード取得時にvalidateAndDeliverLeaderNotification処理で例外が発生した場合', () => {
   let mockAuthenticateAndAuthorizeLeaderAccess: any;
   let mockJudgeBusinessDayAndDeadline: any;
   let mockRetrieveDailyReportsForLeaderReview: any;
@@ -25,19 +26,19 @@ describe('SCEN-573: validateAndDeliverLeaderNotification exception handling', ()
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
 
     mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
+    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true });
     mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
       reportId: 'report-001',
       reporterName: '太郎',
-      submissionDateTime: new Date('2024-01-15T14:30:00'),
+      submissionDateTime: '2024-01-15T14:30:00Z',
       reportContent: '本日の業務',
-      reportDate: new Date('2024-01-15'),
+      reportDate: '2024-01-15',
     }]);
     mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
     mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
   });
 
-  it('should handle validateAndDeliverLeaderNotification exception appropriately', async () => {
+  it('validateAndDeliverLeaderNotification例外発生時、DataRetrievalFailedErrorをスロー', async () => {
     const input: RetrieveLeaderDashboardDataInput = {
       leaderId: 'leader-001',
       targetDate: '2024-01-15',
@@ -51,7 +52,21 @@ describe('SCEN-573: validateAndDeliverLeaderNotification exception handling', ()
       expect(output.emailSendingHistory).toBeDefined();
       expect(output.submissionStatusSummary).toBeDefined();
     } catch (error) {
-      expect((error as Error).message).toBe('管理画面データの取得に失敗しました。');
+      expect(error).toBeInstanceOf(DataRetrievalFailedError);
+      expect((error as any).message).toBe('管理画面データの取得に失敗しました。');
+    }
+  });
+
+  it('TargetDateInvalidErrorは発生しないこと', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
+      leaderId: 'leader-001',
+      targetDate: '2024-01-15',
+    };
+
+    try {
+      await retrieveLeaderDashboardData(input);
+    } catch (error) {
+      expect((error as any).constructor.name).not.toBe('TargetDateInvalidError');
     }
   });
 });

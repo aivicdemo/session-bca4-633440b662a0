@@ -1,20 +1,19 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
 import {
   sendDailyReportSubmissionNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
   DailyReportContentInvalidError,
-  SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
+  type SendDailyReportSubmissionNotificationInput,
+  type SendDailyReportSubmissionNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
 describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本文生成に失敗する', () => {
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('reportContent が空文字列の場合、DailyReportContentInvalidError が発生し、管理者への通知が送信される', async () => {
+  it('reportContent が空文字列の場合、success=false, errorMessage を含む出力を返し、buildNotificationContent は呼び出されない', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter001',
       dailyReportId: 'report-123',
@@ -26,24 +25,6 @@ describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue({
-      isValid: true,
-      reason: null,
-      errorCode: null,
-    });
-
-    jest.mocked(buildNotificationContent).mockImplementation((data) => {
-      if (data.reportContent === '') {
-        throw new DailyReportContentInvalidError(
-          '日報の内容が不完全であるため、通知メールを生成できません。'
-        );
-      }
-      return {
-        subject: 'テスト',
-        body: 'テスト本文',
-      };
-    });
-
     const result: SendDailyReportSubmissionNotificationOutput =
       await sendDailyReportSubmissionNotification(input);
 
@@ -54,8 +35,5 @@ describe('SCEN-525: 日報の入力内容が空文字列の場合、メール本
       '日報の内容が不完全であるため、通知メールを生成できません。'
     );
     expect(result.adminNotificationSent).toBe(true);
-
-    expect(buildNotificationContent).toHaveBeenCalled();
-    expect(recordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

@@ -18,10 +18,10 @@ import {
 import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
 import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
 
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.Mock;
-const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.Mock;
-const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.Mock;
-const mockedArchivePastDailyReports = archivePastDailyReports as jest.Mock;
+const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.MockedFunction<any>;
+const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.MockedFunction<any>;
+const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.MockedFunction<any>;
+const mockedArchivePastDailyReports = archivePastDailyReports as jest.MockedFunction<any>;
 
 describe('SCEN-385: 報告者マスタの無効化更新に失敗した場合、エラーで拒否される', () => {
   const reporterId = 'RPT001';
@@ -41,7 +41,7 @@ describe('SCEN-385: 報告者マスタの無効化更新に失敗した場合、
     );
   });
 
-  it('MasterUpdateFailureError がスローされ、変更履歴は記録されない', async () => {
+  it('MasterUpdateFailureError がスロー', async () => {
     await expect(
       deactivateReporter({
         reporterId,
@@ -50,6 +50,58 @@ describe('SCEN-385: 報告者マスタの無効化更新に失敗した場合、
         executionTimestamp,
       })
     ).rejects.toThrow(MasterUpdateFailureError);
+  });
+
+  it('エラー文言は「報告者マスタの更新に失敗しました。」', async () => {
+    try {
+      await deactivateReporter({
+        reporterId,
+        teamLeaderId,
+        deactivationReason,
+        executionTimestamp,
+      });
+    } catch (error) {
+      expect((error as Error).message).toBe('報告者マスタの更新に失敗しました。');
+    }
+  });
+
+  it('出力型 DeactivateReporterOutput は返されない', async () => {
+    await expect(
+      deactivateReporter({
+        reporterId,
+        teamLeaderId,
+        deactivationReason,
+        executionTimestamp,
+      })
+    ).rejects.toThrow(MasterUpdateFailureError);
+  });
+
+  it('recordReporterMasterChangeHistory は呼び出されない', async () => {
+    try {
+      await deactivateReporter({
+        reporterId,
+        teamLeaderId,
+        deactivationReason,
+        executionTimestamp,
+      });
+    } catch (error) {
+      // エラーが予期される
+    }
+
+    expect(mockedRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
+  });
+
+  it('isReporterActiveAndValid と archivePastDailyReports は呼び出されるが、トランザクション全体が中止される', async () => {
+    try {
+      await deactivateReporter({
+        reporterId,
+        teamLeaderId,
+        deactivationReason,
+        executionTimestamp,
+      });
+    } catch (error) {
+      // エラーが予期される
+    }
 
     expect(mockedIsReporterActiveAndValid).toHaveBeenCalled();
     expect(mockedArchivePastDailyReports).toHaveBeenCalled();

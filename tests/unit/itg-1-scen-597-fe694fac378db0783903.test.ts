@@ -5,6 +5,7 @@ jest.mock('../../src/logic/user-master-persistence', () => ({
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   retrieveEmailSendingHistoryDetails,
+  RetrieveEmailSendingHistoryDetailsInput,
 } from '../../src/logic/daily-report-management-view';
 import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
 
@@ -18,39 +19,63 @@ describe('SCEN-597: 送信ステータスフィルターがnull の場合、全�
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
 
-    const mockHistoryRecords: any[] = [
+    const mockHistoryRecords = [
       {
-        historyId: 'EH-001',
-        recipientId: 'USER-001',
-        recipientEmail: 'user1@example.com',
-        emailType: 'daily_report_submission',
-        sentTime: '2024-01-15T09:30:00Z',
-        sendingStatus: 'success',
+        emailSendingHistoryId: 'EH-001',
+        userId: 'USER-001',
+        emailType: 'daily_report_submission' as const,
+        recipientEmailAddress: 'user1@example.com',
+        subject: 'Daily Report',
+        body: 'Please submit your daily report',
+        sentDateTime: new Date('2024-01-15T09:30:00Z'),
+        sendingStatus: 'success' as const,
         errorMessage: null,
+        relatedDailyReportId: null,
+        relatedReminderSettingId: null,
+        resendFlag: false,
+        createdAt: new Date('2024-01-15T09:30:00Z'),
       },
       {
-        historyId: 'EH-002',
-        recipientId: 'USER-002',
-        recipientEmail: 'user2@example.com',
-        emailType: 'daily_report_submission',
-        sentTime: '2024-01-15T10:00:00Z',
-        sendingStatus: 'failed',
+        emailSendingHistoryId: 'EH-002',
+        userId: 'USER-002',
+        emailType: 'daily_report_submission' as const,
+        recipientEmailAddress: 'user2@example.com',
+        subject: 'Daily Report',
+        body: 'Please submit your daily report',
+        sentDateTime: new Date('2024-01-15T10:00:00Z'),
+        sendingStatus: 'failure' as const,
         errorMessage: 'SMTP error',
+        relatedDailyReportId: null,
+        relatedReminderSettingId: null,
+        resendFlag: false,
+        createdAt: new Date('2024-01-15T10:00:00Z'),
       },
       {
-        historyId: 'EH-003',
-        recipientId: 'USER-003',
-        recipientEmail: 'user3@example.com',
-        emailType: 'daily_report_submission',
-        sentTime: '2024-01-15T10:30:00Z',
-        sendingStatus: 'pending',
+        emailSendingHistoryId: 'EH-003',
+        userId: 'USER-003',
+        emailType: 'daily_report_submission' as const,
+        recipientEmailAddress: 'user3@example.com',
+        subject: 'Daily Report',
+        body: 'Please submit your daily report',
+        sentDateTime: new Date('2024-01-15T10:30:00Z'),
+        sendingStatus: 'pending' as const,
         errorMessage: null,
+        relatedDailyReportId: null,
+        relatedReminderSettingId: null,
+        resendFlag: false,
+        createdAt: new Date('2024-01-15T10:30:00Z'),
       },
     ];
 
-    (retrieveEmailSendingHistoryByDateRange as jest.Mock).mockResolvedValue(mockHistoryRecords);
+    (retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>).mockResolvedValue({
+      success: true,
+      emailSendingHistories: mockHistoryRecords,
+      totalCount: 3,
+      pageNumber: 1,
+      pageSize: 10,
+    });
 
-    const result = await retrieveEmailSendingHistoryDetails({
+    const input: RetrieveEmailSendingHistoryDetailsInput = {
       leaderId,
       startDate,
       endDate,
@@ -59,11 +84,13 @@ describe('SCEN-597: 送信ステータスフィルターがnull の場合、全�
       recipientEmail: null,
       pageNumber: 1,
       pageSize: 10,
-    });
+    };
+
+    const result = await retrieveEmailSendingHistoryDetails(input);
 
     expect(result.emailHistoryList).toHaveLength(3);
     expect(result.emailHistoryList.some(h => h.sendingStatus === 'success')).toBe(true);
-    expect(result.emailHistoryList.some(h => h.sendingStatus === 'failed')).toBe(true);
+    expect(result.emailHistoryList.some(h => h.sendingStatus === 'failure')).toBe(true);
     expect(result.emailHistoryList.some(h => h.sendingStatus === 'pending')).toBe(true);
     expect(result.totalCount).toBe(3);
     expect(result.pageNumber).toBe(1);

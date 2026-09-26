@@ -1,20 +1,31 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   registerReporterToMaster,
-  RegisterReporterToMasterInput,
-  RegisterReporterToMasterOutput,
   ReporterRegistrationFailedError,
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
 
 import {
   validateUserInformationRequired,
   validateEmailAddress,
   detectDuplicateEmailAddress,
 } from '../../src/logic/input-validation-formatting';
+
+interface RegisterReporterToMasterInput {
+  reporterName: string;
+  emailAddress: string;
+  department: string;
+  leaderUserId: string;
+  registrationTimestamp: Date;
+}
+
+interface RegisterReporterToMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-456: データベース障害により登録処理が失敗した場合、登録失敗を返す', () => {
   beforeEach(() => {
@@ -30,9 +41,9 @@ describe('SCEN-456: データベース障害により登録処理が失敗した
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(true) as any;
-    (validateEmailAddress as any).mockReturnValue(true) as any;
-    (detectDuplicateEmailAddress as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
+    (validateEmailAddress as any).mockReturnValue({ isValid: true } as any);
+    (detectDuplicateEmailAddress as any).mockReturnValue(false);
     (persistReporterMasterChangeHistory as any).mockRejectedValue(
       new ReporterRegistrationFailedError('Database error') as any
     );

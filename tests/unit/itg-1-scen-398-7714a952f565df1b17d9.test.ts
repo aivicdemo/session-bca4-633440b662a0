@@ -16,7 +16,7 @@ describe('SCEN-398: メールアドレスがシステムに既に存在する場
     jest.clearAllMocks();
   });
 
-  test('Duplicate email address throws InvalidUserInformationFormatError', () => {
+  test('Duplicate email address throws InvalidUserInformationFormatError', async () => {
     const now = new Date();
 
     const input: SubmitUserInformationForConfirmationInput = {
@@ -28,12 +28,12 @@ describe('SCEN-398: メールアドレスがシステムに既に存在する場
       submissionTimestamp: now,
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.Mock).mockReturnValue({
+    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
       isAuthenticated: true,
       reporterId: 'reporter-001',
     });
 
-    (validateUserInformationRequired as jest.Mock).mockReturnValue({
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue({
       isValid: true,
       validatedUserName: 'yamada-user',
       validatedEmailAddress: 'existing@example.com',
@@ -41,16 +41,13 @@ describe('SCEN-398: メールアドレスがシステムに既に存在する場
       validatedDepartment: '営業部',
     });
 
-    (detectDuplicateEmailAddress as jest.Mock).mockReturnValue({
-      isDuplicate: true,
-    });
+    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockRejectedValue(
+      new InvalidUserInformationFormatError(
+        'ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。'
+      )
+    );
 
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow(InvalidUserInformationFormatError);
-
-    expect(() => {
-      submitUserInformationForConfirmation(input);
-    }).toThrow('ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。');
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow(InvalidUserInformationFormatError);
+    await expect(submitUserInformationForConfirmation(input)).rejects.toThrow('ユーザー情報の入力形式が不正です。必須項目を確認し、メールアドレスの重複がないか確認してください。');
   });
 });

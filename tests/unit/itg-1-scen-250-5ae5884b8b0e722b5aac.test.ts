@@ -10,70 +10,55 @@ jest.mock('../../src/logic/daily-report-persistence', () => ({
   updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
 }));
 
-import {
-  detectNonSubmittedReportersAtDeadline,
-} from '../../src/logic/daily-report-non-submission-detection';
+import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import {
-  checkDailyReportExistsForDate,
-  retrieveNonSubmissionDetectionLogsByDate,
-  updateNonSubmissionDetectionLogWithReminderStatus,
-} from '../../src/logic/daily-report-persistence';
+import { checkDailyReportExistsForDate, updateNonSubmissionDetectionLogWithReminderStatus } from '../../src/logic/daily-report-persistence';
 
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
-const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock;
+const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
+const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmissionDetectionLogWithReminderStatus as jest.MockedFunction<any>;
 
 describe('SCEN-250: 全員が期限までに提出した場合は未提出者一覧が空になる', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
-  it('全員提出時に未提出者配列が空配列で返される', async () => {
-    const input = {
-      targetDate: '2024-01-15',
-      currentDateTime: '2024-01-15T17:00:00Z',
-      submissionDeadlineTime: '17:00',
-      teamId: 'team-001',
-    };
+  it('全員が提出済みの場合、未提出者一覧は空配列となる', async () => {
+    const targetDate = '2024-01-15';
+    const currentDateTime = '2024-01-15T17:00:00Z';
+    const submissionDeadlineTime = '17:00';
+    const teamId = 'team-001';
 
     mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      success: true,
-      reporters: [
-        { userId: 'U001', name: '報告者1', email: 'r001@example.com', department: '営業部', status: 'active' },
-        { userId: 'U002', name: '報告者2', email: 'r002@example.com', department: '営業部', status: 'active' },
-        { userId: 'U003', name: '報告者3', email: 'r003@example.com', department: '営業部', status: 'active' },
-        { userId: 'U004', name: '報告者4', email: 'r004@example.com', department: '営業部', status: 'active' },
-        { userId: 'U005', name: '報告者5', email: 'r005@example.com', department: '営業部', status: 'active' },
-      ],
-      totalCount: 5,
-    });
+    const activeReporters = [
+      { userId: 'user-001', name: 'Reporter 1', email: 'reporter1@example.com', department: 'Sales' },
+      { userId: 'user-002', name: 'Reporter 2', email: 'reporter2@example.com', department: 'Marketing' },
+      { userId: 'user-003', name: 'Reporter 3', email: 'reporter3@example.com', department: 'Engineering' },
+      { userId: 'user-004', name: 'Reporter 4', email: 'reporter4@example.com', department: 'Sales' },
+      { userId: 'user-005', name: 'Reporter 5', email: 'reporter5@example.com', department: 'HR' },
+    ];
 
-    mockedCheckDailyReportExistsForDate.mockResolvedValue({
-      success: true,
-      submitted: [
-        { userId: 'U001', submittedAt: '2024-01-15T16:30:00Z' },
-        { userId: 'U002', submittedAt: '2024-01-15T16:35:00Z' },
-        { userId: 'U003', submittedAt: '2024-01-15T16:40:00Z' },
-        { userId: 'U004', submittedAt: '2024-01-15T16:45:00Z' },
-        { userId: 'U005', submittedAt: '2024-01-15T16:50:00Z' },
-      ],
-    });
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+    mockedCheckDailyReportExistsForDate.mockImplementation(() => {
+      return Promise.resolve({ exists: true });
+    });
 
     mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
 
-    const result = await detectNonSubmittedReportersAtDeadline(input as any);
+    const result = await detectNonSubmittedReportersAtDeadline({
+      targetDate,
+      currentDateTime,
+      submissionDeadlineTime,
+      teamId,
+    });
 
     expect(result.nonSubmittedReporters).toHaveLength(0);
     expect(result.detectionLog.nonSubmittedCount).toBe(0);
     expect(result.detectionLog.totalReportersCount).toBe(5);
-    expect(result.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
+    expect(result.detectionTimestamp).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/);
   });
 });

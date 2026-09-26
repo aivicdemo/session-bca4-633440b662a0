@@ -44,11 +44,17 @@ test.describe('SCEN-643: リーダーが管理画面にアクセスしたとき�
     const rowCount = await unsubmittedRows.count();
     expect(rowCount).toBeGreaterThanOrEqual(2);
 
+    const firstRow = unsubmittedRows.first();
+    const cells = firstRow.locator('td, [role="gridcell"]');
+    const nameCell = cells.nth(0);
+    const userIdCell = cells.nth(1);
+    const statusCell = cells.nth(2);
+
+    await expect(nameCell).toContainText(/.+/);
+    await expect(userIdCell).toContainText(/.+/);
+    await expect(statusCell).toContainText(/.+/);
+
     const errorMessage = page.locator('text=/アクセス権限がありません|アカウントが無効です/');
     await expect(errorMessage).not.toBeVisible();
-
-    const firstRow = unsubmittedRows.first();
-    const rowText = await firstRow.innerText();
-    expect(rowText.length).toBeGreaterThan(0);
   });
 });

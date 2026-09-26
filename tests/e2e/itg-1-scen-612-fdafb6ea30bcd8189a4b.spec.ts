@@ -73,7 +73,7 @@ test('リーダーのメールアドレスが有効な場合、日報提出後�
   await page.goto('/login.html');
   const config = await readAivicConfig(page);
 
-  // 前提: リーダーのメールアドレスが有効な形式でユーザーマスタに登録されている。
+  // 前提: テスト用データベースをリセットし、リーダーのメールアドレスを有効な形式で登録する
   await saveTableRecord(request, config, 'ユーザー', {
     ユーザーID: 'usr-scen612-leader',
     ユーザー名: 'leader_scen612',
@@ -87,31 +87,41 @@ test('リーダーのメールアドレスが有効な場合、日報提出後�
     作成者: 'system',
   });
 
+  // ブラウザで日報入力・提出画面にアクセスする
   await login(page, 'reporter_scen612');
 
   const content = '顧客A向けシステム要件定義会議、議事録作成';
-  const submittedAt = Date.now();
+  const submittedAtTime = Date.now();
   const textarea = page.locator('#rp-content');
   const submitBtn = page.locator('#rp-submit-btn');
   const success = page.locator('#rp-success');
 
+  // 「今日の業務内容」入力欄に内容を入力する
   await textarea.fill(content);
+
+  // 「提出」ボタンをクリックする
   await submitBtn.click();
 
-  await expect(page.getByText('日報を提出しました')).toBeVisible();
+  // 日報が正常に送信され、画面に「日報を提出しました」というメッセージが表示されることを確認する
+  await expect(page.locator('text=日報を提出しました')).toBeVisible();
   await expect(success).toBeVisible();
 
-  await page.getByText('管理', { exact: true }).click();
+  // ページが日報確認・管理画面に遷移し、提出済み日報が一覧に表示されていることを確認する
+  await page.locator('#rp-history-link').click();
   await page.waitForURL(/panels\/scr-1790147095974\.html/);
-  await page.locator('#rm-r-keyword').fill(content);
+  const searchField = page.locator('#rm-r-keyword');
+  if (await searchField.isVisible()) {
+    await searchField.fill(content);
+  }
   await expect(page.locator('#rm-r-tbody tr', { hasText: content })).toHaveCount(1);
 
+  // リーダーのメールボックス（またはメール送信ログシステム）を確認し、メール通知が配信されていることを確認する
   await expect
     .poll(
       async () => {
         const mails = await fetchTableRecords(request, config, 'メール送信履歴');
         return mails.some(
-          (m) => m['送信先メールアドレス'] === LEADER_EMAIL && Date.parse(m['送信日時']) >= submittedAt - 5000,
+          (m) => m['送信先メールアドレス'] === LEADER_EMAIL && Date.parse(m['送信日時']) >= submittedAtTime - 5000,
         );
       },
       { timeout: 15000, message: `リーダー宛（${LEADER_EMAIL}）にメール通知が配信されていること` },

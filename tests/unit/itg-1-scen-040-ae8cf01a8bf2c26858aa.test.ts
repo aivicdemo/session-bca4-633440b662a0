@@ -1,60 +1,56 @@
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
-}));
+import { runTx4Imp1Agent, type Tx4Imp1AiClient } from '../../src/agents/tx-4-imp-1/orchestrator';
 
-import { runTx4Imp1Agent } from '../../src/agents/tx-4-imp-1/orchestrator';
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
+jest.mock('../../../src/logic/business-day-deadline-judgment');
+jest.mock('../../../src/logic/reporter-master-management');
+jest.mock('../../../src/logic/daily-report-persistence');
+jest.mock('../../../src/logic/daily-report-non-submission-detection');
+jest.mock('../../../src/logic/non-submission-prompt-decision');
+jest.mock('../../../src/logic/daily-report-reminder-notification');
+jest.mock('../../../src/logic/daily-report-management-view');
+jest.mock('../../src/logic/email-notification-management');
 
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.Mock;
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as reporterModule from '../../src/logic/reporter-master-management';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as detectionModule from '../../src/logic/daily-report-non-submission-detection';
+import * as promptDecisionModule from '../../src/logic/non-submission-prompt-decision';
+import * as notificationModule from '../../src/logic/daily-report-reminder-notification';
+import * as dashboardModule from '../../src/logic/daily-report-management-view';
+import * as emailModule from '../../src/logic/email-notification-management';
 
-describe('SCEN-040: 対象日時点で有効な報告者が存在しない場合、NoActiveReportersFoundエラーが発生する', () => {
-  const targetDate = '2024-01-15';
-  const leaderUserId = 'leader-001';
-
+describe('SCEN-040: 有効な報告者が存在しない場合', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
-
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      isBusinessDay: true,
-      deadline: '2024-01-15T17:00:00+09:00',
-    });
-
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
-      reporters: [],
-      count: 0,
-    });
+    jest.clearAllMocks();
   });
 
-  it('should return NoActiveReportersFound error when no active reporters exist', async () => {
-    const fakeAiClient = {};
+  it('対象日時点で有効な報告者が0件の場合、NoActiveReportersFoundエラーが発生する', async () => {
+    const mockBusinessDay = businessDayModule.judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+    const mockGetActiveReporters = reporterModule.getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
+    const mockRetrieveDailyReports = persistenceModule.retrieveDailyReportsForLeaderReview as jest.MockedFunction<any>;
+    const mockDetectNonSubmitted = detectionModule.detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
+    const mockJudgePromptNecessity = promptDecisionModule.judgePromptNecessityAndMethod as jest.MockedFunction<any>;
+    const mockSendLeaderPrompt = notificationModule.sendLeaderNonSubmissionPromptNotification as jest.MockedFunction<any>;
+    const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
+    const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    const result = await runTx4Imp1Agent(
-      { targetDate, leaderUserId, teamId: undefined },
-      fakeAiClient
-    );
+    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    expect(result.errors).toBeDefined();
-    expect(Array.isArray(result.errors)).toBe(true);
-    expect(result.errors.length).toBeGreaterThan(0);
-    
-    const error = result.errors.find((e: any) => e.code === 'NoActiveReportersFound');
-    expect(error).toBeDefined();
-    expect(error.message).toContain('提出状況を確認する対象の報告者が存在しません');
-  });
+    mockGetActiveReporters.mockResolvedValue([]);
 
-  it('should not call downstream functions when no reporters found', async () => {
-    const fakeAiClient = {};
+    const fakeAiClient: Tx4Imp1AiClient = {};
 
-    await runTx4Imp1Agent(
-      { targetDate, leaderUserId, teamId: undefined },
-      fakeAiClient
-    );
+    await expect(
+      runTx4Imp1Agent(
+        { targetDate: '2024-01-15', leaderUserId: 'leader-001', teamId: undefined },
+        fakeAiClient,
+      ),
+    ).rejects.toThrow();
 
-    expect(mockedGetActiveReportersForSubmissionCheck).toHaveBeenCalled();
+    expect(mockRetrieveDailyReports).not.toHaveBeenCalled();
+    expect(mockDetectNonSubmitted).not.toHaveBeenCalled();
+    expect(mockJudgePromptNecessity).not.toHaveBeenCalled();
+    expect(mockSendLeaderPrompt).not.toHaveBeenCalled();
+    expect(mockSendNonSubmissionPrompt).not.toHaveBeenCalled();
+    expect(mockRetrieveDashboard).not.toHaveBeenCalled();
   });
 });

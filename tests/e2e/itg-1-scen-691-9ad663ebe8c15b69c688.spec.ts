@@ -11,7 +11,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 // lastReminder を無条件に現在時刻へ更新し、mailHistory に status「成功」の履歴を追加するのみで、
 // メールアドレスの有無を検証する処理や送信を中止する分岐は存在しない。「通知送信失敗」という文言の
 // 表示領域、および未提出者一覧に「通知未送信」フラグを表す列も画面のどこにも実装されていない。
-// この食い違いは .aivic/batches/20/unresolved.md に記録する。本テストは、ユーザーマスタに
+// この食い違いは .aivic/batches/19/unresolved.md に記録する。本テストは、ユーザーマスタに
 // メールアドレス未登録（空文字）の報告者データを前提として用意した上で、仕様の手順・期待結果の文言を
 // そのまま検証する。
 

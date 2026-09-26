@@ -1,22 +1,25 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   PromptDecisionProcessingError,
 } from '../../src/logic/non-submission-prompt-decision';
-import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
 
 jest.mock('../../src/logic/business-day-deadline-judgment');
+import { isWithinSubmissionDeadline } from '../../src/logic/business-day-deadline-judgment';
+
+const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<any>;
 
 describe('SCEN-293: 呼び出し処理isWithinSubmissionDeadlineが失敗した場合、PromptDecisionProcessingErrorエラーが発生する', () => {
-  it('isWithinSubmissionDeadlineがエラーをスロー（ネットワークエラー）した場合、PromptDecisionProcessingErrorがスローされる', async () => {
-    // スタブ化したisWithinSubmissionDeadline関数を、呼び出し時にエラーをスロー（ネットワークエラー）するよう設定
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<typeof isWithinSubmissionDeadline>;
-    mockIsWithinSubmissionDeadline.mockRejectedValue(
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('スタブ化したisWithinSubmissionDeadline関数がエラーをスロー（ネットワークエラー）するよう設定し、judgePromptNecessityAndMethodを呼び出した場合、PromptDecisionProcessingErrorが発生し、エラー文言は「催促判定処理中にエラーが発生しました。」である', async () => {
+    mockIsWithinSubmissionDeadline.mockRejectedValueOnce(
       new Error('Network error')
     );
 
-    // 有効な入力で関数を呼び出す
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'USER001',
       targetDate: '2024-01-15',
@@ -26,16 +29,16 @@ describe('SCEN-293: 呼び出し処理isWithinSubmissionDeadlineが失敗した�
       previousReminderSentDateTime: null,
     };
 
-    // isWithinSubmissionDeadlineの呼び出しが実行され、スタブが設定したエラーが発生、
-    // judgePromptNecessityAndMethodがエラーをキャッチしてPromptDecisionProcessingErrorを発生させることを検証
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
       PromptDecisionProcessingError
     );
+    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
+      '催促判定処理中にエラーが発生しました。'
+    );
   });
 
-  it('isWithinSubmissionDeadlineがエラーをスロー（タイムアウト）した場合、PromptDecisionProcessingErrorがスローされる', async () => {
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<typeof isWithinSubmissionDeadline>;
-    mockIsWithinSubmissionDeadline.mockRejectedValue(
+  it('スタブ化したisWithinSubmissionDeadline関数がエラーをスロー（タイムアウト）するよう設定し、judgePromptNecessityAndMethodを呼び出した場合、PromptDecisionProcessingErrorが発生する', async () => {
+    mockIsWithinSubmissionDeadline.mockRejectedValueOnce(
       new Error('Timeout exceeded')
     );
 
@@ -53,9 +56,8 @@ describe('SCEN-293: 呼び出し処理isWithinSubmissionDeadlineが失敗した�
     );
   });
 
-  it('isWithinSubmissionDeadlineがエラーをスロー（予期しない例外）した場合、PromptDecisionProcessingErrorがスローされ、エラー文言が正しい', async () => {
-    const mockIsWithinSubmissionDeadline = isWithinSubmissionDeadline as jest.MockedFunction<typeof isWithinSubmissionDeadline>;
-    mockIsWithinSubmissionDeadline.mockRejectedValue(
+  it('スタブ化したisWithinSubmissionDeadline関数がエラーをスロー（予期しない例外）するよう設定し、judgePromptNecessityAndMethodを呼び出した場合、PromptDecisionProcessingErrorが発生し、エラー文言は「催促判定処理中にエラーが発生しました。」である', async () => {
+    mockIsWithinSubmissionDeadline.mockRejectedValueOnce(
       new Error('Unexpected exception')
     );
 
@@ -68,17 +70,11 @@ describe('SCEN-293: 呼び出し処理isWithinSubmissionDeadlineが失敗した�
       previousReminderSentDateTime: null,
     };
 
-    try {
-      await judgePromptNecessityAndMethod(input);
-      // エラーがスローされなかった場合は失敗
-      expect(true).toBe(false);
-    } catch (error) {
-      // PromptDecisionProcessingErrorが発生したことを検証
-      expect(error).toBeInstanceOf(PromptDecisionProcessingError);
-      // エラー文言を検証
-      expect((error as PromptDecisionProcessingError).message).toBe(
-        '催促判定処理中にエラーが発生しました。'
-      );
-    }
+    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
+      PromptDecisionProcessingError
+    );
+    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
+      '催促判定処理中にエラーが発生しました。'
+    );
   });
 });

@@ -1,25 +1,32 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeReporterAccess: jest.fn(),
+}));
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  validateDailyReportContent: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   checkDailyReportExistsForDate: jest.fn(),
   saveDailyReport: jest.fn(),
   updateDailyReportSubmissionTimestamp: jest.fn(),
 }));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
+jest.mock('../../src/logic/email-notification-management', () => ({
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
-import { submitDailyReport, SubmitDailyReportInput, DailyReportContentEmptyException } from '../../src/logic/daily-report-submission';
+import { submitDailyReport, DailyReportContentEmptyException } from '../../src/logic/daily-report-submission';
 import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
+import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
+import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedSaveDailyReport = saveDailyReport as jest.Mock;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.Mock;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.Mock;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
+const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-218: 業務ルール validateAndRecordDailyReportSubmission で報告内容が空の場合にエラーが発生する', () => {
   beforeEach(() => {
@@ -28,11 +35,16 @@ describe('SCEN-218: 業務ルール validateAndRecordDailyReportSubmission で�
     mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
       isAccessGranted: true,
       userId: 'user001',
+      denialReason: null,
     });
+
+    mockedValidateDailyReportContent.mockRejectedValue(
+      new DailyReportContentEmptyException('日報内容を入力してください。')
+    );
   });
 
   it('businessContent が空文字列の場合、DailyReportContentEmptyException がスローされる', async () => {
-    const input: SubmitDailyReportInput = {
+    const input = {
       userId: 'user001',
       reportDate: '2024-01-15',
       businessContent: '',
@@ -48,6 +60,6 @@ describe('SCEN-218: 業務ルール validateAndRecordDailyReportSubmission で�
     expect(mockedSaveDailyReport).not.toHaveBeenCalled();
     expect(mockedCheckDailyReportExistsForDate).not.toHaveBeenCalled();
     expect(mockedUpdateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
-    expect(mockedSendLeaderSubmissionNotification).not.toHaveBeenCalled();
+    expect(mockedSendDailyReportSubmissionNotification).not.toHaveBeenCalled();
   });
 });

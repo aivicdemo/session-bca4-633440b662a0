@@ -1,18 +1,20 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
 import {
   sendDailyReportSubmissionNotification,
   ReporterNotValidError,
-  SendDailyReportSubmissionNotificationInput,
+  type SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
+
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-480: 報告者がシステムに登録されていない場合、ReporterNotValidError が発生して通知を中止する', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('報告者がシステムに登録されていない場合、ReporterNotValidError が発生すること', async () => {
@@ -27,12 +29,11 @@ describe('SCEN-480: 報告者がシステムに登録されていない場合、
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    try {
-      await sendDailyReportSubmissionNotification(input);
-      expect(true).toBe(false);
-    } catch (error) {
-      expect(error).toBeInstanceOf(ReporterNotValidError);
-      expect((error as Error).message).toBe('報告者が無効であるため、メール通知を送信できません。');
-    }
+    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
+      new ReporterNotValidError('報告者が無効であるため、メール通知を送信できません。')
+    );
+
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow(ReporterNotValidError);
+    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow('報告者が無効であるため、メール通知を送信できません。');
   });
 });

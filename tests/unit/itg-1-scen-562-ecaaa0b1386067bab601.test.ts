@@ -1,49 +1,54 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  retrieveLeaderDashboardData,
-  DataRetrievalFailedError,
-  RetrieveLeaderDashboardDataInput,
-} from '../../src/logic/daily-report-management-view';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { retrieveLeaderDashboardData, DataRetrievalFailedError } from '../../src/logic/daily-report-management-view';
 
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
+const judgeBusinessDayAndDeadlineMock = jest.fn();
+const retrieveDailyReportsForLeaderReviewMock = jest.fn();
 
-describe('SCEN-562: Data retrieval failed', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: any;
-  let mockJudgeBusinessDayAndDeadline: any;
-  let mockRetrieveDailyReportsForLeaderReview: any;
-  let mockRetrieveNonSubmissionDetectionLogsByDate: any;
-  let mockRetrieveEmailSendingHistoryByDateRange: any;
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  retrieveDailyReportsForLeaderReview: retrieveDailyReportsForLeaderReviewMock,
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+}));
+jest.mock('../../src/logic/email-notification-management', () => ({
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+}));
 
+describe('SCEN-562: 日報、検知ログ、メール送信履歴の取得に失敗した場合', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization').authenticateAndAuthorizeLeaderAccess;
-    mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment').judgeBusinessDayAndDeadline;
-    mockRetrieveDailyReportsForLeaderReview = require('../../src/logic/daily-report-persistence').retrieveDailyReportsForLeaderReview;
-    mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
-    mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
-
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
-    mockRetrieveDailyReportsForLeaderReview.mockRejectedValue(new DataRetrievalFailedError());
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
   });
 
-  it('should throw DataRetrievalFailedError when daily reports retrieval fails', async () => {
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2025-01-15',
+  it('DataRetrievalFailedError が発生し、エラーメッセージが「管理画面データの取得に失敗しました。」である', async () => {
+    const leaderId = 'leader-001';
+    const targetDate = '2025-01-15';
+
+    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+      isAccessGranted: true,
+      userId: leaderId,
+    });
+
+    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+      isAcceptable: true,
+      isBusinessDay: true,
+      isWithinDeadline: true,
+    });
+
+    retrieveDailyReportsForLeaderReviewMock.mockRejectedValue(
+      new DataRetrievalFailedError('管理画面データの取得に失敗しました。')
+    );
+
+    const input = {
+      leaderId,
+      targetDate,
     };
 
-    try {
-      await retrieveLeaderDashboardData(input);
-      throw new Error('Should have thrown DataRetrievalFailedError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(DataRetrievalFailedError);
-      expect((error as DataRetrievalFailedError).message).toBe('管理画面データの取得に失敗しました。');
-    }
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(DataRetrievalFailedError);
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow('管理画面データの取得に失敗しました。');
   });
 });

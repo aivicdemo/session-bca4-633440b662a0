@@ -1,63 +1,63 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// SCEN-676: リーダーが管理画面にアクセスする権限がない場合、メール送信履歴確認画面へのアクセスが拒否される
-// 期待: HTTPステータスコード403（Forbidden）またはHTTP 401（Unauthorized）が返却され、メール送信履歴確認画面は表示されない。
-// 代わりに「アクセス権限がありません」または「管理者権限が必要です」というエラーメッセージが表示される、
-// もしくはログイン画面へ自動遷移する。ブラウザのネットワークログ確認で、該当ページへのリクエストが拒否状態で完結していることが確認できる。
-
 async function login(page: Page, username: string) {
   await page.goto('/login.html');
   await page.getByTestId('username').fill(username);
   await page.getByTestId('password').fill('password');
   await page.getByTestId('login-button').click();
-  await page.waitForURL(/panels\/scr-1790147087109\.html/);
+  // 権限がない場合は管理画面へは遷移しない
+  await page.waitForTimeout(2000);
 }
 
-test('リーダーが管理画面にアクセスする権限がない場合、メール送信履歴確認画面へのアクセスが拒否される', async ({
-  page,
-}) => {
+test('SCEN-676: リーダーが管理画面にアクセスする権限がない場合、メール送信履歴確認画面へのアクセスが拒否される', async ({ page }) => {
   // テスト用ブラウザセッションを開く
-  await login(page, 'reporter_no_admin');
+  // (既に page が用意されている)
+
+  // リーダーロール（管理画面アクセス権限なし）でシステムにログインする
+  await login(page, 'reader_no_admin_scen676');
 
   // ログイン完了後、日報確認・管理画面のURL（メール送信履歴確認ページ）に直接アクセスを試みる
-  await page.goto('/panels/scr-1790147095974.html');
+  const response = await page.goto('/panels/scr-1790147095974.html', { waitUntil: 'networkidle' });
 
-  // 403（Forbidden）または401（Unauthorized）が返却されるか、
-  // またはログイン画面へ自動遷移する
-  const currentUrl = page.url();
-
-  // ケース1: ログイン画面へ遷移した場合
-  if (currentUrl.includes('login.html')) {
-    expect(true).toBeTruthy();
-    return;
+  // サーバーからのレスポンスステータスコードを確認する
+  // 403（Forbidden）またはHTTP 401（Unauthorized）が返却される
+  if (response) {
+    const status = response.status();
+    expect([401, 403]).toContain(status);
   }
 
-  // ケース2: エラーメッセージが表示される場合
-  const errorMessages = page.locator(
-    'text=/アクセス権限がありません|管理者権限が必要です|権限なし|アクセス不可/',
-  );
-  const errorCount = await errorMessages.count();
+  // メール送信履歴確認画面は表示されない。代わりに以下のいずれかが起こる：
+  // (A) エラーメッセージが表示される
+  // (B) ログイン画面へ自動遷移する
+
+  // ケース A: エラーメッセージを確認
+  const errorElements = page.locator('[class*="error"], [class*="denied"], [class*="forbidden"]');
+  const errorCount = await errorElements.count();
 
   if (errorCount > 0) {
-    await expect(errorMessages.first()).toBeVisible();
-    expect(true).toBeTruthy();
-    return;
+    // エラーメッセージが存在する場合
+    const errorText = await page.locator('[class*="error"], [class*="denied"]').first().textContent();
+    const validMessages = [
+      'アクセス権限がありません',
+      '管理者権限が必要です',
+      'アクセスが拒否されました',
+      'ページが見つかりません',
+    ];
+    expect(errorText).toBeTruthy();
+    expect(validMessages.some(m => errorText?.includes(m))).toBe(true);
+  } else {
+    // ケース B: ログイン画面へ自動遷移している
+    expect(page.url()).toContain('login.html');
   }
 
-  // ケース3: メール送信履歴テーブルが表示されていないことを確認
-  const mailTable = page.locator('#rm-mail-tbody');
-  const isTableVisible = await mailTable.isVisible().catch(() => false);
+  // メール送信履歴確認画面の要素（#rm-mail-tbody など）が表示されていないことを確認
+  const mailHistoryTable = page.locator('#rm-mail-tbody');
+  const isVisible = await mailHistoryTable.isVisible().catch(() => false);
+  expect(isVisible).toBe(false);
 
-  // テーブルが見えない、またはコンテンツが空の場合は拒否として扱う
-  if (!isTableVisible) {
-    expect(true).toBeTruthy();
-    return;
+  // ブラウザのネットワークログ確認で、該当ページへのリクエストが拒否状態で完結していることが確認できる
+  // （レスポンスステータス確認済み）
+  if (response) {
+    expect([401, 403]).toContain(response.status());
   }
-
-  // 管理画面のメール送信履歴セクションが表示されないことを確認
-  const adminContent = page.locator('[data-aivic-panel="scr-1790147095974"]');
-  const isAdminVisible = await adminContent.isVisible().catch(() => false);
-
-  // 管理画面パネルが見えないか、空の状態であることを確認
-  expect(!isAdminVisible || (await adminContent.textContent()).trim() === '').toBeTruthy();
 });

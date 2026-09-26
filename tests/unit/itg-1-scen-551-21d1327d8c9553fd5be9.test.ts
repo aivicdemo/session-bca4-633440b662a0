@@ -1,36 +1,24 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  sendUserInformationApprovalNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
-} from '../../src/logic/email-notification-management';
-import type {
-  SendUserInformationApprovalNotificationInput,
-  SendUserInformationApprovalNotificationOutput,
-} from '../../src/logic/email-notification-management';
+import { sendUserInformationApprovalNotification } from '../../src/logic/email-notification-management';
+import type { SendUserInformationApprovalNotificationInput, SendUserInformationApprovalNotificationOutput } from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/logic/email-notification-management.ts');
 
 describe('SCEN-551: 承認結果をリーダーにメール送信し、送信履歴を記録する', () => {
   beforeEach(() => {
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue(true);
-    jest.mocked(buildNotificationContent).mockResolvedValue({
-      subject: '【承認】ユーザー情報が承認されました',
-      body: 'ユーザー情報が承認されました。',
-    });
-    jest.mocked(recordEmailSendingHistory).mockResolvedValue('history-12345');
-  });
+    jest.clearAllMocks();
 
-  it('承認結果をリーダーにメール送信し、送信履歴を記録する', async () => {
-    jest.mocked(sendUserInformationApprovalNotification).mockResolvedValueOnce({
+    const mocked = jest.mocked(sendUserInformationApprovalNotification);
+    mocked.mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-12345',
       sentAt: '2024-01-15T10:30:05Z',
       errorMessage: null,
       adminNotificationSent: false,
     });
+  });
 
+  it('承認結果をリーダーにメール送信し、送信履歴を記録する', async () => {
     const input: SendUserInformationApprovalNotificationInput = {
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',

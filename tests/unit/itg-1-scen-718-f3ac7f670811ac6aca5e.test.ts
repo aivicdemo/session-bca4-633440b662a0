@@ -1,30 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
-import {
-  judgeSchedulerExecutionTiming,
-  JudgeSchedulerExecutionTimingInput,
-  JudgeSchedulerExecutionTimingOutput,
-} from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-718: 定時スケジューラ実行時刻が営業日かつ有効な日報提出期限であることを確認し、アクティブな報告者5名を取得して未提出者検知の対象者リストが確定される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(businessDayModule, 'isBusinessDay').mockResolvedValue(true);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('営業日の実行時刻内で判定が true となることを確認', async () => {
+  it('営業日（月曜日）の実行予定時刻17:30に、スケジューラ実行判定が肯定的（shouldExecute=true）であること', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo',
+      timeZone: 'Asia/Tokyo'
     };
 
-    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+    const result: JudgeSchedulerExecutionTimingOutput = judgeSchedulerExecutionTiming(input);
 
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);

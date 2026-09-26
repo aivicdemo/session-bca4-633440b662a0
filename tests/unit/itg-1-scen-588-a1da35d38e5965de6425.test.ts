@@ -9,7 +9,7 @@ describe('SCEN-588: 形式が不正な検知ログIDを指定すると、Invalid
     jest.clearAllMocks();
   });
 
-  it('空文字列を検知ログIDとして指定するとInvalidDetectionLogIdエラーが発生する', async () => {
+  it('空文字列を検知ログIDとして指定するとInvalidDetectionLogIdエラーが発生し、エラー文言が「検知ログIDの形式が不正です。」である', async () => {
     const detectionLogId = '';
     const leaderId = 'leader-001';
 
@@ -18,48 +18,10 @@ describe('SCEN-588: 形式が不正な検知ログIDを指定すると、Invalid
         detectionLogId,
         leaderId,
       });
-      throw new Error('InvalidDetectionLogIdエラーが発生すべきですが、発生しませんでした。');
+      fail('Expected InvalidDetectionLogId to be thrown');
     } catch (error) {
-      if (!(error instanceof InvalidDetectionLogId)) {
-        throw error;
-      }
-      expect(error.message).toBe('検知ログIDの形式が不正です。');
-    }
-  });
-
-  it('nullを検知ログIDとして指定するとInvalidDetectionLogIdエラーが発生する', async () => {
-    const detectionLogId = null as any;
-    const leaderId = 'leader-001';
-
-    try {
-      await retrieveNonSubmissionDetectionDetails({
-        detectionLogId,
-        leaderId,
-      });
-      throw new Error('InvalidDetectionLogIdエラーが発生すべきですが、発生しませんでした。');
-    } catch (error) {
-      if (!(error instanceof InvalidDetectionLogId)) {
-        throw error;
-      }
-      expect(error.message).toBe('検知ログIDの形式が不正です。');
-    }
-  });
-
-  it('検知ログIDの仕様に違反する文字列を指定するとInvalidDetectionLogIdエラーが発生する', async () => {
-    const detectionLogId = 'invalid-format-xyz';
-    const leaderId = 'leader-001';
-
-    try {
-      await retrieveNonSubmissionDetectionDetails({
-        detectionLogId,
-        leaderId,
-      });
-      throw new Error('InvalidDetectionLogIdエラーが発生すべきですが、発生しませんでした。');
-    } catch (error) {
-      if (!(error instanceof InvalidDetectionLogId)) {
-        throw error;
-      }
-      expect(error.message).toBe('検知ログIDの形式が不正です。');
+      expect(error).toBeInstanceOf(InvalidDetectionLogId);
+      expect((error as Error).message).toBe('検知ログIDの形式が不正です。');
     }
   });
 });

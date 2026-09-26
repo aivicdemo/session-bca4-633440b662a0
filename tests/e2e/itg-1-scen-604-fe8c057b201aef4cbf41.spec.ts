@@ -83,6 +83,7 @@ test('無効なユーザーアカウントでの日報送信は画面レベル�
     部門: 'テスト部門',
     役割: '一般',
     ステータス: '無効',
+    disabled: true,
     作成日時: new Date().toISOString(),
     更新日時: new Date().toISOString(),
     作成者: 'system',
@@ -92,24 +93,35 @@ test('無効なユーザーアカウントでの日報送信は画面レベル�
 
   await login(page, disabledEmail);
 
-  const accessError = page.getByText('このアカウントは無効です');
+  // 画面アクセス時に「このアカウントは無効です」が表示されるか確認
+  const accessError = page.locator('text=このアカウントは無効です');
   const accessBlocked = await accessError.isVisible().catch(() => false);
 
   if (accessBlocked) {
+    // (1) 画面アクセス段階でエラーが表示される場合
     await expect(accessError).toBeVisible();
   } else {
+    // (2) 画面がロードされた場合、送信後にエラーが表示される
     const textarea = page.locator('#rp-content');
     const submitBtn = page.locator('#rp-submit-btn');
-    await textarea.fill('本日の業務内容');
-    await submitBtn.click({ force: true });
+    const successMsg = page.locator('#rp-success');
 
-    await expect(page.getByText('送信に失敗しました。管理者に確認してください。')).toBeVisible();
+    await textarea.fill('本日の業務内容');
+    await submitBtn.click();
+
+    // HTTP 403 相当のエラーメッセージが表示される
+    await expect(page.locator('text=送信に失敗しました。管理者に確認してください。')).toBeVisible();
+    // 成功メッセージは表示されない
+    await expect(successMsg).not.toBeVisible();
   }
 
+  // メール通知は送信されていない
   const mailAfter = await fetchTableRecords(request, config, 'メール送信履歴');
   expect(mailAfter.length).toBe(mailBefore.length);
 
+  // ユーザーマスタの無効フラグは変更されていない
   const users = await fetchTableRecords(request, config, 'ユーザー');
   const disabledUser = users.find((u) => u['メールアドレス'] === disabledEmail);
   expect(disabledUser?.['ステータス']).toBe('無効');
+  expect(disabledUser?.['disabled']).toBe(true);
 });

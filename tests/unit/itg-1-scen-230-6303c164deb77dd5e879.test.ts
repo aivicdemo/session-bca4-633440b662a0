@@ -1,33 +1,42 @@
-import { describe, it, expect } from '@jest/globals';
 import {
   detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
   SubmissionStatusCheckFailureError,
 } from '../../src/logic/daily-report-non-submission-detection';
 
-describe('SCEN-230: 提出期限の時刻が設定されていない場合は処理を拒否する', () => {
-  it('should reject when submissionDeadlineTime is null', () => {
-    const input = {
-      targetDate: '2024-01-15',
-      currentDateTime: '2024-01-15T17:00:00Z',
-      submissionDeadlineTime: null as any,
-      teamId: 'team-001',
-    } as DetectNonSubmittedReportersAtDeadlineInput;
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
-      SubmissionStatusCheckFailureError
-    );
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+
+describe('SCEN-230: detectNonSubmittedReportersAtDeadline - Missing Deadline Time', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should reject when submissionDeadlineTime is empty string', () => {
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
+  it('should reject when submission deadline time is not set', async () => {
+    // Mock judgeSchedulerExecutionTiming to return true
+    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+
+    const input1 = {
       targetDate: '2024-01-15',
       currentDateTime: '2024-01-15T17:00:00Z',
-      submissionDeadlineTime: '',
+      submissionDeadlineTime: null as any, // null value
       teamId: 'team-001',
     };
 
-    expect(() => detectNonSubmittedReportersAtDeadline(input)).toThrow(
+    await expect(detectNonSubmittedReportersAtDeadline(input1)).rejects.toThrow(
+      SubmissionStatusCheckFailureError
+    );
+
+    const input2 = {
+      targetDate: '2024-01-15',
+      currentDateTime: '2024-01-15T17:00:00Z',
+      submissionDeadlineTime: '', // empty string
+      teamId: 'team-001',
+    };
+
+    await expect(detectNonSubmittedReportersAtDeadline(input2)).rejects.toThrow(
       SubmissionStatusCheckFailureError
     );
   });

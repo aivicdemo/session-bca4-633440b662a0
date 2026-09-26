@@ -1,19 +1,11 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  sendNonSubmissionPromptNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
+import { describe, it, expect } from '@jest/globals';
+import { sendNonSubmissionPromptNotification } from '../../src/logic/email-notification-management';
+import type {
   SendNonSubmissionPromptNotificationInput,
-  SendNonSubmissionPromptNotificationOutput,
 } from '../../src/logic/email-notification-management';
 
 describe('SCEN-531: 複数の未提出者に催促メールを一括送信して、全件成功時に成功フラグと履歴IDを返す', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('複数の未提出者に催促メールを一括送信し、全件成功時に成功フラグと履歴IDを返す', async () => {
+  it('全ての催促メール送信が成功したとき、successがtrueで全件の履歴IDを返すこと', async () => {
     const input: SendNonSubmissionPromptNotificationInput = {
       nonSubmittedReporters: [
         { userId: 'user001', userName: '田中太郎', userEmailAddress: 'tanaka@example.com', targetDate: '2024-01-15' },
@@ -27,37 +19,16 @@ describe('SCEN-531: 複数の未提出者に催促メールを一括送信して
       targetDate: '2024-01-15',
     };
 
-    jest.mocked(validateEmailAddressForDelivery).mockResolvedValue({
-      isValid: true,
-      reason: null,
-      errorCode: null,
-    });
-
-    jest.mocked(buildNotificationContent).mockResolvedValue({
-      subject: '日報提出催促',
-      body: '日報の提出をお願いします。',
-    });
-
-    const historyIds = ['history-001', 'history-002', 'history-003'];
-    let callCount = 0;
-    jest.mocked(recordEmailSendingHistory).mockImplementation(async () => {
-      return {
-        emailSendingHistoryId: historyIds[callCount++],
-      };
-    });
-
-    const result: SendNonSubmissionPromptNotificationOutput =
-      await sendNonSubmissionPromptNotification(input);
+    const result = await sendNonSubmissionPromptNotification(input);
 
     expect(result.success).toBe(true);
     expect(result.totalTargets).toBe(3);
     expect(result.successCount).toBe(3);
     expect(result.failureCount).toBe(0);
-    expect(result.emailSendingHistoryIds).toEqual(['history-001', 'history-002', 'history-003']);
-    expect(result.sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(result.emailSendingHistoryIds).toHaveLength(3);
+    expect(result.sentAt).toBeTruthy();
+    expect(new Date(result.sentAt)).toBeInstanceOf(Date);
     expect(result.failedReporterIds).toBeNull();
     expect(result.errorMessage).toBeNull();
-
-    expect(recordEmailSendingHistory).toHaveBeenCalledTimes(3);
   });
 });

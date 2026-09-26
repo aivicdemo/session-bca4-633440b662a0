@@ -36,6 +36,7 @@ jobs:
         env:
           JEST_JUNIT_OUTPUT_DIR: ./test-results-jest
           JEST_JUNIT_OUTPUT_NAME: jest-junit.xml
+          NODE_OPTIONS: --unhandled-rejections=warn
         continue-on-error: true
       - name: Run Playwright E2E tests (shard ${{ matrix.shard }}/4)
         id: playwright

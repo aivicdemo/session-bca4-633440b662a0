@@ -1,22 +1,10 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   InvalidNonSubmitterInput,
 } from '../../src/logic/non-submission-prompt-decision';
 
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  isWithinSubmissionDeadline: jest.fn(),
-}));
-
 describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateTime）が不足している場合、InvalidNonSubmitterInputエラーが発生する', () => {
-  let mockIsWithinSubmissionDeadline: jest.Mock;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockIsWithinSubmissionDeadline = require('../../src/logic/business-day-deadline-judgment.ts')
-      .isWithinSubmissionDeadline as jest.Mock;
-  });
 
   it('userId が null の場合、InvalidNonSubmitterInput エラーがスローされる', async () => {
     const input: JudgePromptNecessityAndMethodInput = {
@@ -26,7 +14,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -42,7 +30,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -58,7 +46,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -74,7 +62,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -90,7 +78,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
@@ -106,7 +94,7 @@ describe('SCEN-284: 必須フィールド（userId、targetDate、detectionDateT
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
       previousReminderSentDateTime: null,
-    } as any;
+    };
 
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
     await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(

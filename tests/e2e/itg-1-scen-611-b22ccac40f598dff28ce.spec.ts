@@ -59,6 +59,7 @@ test('リーダーのメールアドレスが不正な形式の場合、メー�
   page,
   request,
 }) => {
+  // 日報入力・提出画面へ遷移する
   await login(page, 'reporter_scen611');
   const config = await readAivicConfig(page);
 
@@ -66,8 +67,12 @@ test('リーダーのメールアドレスが不正な形式の場合、メー�
   const invalidLeaderEmail = 'leader@invalid';
 
   const textarea = page.locator('#rp-content');
+  const submitBtn = page.locator('#rp-submit-btn');
+
+  // 日報内容を入力する
   await textarea.fill(content);
 
+  // リーダーのメールアドレス欄に不正な形式のメールアドレスを入力する（存在する場合）
   const leaderEmailInput = page.locator(
     'input[placeholder*="リーダー"], input[aria-label*="リーダー"], #rp-leader-email',
   );
@@ -77,11 +82,16 @@ test('リーダーのメールアドレスが不正な形式の場合、メー�
 
   const mailBefore = await fetchTableRecords(request, config, 'メール送信履歴');
 
-  await page.locator('#rp-submit-btn').click();
+  // 提出ボタンをクリック
+  await submitBtn.click();
 
-  await expect(page.getByText(/リーダーのメールアドレスが.*(不正|無効).*形式/)).toBeVisible();
-  await expect(page.getByText(/メール(通知)?は?送信されていません/)).toBeVisible();
+  // 妥当性チェックが完了し、日報がデータベースに保存された後、メール通知処理が実行される
+  // その後、日報入力・提出画面に警告メッセージが表示される
+  await expect(
+    page.locator('text=リーダーのメールアドレスが不正な形式です。メール通知は送信されていません。'),
+  ).toBeVisible();
 
+  // メール通知は送信されていない
   const mailAfter = await fetchTableRecords(request, config, 'メール送信履歴');
   expect(mailAfter.find((m) => m['送信先メールアドレス'] === invalidLeaderEmail)).toBeUndefined();
   expect(mailAfter.length).toBe(mailBefore.length);

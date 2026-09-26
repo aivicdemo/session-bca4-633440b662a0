@@ -1,64 +1,58 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
+import {
+  runTx3Imp1Agent,
+  type Tx3Imp1AgentInput,
+  type Tx3Imp1AiClient,
+  LeaderNotificationFailure,
+} from '../../src/agents/tx-3-imp-1/orchestrator';
 
-describe('SCEN-029: LeaderNotificationFailure エラー発生', () => {
-  let mockJudgeSchedulerExecutionTiming: jest.Mock;
-  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
-  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
-  let mockJudgePromptNecessityAndMethod: jest.Mock;
-  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
-  let mockSendNonSubmissionPromptNotification: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveLeaderDashboardData: jest.Mock;
+describe('SCEN-029: リーダーへの通知送信に失敗し、LeaderNotificationFailureが発生する', () => {
+  let mockAiClient: Tx3Imp1AiClient;
+
+  const targetDate = '2024-01-15';
+  const executionTimestamp = 1705276800000;
+  const leaderUserIds = ['leader-001', 'leader-002'];
 
   beforeEach(() => {
-    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
-    mockDetectNonSubmittedReportersAtDeadline = jest.fn().mockImplementation(() => {
-      const error = new Error('リーダーへの通知送信に失敗しました。');
-      error.name = 'LeaderNotificationFailure';
-      throw error;
-    });
-    mockGenerateNonSubmissionDetectionResult = jest.fn();
-    mockJudgePromptNecessityAndMethod = jest.fn();
-    mockSendLeaderNonSubmissionPromptNotification = jest.fn();
-    mockSendNonSubmissionPromptNotification = jest.fn();
-    mockRetrieveDailyReportsForLeaderReview = jest.fn();
-    mockRetrieveLeaderDashboardData = jest.fn();
+    mockAiClient = {
+      judgeSchedulerExecutionTiming: jest.fn().mockResolvedValue(true),
+      detectNonSubmittedReportersAtDeadline: jest.fn().mockRejectedValue(new LeaderNotificationFailure('リーダーへの通知送信に失敗しました。')),
+      generateNonSubmissionDetectionResult: jest.fn(),
+      judgePromptNecessityAndMethod: jest.fn(),
+      sendLeaderNonSubmissionPromptNotification: jest.fn(),
+      sendNonSubmissionPromptNotification: jest.fn(),
+      retrieveDailyReportsForLeaderReview: jest.fn(),
+      retrieveLeaderDashboardData: jest.fn(),
+    };
   });
 
-  it('リーダーへの通知送信失敗で LeaderNotificationFailure をスロー', async () => {
-    const input = {
-      targetDate: '2024-01-15',
-      executionTimestamp: 1705276800000,
-      leaderUserIds: ['leader-001', 'leader-002'],
+  test('should throw LeaderNotificationFailure', async () => {
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    const aiClient = {
-      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
-      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
-      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
-      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
-      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
-      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
-      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
-      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
+    await expect(runTx3Imp1Agent(input, mockAiClient)).rejects.toThrow(LeaderNotificationFailure);
+
+    expect(mockAiClient.generateNonSubmissionDetectionResult).not.toHaveBeenCalled();
+    expect(mockAiClient.judgePromptNecessityAndMethod).not.toHaveBeenCalled();
+    expect(mockAiClient.sendLeaderNonSubmissionPromptNotification).not.toHaveBeenCalled();
+    expect(mockAiClient.sendNonSubmissionPromptNotification).not.toHaveBeenCalled();
+  });
+
+  test('should have correct error message', async () => {
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    let caughtError: Error | null = null;
     try {
-      await runTx3Imp1Agent(input, aiClient);
+      await runTx3Imp1Agent(input, mockAiClient);
+      throw new Error('Expected LeaderNotificationFailure to be thrown');
     } catch (error) {
-      caughtError = error as Error;
+      expect(error).toBeInstanceOf(LeaderNotificationFailure);
+      expect((error as Error).message).toBe('リーダーへの通知送信に失敗しました。');
     }
-
-    expect(caughtError).not.toBeNull();
-    expect(caughtError?.name).toBe('LeaderNotificationFailure');
-    expect(caughtError?.message).toBe('リーダーへの通知送信に失敗しました。');
-    expect(mockJudgeSchedulerExecutionTiming).toHaveBeenCalled();
-    expect(mockDetectNonSubmittedReportersAtDeadline).toHaveBeenCalled();
-    expect(mockGenerateNonSubmissionDetectionResult).not.toHaveBeenCalled();
-    expect(mockJudgePromptNecessityAndMethod).not.toHaveBeenCalled();
-    expect(mockSendLeaderNonSubmissionPromptNotification).not.toHaveBeenCalled();
-    expect(mockSendNonSubmissionPromptNotification).not.toHaveBeenCalled();
   });
 });

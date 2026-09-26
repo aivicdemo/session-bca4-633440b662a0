@@ -1,8 +1,5 @@
-import {
-  registerReporter,
-  RegisterReporterInput,
-  InvalidEmailAddressFormat,
-} from '../../src/logic/reporter-master-management';
+import { registerReporter, InvalidEmailAddressFormat } from '../../src/logic/reporter-master-management';
+import type { RegisterReporterInput } from '../../src/logic/reporter-master-management';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
   validateReporterNameFormat: jest.fn().mockResolvedValue(true),

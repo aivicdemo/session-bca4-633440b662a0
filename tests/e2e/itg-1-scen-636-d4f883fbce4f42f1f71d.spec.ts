@@ -12,7 +12,7 @@ async function login(page: Page, username: string) {
 }
 
 test('日報が報告者の氏名を表示される', async ({ page }) => {
-  const reporterName = '佐藤 太郎';
+  const reporterName = 'テスト太郎';
 
   await login(page, reporterName);
 

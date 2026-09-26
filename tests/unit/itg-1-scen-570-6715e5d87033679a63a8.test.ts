@@ -22,33 +22,26 @@ jest.mock('../../src/logic/user-master-persistence.ts', () => ({
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
 
-jest.mock('../../src/logic/notification-delivery.ts', () => ({
-  validateAndDeliverLeaderNotification: jest.fn(),
-}));
-
 describe('SCEN-570: リーダーメールアドレスがシステムで無効化されている場合、警告が記録される', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock;
-  let mockJudgeBusinessDayAndDeadline: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveNonSubmissionDetectionLogsByDate: jest.Mock;
-  let mockRetrieveEmailSendingHistoryByDateRange: jest.Mock;
-  let mockValidateAndDeliverLeaderNotification: jest.Mock;
+  let mockAuthenticateAndAuthorizeLeaderAccess: jest.Mock<any>;
+  let mockJudgeBusinessDayAndDeadline: jest.Mock<any>;
+  let mockRetrieveDailyReportsForLeaderReview: jest.Mock<any>;
+  let mockRetrieveNonSubmissionDetectionLogsByDate: jest.Mock<any>;
+  let mockRetrieveEmailSendingHistoryByDateRange: jest.Mock<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization.ts')
-      .authenticateAndAuthorizeLeaderAccess as jest.Mock;
+      .authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
     mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment.ts')
-      .judgeBusinessDayAndDeadline as jest.Mock;
+      .judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
     mockRetrieveDailyReportsForLeaderReview = require('../../src/logic/daily-report-persistence.ts')
-      .retrieveDailyReportsForLeaderReview as jest.Mock;
+      .retrieveDailyReportsForLeaderReview as jest.MockedFunction<any>;
     mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence.ts')
-      .retrieveNonSubmissionDetectionLogsByDate as jest.Mock;
+      .retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence.ts')
-      .retrieveEmailSendingHistoryByDateRange as jest.Mock;
-    mockValidateAndDeliverLeaderNotification = require('../../src/logic/notification-delivery.ts')
-      .validateAndDeliverLeaderNotification as jest.Mock;
+      .retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>;
 
     // Setup successful stubs for authentication and business day judgment
     // @ts-ignore
@@ -76,23 +69,16 @@ describe('SCEN-570: リーダーメールアドレスがシステムで無効化
     // @ts-ignore
     mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([
       {
-        sentAt: '2026-09-24T10:00:00Z',
-        type: 'submit_notification',
-        to: 'leader@example.com',
+        historyId: 'mail-001',
+        recipientId: 'leader-001',
+        recipientEmail: 'leader@example.com',
+        emailType: 'submit_notification',
         subject: '日報提出通知',
-        deliveryStatus: 'failed',
-        failureReason: 'このメールアドレスは無効化されています。配信できません。',
-        isValid: false,
+        sentTime: '2026-09-24T10:00:00Z',
+        sendingStatus: 'failed',
+        errorMessage: 'このメールアドレスは無効化されています。配信できません。',
       },
     ]);
-
-    // Setup validateAndDeliverLeaderNotification to return warning for disabled email
-    // @ts-ignore
-    mockValidateAndDeliverLeaderNotification.mockResolvedValue({
-      isValid: false,
-      deliveryStatus: 'failed',
-      failureReason: 'このメールアドレスは無効化されています。配信できません。',
-    });
   });
 
   it('メールアドレスがシステムで無効化されている場合、処理は正常に完了し、警告が記録されること', async () => {
@@ -120,12 +106,11 @@ describe('SCEN-570: リーダーメールアドレスがシステムで無効化
     const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
 
     const failureEntry = result.emailSendingHistory.find(
-      (entry: any) => entry.failureReason && entry.failureReason.includes('無効化')
+      (entry: any) => entry.errorMessage && entry.errorMessage.includes('無効化')
     );
     expect(failureEntry).toBeDefined();
-    expect(failureEntry.failureReason).toBe('このメールアドレスは無効化されています。配信できません。');
-    expect(failureEntry.deliveryStatus).toBe('failed');
-    expect(failureEntry.isValid).toBe(false);
+    expect(failureEntry.errorMessage).toBe('このメールアドレスは無効化されています。配信できません。');
+    expect(failureEntry.sendingStatus).toBe('failed');
   });
 
   it('他のフィールド（submittedReports、nonSubmittedReporters、detectionLogs、submissionStatusSummary）も返されること', async () => {

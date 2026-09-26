@@ -1,19 +1,30 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   registerReporterToMaster,
-  RegisterReporterToMasterInput,
-  RegisterReporterToMasterOutput,
   InvalidReporterInformationError,
 } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
 
 import {
   validateUserInformationRequired,
   validateEmailAddress,
   detectDuplicateEmailAddress,
 } from '../../src/logic/input-validation-formatting';
+
+interface RegisterReporterToMasterInput {
+  reporterName: string;
+  emailAddress: string;
+  department: string;
+  leaderUserId: string;
+  registrationTimestamp: Date;
+}
+
+interface RegisterReporterToMasterOutput {
+  success: boolean;
+  reporterId: string | null;
+  message: string;
+}
 
 describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメールアドレス形式が不正な場合、登録失敗を返す', () => {
   beforeEach(() => {
@@ -29,7 +40,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -47,7 +58,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -65,7 +76,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -83,8 +94,8 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(true) as any;
-    (validateEmailAddress as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
+    (validateEmailAddress as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -102,8 +113,8 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(true) as any;
-    (validateEmailAddress as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
+    (validateEmailAddress as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -121,7 +132,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false) as any;
+    (validateUserInformationRequired as any).mockReturnValue(false);
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

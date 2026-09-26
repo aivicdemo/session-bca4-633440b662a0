@@ -5,13 +5,14 @@ jest.mock('../../src/logic/reporter-master-management', () => ({
   isReporterActiveAndValid: jest.fn(),
 }));
 
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   getActiveReportersForSubmissionCheck,
   TargetDateInvalidError,
 } from '../../src/logic/reporter-master-management';
 import { isBusinessDay } from '../../src/logic/business-day-deadline-judgment';
 
-const mockedIsBusinessDay = isBusinessDay as jest.Mock;
+const mockedIsBusinessDay = isBusinessDay as jest.MockedFunction<any>;
 
 describe('SCEN-391: 指定日付が営業日でない場合、TargetDateInvalidError を返す', () => {
   const targetDate = new Date('2024-01-07T00:00:00Z');
@@ -23,12 +24,22 @@ describe('SCEN-391: 指定日付が営業日でない場合、TargetDateInvalidE
   });
 
   it('TargetDateInvalidError をスロー、エラー文言は「提出対象日付は営業日かつ本日以前である必要があります。」', async () => {
-    await expect(
+    const error = await expect(
       getActiveReportersForSubmissionCheck({
         targetDate,
         teamLeaderId,
       })
-    ).rejects.toThrow(TargetDateInvalidError);
+    ).rejects.toThrow();
+
+    try {
+      await getActiveReportersForSubmissionCheck({
+        targetDate,
+        teamLeaderId,
+      });
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(TargetDateInvalidError);
+      expect(err.message).toBe('提出対象日付は営業日かつ本日以前である必要があります。');
+    }
 
     expect(mockedIsBusinessDay).toHaveBeenCalledWith(targetDate);
   });

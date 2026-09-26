@@ -1,92 +1,72 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runTx3Imp1Agent } from '../../src/agents/tx-3-imp-1/orchestrator';
+import { describe, it, expect, jest } from '@jest/globals';
 
-describe('SCEN-037: partial_failure で部分的な失敗が記録', () => {
-  let mockJudgeSchedulerExecutionTiming: jest.Mock;
-  let mockDetectNonSubmittedReportersAtDeadline: jest.Mock;
-  let mockGenerateNonSubmissionDetectionResult: jest.Mock;
-  let mockJudgePromptNecessityAndMethod: jest.Mock;
-  let mockSendLeaderNonSubmissionPromptNotification: jest.Mock;
-  let mockSendNonSubmissionPromptNotification: jest.Mock;
-  let mockRetrieveDailyReportsForLeaderReview: jest.Mock;
-  let mockRetrieveLeaderDashboardData: jest.Mock;
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/daily-report-non-submission-detection');
+jest.mock('../../src/logic/non-submission-prompt-decision');
+jest.mock('../../src/logic/daily-report-reminder-notification');
+jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/daily-report-management-view');
 
-  beforeEach(() => {
-    mockJudgeSchedulerExecutionTiming = jest.fn().mockReturnValue(true);
-    mockDetectNonSubmittedReportersAtDeadline = jest
-      .fn()
-      .mockReturnValue(['user-001', 'user-002', 'user-003']);
-    
-    const detectionResult = {
-      detectedReporters: ['user-001', 'user-002', 'user-003'],
-      detectionLogId: 'log-001',
-      detectionTimestamp: null,
-    };
-    mockGenerateNonSubmissionDetectionResult = jest.fn().mockReturnValue(detectionResult);
-    
-    mockJudgePromptNecessityAndMethod = jest.fn().mockReturnValue([
-      { reporterId: 'user-001', required: true },
-      { reporterId: 'user-002', required: true },
-      { reporterId: 'user-003', required: true },
-    ]);
-    
-    mockSendLeaderNonSubmissionPromptNotification = jest.fn().mockReturnValue([
-      { leaderId: 'leader-001', status: 'success', timestamp: 1705276800100, detectionCompleted: true, notificationSent: true },
-    ]);
-    
-    const promptNotifications = [
-      { reporterId: 'user-001', status: 'success', timestamp: 1705276800200, detectionCompleted: true, notificationSent: true },
-      { reporterId: 'user-002', status: 'success', timestamp: 1705276800300, detectionCompleted: true, notificationSent: true },
-      { reporterId: 'user-003', status: 'success', timestamp: 1705276800400, detectionCompleted: true, notificationSent: true },
+import { runTx3Imp1Agent, type Tx3Imp1AgentInput, type Tx3Imp1AiClient } from '../../src/agents/tx-3-imp-1/orchestrator';
+
+describe('SCEN-037: executionStatusが partial_failure になる場合の部分的な失敗が記録される', () => {
+  it('部分的な失敗状態が記録される', async () => {
+    const targetDate = '2025-01-15';
+    const executionTimestamp = 1705276800000;
+    const leaderUserIds = ['leader-001'];
+
+    const mockNonSubmittedReportersPartial = [
+      { userId: 'user-001', userName: 'User A', emailAddress: 'usera@example.com', promptPriority: 'high' },
+      { userId: 'user-002', userName: 'User B', emailAddress: 'userb@example.com', promptPriority: 'high' },
     ];
-    mockSendNonSubmissionPromptNotification = jest.fn().mockReturnValue(promptNotifications);
-    
-    mockRetrieveDailyReportsForLeaderReview = jest.fn().mockReturnValue([]);
-    
-    const dashboardData = {
-      nonSubmittedCount: 3,
-      detectionLogId: 'log-001',
-      detectionTimestamp: null,
+
+    const mockLeaderNotifications = [
+      {
+        recipientUserId: 'leader-001',
+        notificationType: 'email',
+        sendStatus: 'success',
+        emailSendingHistoryId: 'history-001',
+        errorMessage: null,
+      },
+    ];
+
+    const mockPromptNotifications = [
+      { recipientUserId: 'user-001', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-001' },
+      { recipientUserId: 'user-002', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'prompt-002' },
+    ];
+
+    const mockAiClient: Tx3Imp1AiClient = {
+      judgeSchedulerExecutionTiming: async () => true,
+      detectNonSubmittedReportersAtDeadline: async () => ({ nonSubmittedReporterIds: ['user-001', 'user-002'], detectionLogId: 'log-001', detectionCount: 2 }),
+      generateNonSubmissionDetectionResult: async () => ({ nonSubmittedReporterIds: ['user-001', 'user-002'], detectionLogId: 'log-001', detectionCount: 2 }),
+      judgePromptNecessityAndMethod: async () => true,
+      sendLeaderNonSubmissionPromptNotification: async () => mockLeaderNotifications[0],
+      sendNonSubmissionPromptNotification: async () => mockPromptNotifications,
+      retrieveDailyReportsForLeaderReview: async () => [],
+      retrieveLeaderDashboardData: async () => ({
+        submittedReportCount: 0,
+        nonSubmittedReporterCount: 2,
+        nonSubmittedReporters: mockNonSubmittedReportersPartial,
+        promptNotificationStatus: { sent: 2, failed: 0 },
+      }),
     };
-    mockRetrieveLeaderDashboardData = jest.fn().mockReturnValue(dashboardData);
-  });
 
-  it('部分的な失敗が記録され partial_failure ステータスになる', async () => {
-    const input = {
-      targetDate: '2025-01-15',
-      executionTimestamp: 1705276800000,
-      leaderUserIds: ['leader-001'],
+    const input: Tx3Imp1AgentInput = {
+      targetDate,
+      executionTimestamp,
+      leaderUserIds,
     };
 
-    const aiClient = {
-      judgeSchedulerExecutionTiming: mockJudgeSchedulerExecutionTiming,
-      detectNonSubmittedReportersAtDeadline: mockDetectNonSubmittedReportersAtDeadline,
-      generateNonSubmissionDetectionResult: mockGenerateNonSubmissionDetectionResult,
-      judgePromptNecessityAndMethod: mockJudgePromptNecessityAndMethod,
-      sendLeaderNonSubmissionPromptNotification: mockSendLeaderNonSubmissionPromptNotification,
-      sendNonSubmissionPromptNotification: mockSendNonSubmissionPromptNotification,
-      retrieveDailyReportsForLeaderReview: mockRetrieveDailyReportsForLeaderReview,
-      retrieveLeaderDashboardData: mockRetrieveLeaderDashboardData,
-    };
+    const result = await runTx3Imp1Agent(input, mockAiClient);
 
-    const output = await runTx3Imp1Agent(input, aiClient);
-
-    expect(output.executionStatus).toBe('partial_failure');
-    expect(output.detectionResult.detectedReporters).toHaveLength(3);
-    expect(output.detectionResult.detectionLogId).toBe('log-001');
-    expect(output.detectionResult.detectionTimestamp).toBeNull();
-    expect(output.leaderNotificationStatus[0].status).toBe('success');
-    expect(output.leaderNotificationStatus[0].detectionCompleted).toBe(true);
-    expect(output.leaderNotificationStatus[0].notificationSent).toBe(true);
-    expect(output.promptNotificationStatus).toHaveLength(3);
-    expect(output.promptNotificationStatus.every((n: any) => n.status === 'success')).toBe(true);
-    expect(output.promptNotificationStatus.every((n: any) => n.detectionCompleted === true)).toBe(
-      true
-    );
-    expect(output.promptNotificationStatus.every((n: any) => n.notificationSent === true)).toBe(
-      true
-    );
-    expect(output.dashboardData.detectionTimestamp).toBeNull();
-    expect(output.executionTimestamp).toBeGreaterThan(input.executionTimestamp);
+    expect(result.executionStatus).toBe('partial_failure');
+    expect(result.detectionResult.nonSubmittedReporterIds).toHaveLength(2);
+    expect(result.detectionResult.detectionLogId).toBe('log-001');
+    expect(result.leaderNotificationStatus[0].sendStatus).toBe('success');
+    expect(result.promptNotificationStatus).toHaveLength(2);
+    expect(result.promptNotificationStatus.every((ns) => ns.sendStatus === 'success')).toBe(true);
+    expect(result.dashboardData).toBeDefined();
+    expect(result.executionTimestamp).toBeGreaterThan(executionTimestamp);
   });
 });

@@ -1,4 +1,9 @@
-import { runTx7Imp1Agent, Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
+import {
+  runTx7Imp1Agent,
+  Tx7Imp1AiClient,
+  Tx7Imp1AgentInput,
+  Tx7Imp1AgentOutput,
+} from '../../src/agents/tx-7-imp-1/orchestrator';
 import {
   registerReporter,
   updateReporter,
@@ -56,52 +61,53 @@ describe('SCEN-072: 人事異動情報から新規登録・更新・削除の必
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (validateUserInformationRequired as jest.Mock).mockResolvedValue(true);
-    (detectDuplicateEmailAddress as jest.Mock).mockResolvedValue(false);
+    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue(true);
+    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue(false);
 
-    (registerReporter as jest.Mock).mockResolvedValue({
+    (registerReporter as jest.MockedFunction<any>).mockResolvedValue({
       userId: NEW_HIRE_A.userId,
       status: 'success',
     });
-    (updateReporter as jest.Mock).mockResolvedValue({
+    (updateReporter as jest.MockedFunction<any>).mockResolvedValue({
       userId: TRANSFER_B.userId,
       status: 'success',
       changedFields: ['department'],
     });
-    (deactivateReporter as jest.Mock).mockResolvedValue({
+    (deactivateReporter as jest.MockedFunction<any>).mockResolvedValue({
       userId: RETIREE_C.userId,
       status: 'success',
       deactivationReason: 'retirement',
     });
 
-    (registerReporterToMaster as jest.Mock).mockResolvedValue({
+    (registerReporterToMaster as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
-    (updateReporterInMaster as jest.Mock).mockResolvedValue({
+    (updateReporterInMaster as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
-    (deactivateReporterInMaster as jest.Mock).mockResolvedValue({
+    (deactivateReporterInMaster as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
-    (persistReporterMasterChangeHistory as jest.Mock).mockResolvedValue({
+    (persistReporterMasterChangeHistory as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
 
-    (sendUserInformationApprovalNotification as jest.Mock).mockResolvedValue({
+    (sendUserInformationApprovalNotification as jest.MockedFunction<any>).mockResolvedValue({
       success: true,
     });
   });
 
   it('新規登録1件・更新1件・削除1件を判定し、変更履歴の記録とリーダー通知が完結する', async () => {
     const executionTimestamp = new Date('2024-04-01T09:00:00+09:00');
+    const aiClient: Tx7Imp1AiClient = {} as any;
 
     const result = await runTx7Imp1Agent(
       {
         personnelMovementData: [NEW_HIRE_A, TRANSFER_B, RETIREE_C],
         executionTimestamp,
-      },
-      {}
-    );
+      } as Tx7Imp1AgentInput,
+      aiClient
+    ) as Tx7Imp1AgentOutput;
 
     expect(result.registeredReporters).toHaveLength(1);
     expect(result.registeredReporters[0].userId).toBe(NEW_HIRE_A.userId);

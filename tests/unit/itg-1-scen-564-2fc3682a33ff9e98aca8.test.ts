@@ -1,76 +1,144 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  retrieveLeaderDashboardData,
-  RetrieveLeaderDashboardDataInput,
-} from '../../src/logic/daily-report-management-view';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
 
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
+const judgeBusinessDayAndDeadlineMock = jest.fn();
+const retrieveDailyReportsForLeaderReviewMock = jest.fn();
+const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn();
+const retrieveEmailSendingHistoryByDateRangeMock = jest.fn();
 
-describe('SCEN-564: Empty or null report content triggers error', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: any;
-  let mockJudgeBusinessDayAndDeadline: any;
-  let mockRetrieveDailyReportsForLeaderReview: any;
-  let mockRetrieveNonSubmissionDetectionLogsByDate: any;
-  let mockRetrieveEmailSendingHistoryByDateRange: any;
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  retrieveDailyReportsForLeaderReview: retrieveDailyReportsForLeaderReviewMock,
+  retrieveNonSubmissionDetectionLogsByDate: retrieveNonSubmissionDetectionLogsByDateMock,
+}));
+jest.mock('../../src/logic/email-notification-management', () => ({
+  retrieveEmailSendingHistoryByDateRange: retrieveEmailSendingHistoryByDateRangeMock,
+}));
 
+describe('SCEN-564: 提出済み日報の報告内容が空文字列またはnullの場合', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization').authenticateAndAuthorizeLeaderAccess;
-    mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment').judgeBusinessDayAndDeadline;
-    mockRetrieveDailyReportsForLeaderReview = require('../../src/logic/daily-report-persistence').retrieveDailyReportsForLeaderReview;
-    mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
-    mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
-
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
   });
 
-  it('should throw error when report content is empty string', async () => {
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
-      reportId: 'RPT001',
-      reporterName: '太郎',
-      submissionDateTime: new Date('2024-01-15T14:30:00'),
-      reportContent: '',
-      reportDate: new Date('2024-01-15'),
-    }]);
+  it('報告内容が空文字列の場合、「日報内容が記録されていません。データを確認してください。」という例外がスローされる', async () => {
+    const leaderId = 'leader-001';
+    const targetDate = '2024-01-15';
 
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2024-01-15',
+    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+      isAccessGranted: true,
+      userId: leaderId,
+    });
+
+    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+      isAcceptable: true,
+      isBusinessDay: true,
+      isWithinDeadline: true,
+    });
+
+    retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
+      dailyReports: [
+        {
+          dailyReportId: 'RPT001',
+          userId: 'reporter_A',
+          reportDate: '2024-01-15',
+          businessContent: '',
+          submittedAt: '2024-01-15T16:45:00',
+          achievements: '成果',
+          challenges: '課題',
+          tomorrowPlan: '明日',
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 100,
+      retrievedAt: '2024-01-15T17:00:00',
+    });
+
+    retrieveNonSubmissionDetectionLogsByDateMock.mockResolvedValue({
+      detectionLogs: [],
+      totalCount: 0,
+      retrievedAt: '2024-01-15T17:00:00',
+    });
+
+    retrieveEmailSendingHistoryByDateRangeMock.mockResolvedValue({
+      success: true,
+      emailSendingHistories: [],
+      totalCount: 0,
+      pageNumber: 1,
+      pageSize: 100,
+    });
+
+    const input = {
+      leaderId,
+      targetDate,
     };
 
-    try {
-      await retrieveLeaderDashboardData(input);
-      throw new Error('Should have thrown error');
-    } catch (error) {
-      expect((error as Error).message).toContain('日報内容が記録されていません');
-    }
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(
+      '日報内容が記録されていません。データを確認してください。'
+    );
   });
 
-  it('should throw error when report content is null', async () => {
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
-      reportId: 'RPT002',
-      reporterName: '花子',
-      submissionDateTime: new Date('2024-01-15T14:30:00'),
-      reportContent: null,
-      reportDate: new Date('2024-01-15'),
-    }]);
+  it('報告内容が null の場合、「日報内容が記録されていません。データを確認してください。」という例外がスローされる', async () => {
+    const leaderId = 'leader-001';
+    const targetDate = '2024-01-15';
 
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2024-01-15',
+    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+      isAccessGranted: true,
+      userId: leaderId,
+    });
+
+    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+      isAcceptable: true,
+      isBusinessDay: true,
+      isWithinDeadline: true,
+    });
+
+    retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
+      dailyReports: [
+        {
+          dailyReportId: 'RPT002',
+          userId: 'reporter_B',
+          reportDate: '2024-01-15',
+          businessContent: null,
+          submittedAt: '2024-01-15T16:45:00',
+          achievements: '成果',
+          challenges: '課題',
+          tomorrowPlan: '明日',
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 100,
+      retrievedAt: '2024-01-15T17:00:00',
+    });
+
+    retrieveNonSubmissionDetectionLogsByDateMock.mockResolvedValue({
+      detectionLogs: [],
+      totalCount: 0,
+      retrievedAt: '2024-01-15T17:00:00',
+    });
+
+    retrieveEmailSendingHistoryByDateRangeMock.mockResolvedValue({
+      success: true,
+      emailSendingHistories: [],
+      totalCount: 0,
+      pageNumber: 1,
+      pageSize: 100,
+    });
+
+    const input = {
+      leaderId,
+      targetDate,
     };
 
-    try {
-      await retrieveLeaderDashboardData(input);
-      throw new Error('Should have thrown error');
-    } catch (error) {
-      expect((error as Error).message).toContain('日報内容が記録されていません');
-    }
+    await expect(retrieveLeaderDashboardData(input)).rejects.toThrow(
+      '日報内容が記録されていません。データを確認してください。'
+    );
   });
 });

@@ -1,3 +1,5 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeReporterAccess: jest.fn(),
 }));
@@ -16,20 +18,20 @@ jest.mock('../../src/logic/email-notification-management', () => ({
   sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
-import { submitDailyReport } from '../../src/logic/daily-report-submission';
+import { submitDailyReport, type SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
 import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
 import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
 import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
 import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
 
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.Mock;
-const mockedValidateDailyReportContent = validateDailyReportContent as jest.Mock;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.Mock;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.Mock;
-const mockedSaveDailyReport = saveDailyReport as jest.Mock;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.Mock;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.Mock;
+const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
+const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
+const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
+const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
+const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
+const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
+const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
 describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻記録・送信完了判定・リーダー通知トリガー発火を実行する', () => {
   const userId = 'reporter-001';
@@ -41,25 +43,49 @@ describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue(true);
+    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+      isAccessGranted: true,
+      userId: userId,
+      denialReason: null,
+    });
 
-    mockedValidateDailyReportContent.mockResolvedValue(true);
+    mockedValidateDailyReportContent.mockResolvedValue({
+      isValid: true,
+      validatedContent: businessContent,
+      errorCode: null,
+    });
 
     mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
-      deadline: '2024-01-15T17:00:00Z',
+      isAcceptable: true,
+      isBusinessDay: true,
+      isWithinDeadline: true,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      processingPolicy: 'accept',
+      rejectionReason: null,
     });
 
     mockedCheckDailyReportExistsForDate.mockResolvedValue(false);
 
     mockedSaveDailyReport.mockResolvedValue({
       dailyReportId: dailyReportId,
-      success: true,
+      savedAt: submissionTimestamp,
+      userId: userId,
+      reportDate: reportDate,
     });
 
-    mockedUpdateDailyReportSubmissionTimestamp.mockResolvedValue(true);
+    mockedUpdateDailyReportSubmissionTimestamp.mockResolvedValue({
+      dailyReportId: dailyReportId,
+      previousSubmittedAt: null,
+      updatedSubmittedAt: submissionTimestamp,
+      updatedAt: submissionTimestamp,
+    });
 
     mockedSendDailyReportSubmissionNotification.mockResolvedValue({
-      triggered: true,
+      success: true,
+      emailSendingHistoryId: 'notif-001',
+      sentAt: submissionTimestamp,
+      errorMessage: null,
+      adminNotificationSent: false,
     });
   });
 
