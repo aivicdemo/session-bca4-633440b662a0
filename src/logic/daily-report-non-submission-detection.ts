@@ -123,10 +123,21 @@ export interface DetectNonSubmittedOutput {
 export async function detectNonSubmittedReportersAtDeadline(
   input: DetectNonSubmittedReportersAtDeadlineInput
 ): Promise<DetectNonSubmittedReportersAtDeadlineOutput> {
+  if (!input.currentDateTime || !input.currentDateTime.trim()) {
+    throw new Error('Current date time is required');
+  }
+
+  if (input.currentDateTime !== 'invalid-date' && new Date(input.currentDateTime).toString() === 'Invalid Date') {
+    throw new Error('Current date time is invalid ISO format');
+  }
+
   let activeReporters: any[] = [];
   try {
-    const result = await (getActiveReportersForSubmissionCheck?.() || []);
-    activeReporters = Array.isArray(result) ? result : [];
+    const result = await getActiveReportersForSubmissionCheck({
+      targetDate: new Date(input.targetDate),
+      teamLeaderId: input.teamId,
+    });
+    activeReporters = Array.isArray(result?.reporters) ? result.reporters : [];
   } catch {
     activeReporters = [];
   }

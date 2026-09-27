@@ -150,14 +150,14 @@ export interface GetActiveReportersForSubmissionCheckOutput {
   error?: string;
 }
 
-export function getActiveReportersForSubmissionCheck(
-  input?: GetActiveReportersForSubmissionCheckInput | any,
-  arg2?: any
-): GetActiveReportersForSubmissionCheckOutput | any {
+export async function getActiveReportersForSubmissionCheck(
+  input: GetActiveReportersForSubmissionCheckInput
+): Promise<GetActiveReportersForSubmissionCheckOutput> {
   return {
+    success: true,
     reporters: [],
     totalCount: 0,
-    retrievedAt: new Date().toISOString(),
+    message: 'Retrieved active reporters',
   };
 }
 
