@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-194: デフォルトタイムゾーン（Asia/Tokyo）で正しく判定される', () => {
-  it('should correctly judge scheduling with Asia/Tokyo timezone (default)', () => {
+  it('should correctly judge scheduling with Asia/Tokyo timezone (default)', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',

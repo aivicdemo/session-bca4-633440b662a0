@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-191: 実行予定時刻が未設定のとき、スケジューラ設定エラーが発生する', () => {
-  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is null', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is null', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: null as any,
@@ -19,7 +19,7 @@ describe('SCEN-191: 実行予定時刻が未設定のとき、スケジューラ
     }).toThrow(InvalidSchedulerConfigurationError);
   });
 
-  it('should throw with correct error message when scheduledExecutionTime is null', () => {
+  it('should throw with correct error message when scheduledExecutionTime is null', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: null as any,
@@ -32,7 +32,7 @@ describe('SCEN-191: 実行予定時刻が未設定のとき、スケジューラ
     }).toThrow('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');
   });
 
-  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty string', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty string', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '',
@@ -45,7 +45,7 @@ describe('SCEN-191: 実行予定時刻が未設定のとき、スケジューラ
     }).toThrow(InvalidSchedulerConfigurationError);
   });
 
-  it('should throw with correct error message when scheduledExecutionTime is empty string', () => {
+  it('should throw with correct error message when scheduledExecutionTime is empty string', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '',

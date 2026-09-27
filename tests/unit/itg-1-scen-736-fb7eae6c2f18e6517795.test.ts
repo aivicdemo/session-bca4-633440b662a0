@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } fro
 import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-736: リーダーのメールアドレスが登録されていないとき、エラーが発生して処理が中断される', () => {
-  it('should throw InvalidSchedulerConfigurationError when scheduler configuration is invalid', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduler configuration is invalid', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -23,7 +23,7 @@ describe('SCEN-736: リーダーのメールアドレスが登録されていな
     }
   });
 
-  it('should throw error when scheduledExecutionTime format is invalid', () => {
+  it('should throw error when scheduledExecutionTime format is invalid', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: 'invalid',

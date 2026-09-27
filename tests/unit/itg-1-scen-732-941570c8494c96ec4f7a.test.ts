@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } fro
 import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-732: チームメンバーIDが空のとき、エラーが発生して処理が中断される', () => {
-  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is empty', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '',
@@ -19,7 +19,7 @@ describe('SCEN-732: チームメンバーIDが空のとき、エラーが発生�
     }
   });
 
-  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is whitespace', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduledExecutionTime is whitespace', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '   ',

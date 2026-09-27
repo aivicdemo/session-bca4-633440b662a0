@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-dead
 import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-735: 現在の日時が提出期限より前のとき、未提出者チェックがスキップされる', () => {
-  it('should skip non-submission check when current time is before scheduled execution window', () => {
+  it('should skip non-submission check when current time is before scheduled execution window', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T16:00:00Z',
       scheduledExecutionTime: '17:30',

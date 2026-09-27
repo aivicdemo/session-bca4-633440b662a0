@@ -30,18 +30,18 @@ describe('SCEN-559: リーダーが有効な認証情報で管理画面にアク
     const leaderId = 'leader001';
     const targetDate = '2024-01-15';
 
-    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+    (authenticateAndAuthorizeLeaderAccessMock as any).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
-    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+    (judgeBusinessDayAndDeadlineMock as any).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
     });
 
-    retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
+    (retrieveDailyReportsForLeaderReviewMock as any).mockResolvedValue({
       dailyReports: [
         {
           dailyReportId: 'RPT001',
