@@ -45,6 +45,7 @@ export interface SubmissionStatus {
   lastRemindedAt?: Date;
   remindCount: number;
   reminderLevel: 'initial' | 'second' | 'escalated' | 'critical';
+  [key: string]: any;
 }
 
 export interface ReminderResult {
@@ -52,6 +53,7 @@ export interface ReminderResult {
   reminderSent: boolean;
   reminderLevel: 'initial' | 'second' | 'escalated' | 'critical';
   message?: string;
+  [key: string]: any;
 }
 
 export interface AgentExecutionError {
@@ -59,6 +61,7 @@ export interface AgentExecutionError {
   errorMessage: string;
   timestamp: Date;
   severity: 'info' | 'warning' | 'error';
+  [key: string]: any;
 }
 
 export interface Tx2Imp1AgentOutput {
@@ -345,6 +348,7 @@ export interface NonSubmissionDetectionResult {
   detectionLogId: string;
   /** 検知された未提出者の人数。 */
   detectionCount: number;
+  [key: string]: any;
 }
 
 /**
@@ -359,6 +363,7 @@ export interface PromptNotificationRecord {
   sendingStatus: 'success' | 'failed';
   /** メール送信時刻のUnixタイムスタンプ（ミリ秒）。 */
   sentTimestamp: number;
+  [key: string]: any;
 }
 
 /**
@@ -373,6 +378,7 @@ export interface LeaderNotificationRecord {
   sendingStatus: 'success' | 'failed';
   /** メール送信時刻のUnixタイムスタンプ（ミリ秒）。 */
   sentTimestamp: number;
+  [key: string]: any;
 }
 
 /**
@@ -387,4 +393,5 @@ export interface LeaderDashboardData {
   nonSubmittedReporters: NonSubmittedReporterInfo[];
   /** 催促メール送信の成功・失敗件数。 */
   promptNotificationStatus: { sent: number; failed: number };
+  [key: string]: any;
 }

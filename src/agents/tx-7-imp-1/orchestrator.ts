@@ -4,28 +4,29 @@
  */
 
 export interface Tx7Imp1AiClient {
-  invokeModel?: (prompt: string, systemPrompt?: string) => any;
   [key: string]: any;
+  invokeModel?: (prompt: string, systemPrompt?: string) => any;
 }
 
 export interface Tx7Imp1AgentInput {
+  [key: string]: any;
   executionTimestamp?: Date;
   personnelMovementData?: any[];
   systemContext?: {
     timezone?: string;
     locale?: string;
-    [key: string]: any;
   };
-  [key: string]: any;
 }
 
 export interface ReporterRegistrationResult {
+  [key: string]: any;
   userId: string;
   status: 'success' | 'failed';
   errorMessage?: string | null;
 }
 
 export interface ReporterUpdateResult {
+  [key: string]: any;
   userId: string;
   status: 'success' | 'failed';
   changedFields: string[];
@@ -33,6 +34,7 @@ export interface ReporterUpdateResult {
 }
 
 export interface ReporterDeactivationResult {
+  [key: string]: any;
   userId: string;
   status: 'success' | 'failed';
   deactivationReason: string;
@@ -40,13 +42,13 @@ export interface ReporterDeactivationResult {
 }
 
 export interface Tx7Imp1AgentOutput {
+  [key: string]: any;
   registeredReporters: ReporterRegistrationResult[];
   updatedReporters: ReporterUpdateResult[];
   deactivatedReporters: ReporterDeactivationResult[];
   changeHistoryRecorded: boolean;
   leaderNotificationSent: boolean;
   executionSummary: string;
-  [key: string]: any;
 }
 
 /**
@@ -111,6 +113,7 @@ export async function runTx7Imp1Agent(
  * PersonnelMovementRecord
  */
 export interface PersonnelMovementRecord {
+  [key: string]: any;
   /** 人事異動の種別。 */
   movementType: 'new_hire' | 'transfer' | 'retirement' | 'project_reassignment';
   /** 対象ユーザーID。 */

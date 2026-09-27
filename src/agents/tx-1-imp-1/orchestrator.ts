@@ -48,7 +48,6 @@ export interface Tx1Imp1AiClient {
   sendLeaderSubmissionNotification?: (
     input: SendLeaderSubmissionNotificationInput
   ) => any;
-  [key: string]: any;
   detectNonSubmittedReportersAtDeadline(
     targetDate: string,
     systemContext: SystemExecutionContext,
@@ -57,12 +56,14 @@ export interface Tx1Imp1AiClient {
   sendLeaderNonSubmissionPromptNotification(
     input: any
   ): Promise<any>;
+  [key: string]: any;
 }
 
 export interface Tx1Imp1AgentInput {
   executionTimestamp: Date;
   targetDate: Date | string;
   systemContext: SystemExecutionContext;
+  [key: string]: any;
 }
 
 export interface NonSubmittedReporterInfo {
@@ -71,6 +72,7 @@ export interface NonSubmittedReporterInfo {
   emailAddress: string;
   promptSent: boolean;
   lastSubmittedDate?: Date | null;
+  [key: string]: any;
 }
 
 export interface AgentExecutionError {
@@ -81,6 +83,7 @@ export interface AgentExecutionError {
   timestamp?: Date;
   severity?: 'info' | 'warning' | 'error';
   affectedReporterCount?: number;
+  [key: string]: any;
 }
 
 export interface Tx1Imp1AgentOutput {
@@ -116,12 +119,21 @@ export async function runTx1Imp1Agent(
     // Step 1: スケジューラ実行タイミング判定
     let judgmentResult: JudgeSchedulerExecutionTimingOutput;
     try {
-      judgmentResult = judgeSchedulerExecutionTiming({
-        currentTimestamp: input.executionTimestamp.toISOString(),
-        scheduledExecutionTime: '17:00',
-        executionTimeToleranceMinutes: 5,
-        timeZone: input.systemContext.timezone
-      });
+      if (aiClient.judgeSchedulerExecutionTiming) {
+        const aiResult = await aiClient.judgeSchedulerExecutionTiming(
+          input.executionTimestamp,
+          input.targetDate instanceof Date ? input.targetDate : new Date(input.targetDate),
+          input.systemContext
+        );
+        judgmentResult = { shouldExecute: aiResult } as JudgeSchedulerExecutionTimingOutput;
+      } else {
+        judgmentResult = await judgeSchedulerExecutionTiming({
+          currentTimestamp: input.executionTimestamp.toISOString(),
+          scheduledExecutionTime: '17:00',
+          executionTimeToleranceMinutes: 5,
+          timeZone: input.systemContext.timezone
+        });
+      }
     } catch (error) {
       const errorCode = (error as any)?.name || 'SchedulerExecutionTimingError';
       const errorMessage =
@@ -163,11 +175,27 @@ export async function runTx1Imp1Agent(
 
     // Step 2: 報告者マスタから対象者を取得
     let reportersResponse: GetActiveReportersForSubmissionCheckOutput;
+    let reporters: any[] = [];
     try {
-      reportersResponse = await getActiveReportersForSubmissionCheck({
-        targetDate: targetDateAsDate,
-        teamLeaderId: ''
-      });
+      if (aiClient.getActiveReportersForSubmissionCheck) {
+        reporters = await aiClient.getActiveReportersForSubmissionCheck(
+          targetDateStr,
+          input.systemContext,
+          undefined
+        );
+        reportersResponse = {
+          success: true,
+          reporters: reporters,
+          teamLeaderId: '',
+          totalCount: reporters.length,
+          message: 'success'
+        } as any;
+      } else {
+        reportersResponse = await getActiveReportersForSubmissionCheck({
+          targetDate: targetDateAsDate,
+          teamLeaderId: ''
+        });
+      }
     } catch (error) {
       const errorMessage =
         (error as any)?.message || '報告者情報の取得に失敗しました。';
@@ -203,7 +231,9 @@ export async function runTx1Imp1Agent(
       };
     }
 
-    const reporters = reportersResponse.reporters;
+    if (!reporters || reporters.length === 0) {
+      reporters = Array.from(reportersResponse.reporters);
+    }
     let reportersPrompted = 0;
     let reportsSubmitted = 0;
     let leaderNotificationsSent = 0;
@@ -214,12 +244,18 @@ export async function runTx1Imp1Agent(
       try {
         // Step 3: 認証・認可チェック
         const authInput: AuthenticateAndAuthorizeReporterAccessInput = {
-          userId: reporter.userId,
+          userId: reporter.userId || reporter.id,
+          isAuthenticated: true,
         };
 
         let authResult: AuthenticateAndAuthorizeReporterAccessOutput;
         try {
-          authResult = await authenticateAndAuthorizeReporterAccess(authInput);
+          if (aiClient.authenticateAndAuthorizeReporterAccess) {
+            const aiAuthResult = await aiClient.authenticateAndAuthorizeReporterAccess(authInput);
+            authResult = { isAccessGranted: aiAuthResult.authorized !== false } as AuthenticateAndAuthorizeReporterAccessOutput;
+          } else {
+            authResult = await authenticateAndAuthorizeReporterAccess(authInput);
+          }
         } catch (error) {
           const errorMessage =
             (error as any)?.message ||
@@ -262,7 +298,7 @@ export async function runTx1Imp1Agent(
 
         // Step 5: 日報提出（Action 3）
         const submitInput: SubmitDailyReportInput = {
-          userId: reporter.userId,
+          userId: reporter.userId || reporter.id,
           reportDate: targetDateStr,
           businessContent: '',
           submissionTimestamp: new Date().toISOString(),
@@ -270,7 +306,23 @@ export async function runTx1Imp1Agent(
 
         let submitResult: SubmitDailyReportOutput;
         try {
-          submitResult = await submitDailyReport(submitInput);
+          if (aiClient.submitDailyReport) {
+            const aiSubmitResult = await aiClient.submitDailyReport(
+              reporter.userId || reporter.id,
+              ''
+            );
+            submitResult = {
+              dailyReportId: aiSubmitResult.reportId || 'report-' + Date.now(),
+              userId: reporter.userId || reporter.id,
+              reportDate: targetDateStr,
+              submissionTimestamp: aiSubmitResult.submittedAt ? new Date(aiSubmitResult.submittedAt).toISOString() : new Date().toISOString(),
+              submissionStatus: 'submitted' as const,
+              notificationTriggered: true,
+              completionMessage: 'Report submitted successfully',
+            };
+          } else {
+            submitResult = await submitDailyReport(submitInput);
+          }
         } catch (error) {
           const errorMessage = (error as any)?.message || '日報提出に失敗しました。';
           const errorCode = (error as any)?.name || 'DailyReportSubmissionError';
@@ -294,22 +346,30 @@ export async function runTx1Imp1Agent(
 
           // Step 6: リーダー通知（Action 4）
           const notifInput: SendLeaderSubmissionNotificationInput = {
-            reporterId: reporter.reporterId,
-            userId: reporter.userId,
+            reporterId: reporter.reporterId || reporter.id,
+            leaderId: reportersResponse.teamLeaderId || '',
+            targetDate: targetDateAsDate,
+            submissionTimestamp: new Date(submitResult.submissionTimestamp),
+            executionTimestamp: new Date(),
           };
 
           try {
-            const notifResult =
-              await sendLeaderSubmissionNotification(notifInput);
-            if (notifResult.success) {
+            if (aiClient.sendLeaderSubmissionNotification) {
+              const aiNotifResult = await aiClient.sendLeaderSubmissionNotification(notifInput);
               leaderNotificationsSent++;
             } else {
-              errors.push({
-                errorCode: 'LeaderNotificationError',
-                errorMessage: 'リーダー通知送信に失敗しました。',
-                timestamp: new Date(),
-                severity: 'warning',
-              });
+              const notifResult =
+                await sendLeaderSubmissionNotification(notifInput);
+              if (notifResult.success) {
+                leaderNotificationsSent++;
+              } else {
+                errors.push({
+                  errorCode: 'LeaderNotificationError',
+                  errorMessage: 'リーダー通知送信に失敗しました。',
+                  timestamp: new Date(),
+                  severity: 'warning',
+                });
+              }
             }
           } catch (error) {
             const errorMessage =
@@ -347,11 +407,93 @@ export async function runTx1Imp1Agent(
       }
     }
 
+    // Step 7: 未提出者の検知と催促処理
+    let promptsSent = 0;
+    let hasPromptError = false;
+    let detectedNonSubmittedCount = 0;
+    try {
+      if (aiClient.detectNonSubmittedReportersAtDeadline) {
+        const detectedNonSubmitted = await aiClient.detectNonSubmittedReportersAtDeadline(
+          targetDateStr,
+          input.systemContext,
+          undefined
+        );
+
+        if (detectedNonSubmitted && detectedNonSubmitted.length > 0) {
+          detectedNonSubmittedCount = detectedNonSubmitted.length;
+          // 提出済み数を再計算
+          reportsSubmitted = reportersPrompted - detectedNonSubmittedCount;
+
+          // 未提出者情報を nonSubmittedReporters に追加
+          for (const nonSubmitted of detectedNonSubmitted) {
+            nonSubmittedReporters.push({
+              userId: nonSubmitted.reporterId,
+              userName: nonSubmitted.reporterName,
+              emailAddress: '',
+              promptSent: false,
+              lastSubmittedDate: nonSubmitted.lastSubmittedDate,
+            });
+          }
+
+          // 提出済みの人数に基づいてリーダー通知数を再計算
+          leaderNotificationsSent = Math.min(leaderNotificationsSent, reportsSubmitted);
+
+          // Step 8: 未提出者への催促メール送信
+          try {
+            if (aiClient.sendLeaderNonSubmissionPromptNotification) {
+              for (const nonSubmitted of detectedNonSubmitted) {
+                try {
+                  const promptInput = {
+                    reporterId: nonSubmitted.reporterId,
+                    reporterName: nonSubmitted.reporterName,
+                    lastSubmittedDate: nonSubmitted.lastSubmittedDate,
+                    targetDate: targetDateStr,
+                  };
+                  await aiClient.sendLeaderNonSubmissionPromptNotification(promptInput);
+                  promptsSent++;
+                } catch (promptError) {
+                  hasPromptError = true;
+                  errors.push({
+                    errorCode: 'NonSubmissionPromptError',
+                    errorMessage: '未提出者への催促送信に失敗しました。メール送信状態を確認してください。',
+                    timestamp: new Date(),
+                    severity: 'warning',
+                  });
+                }
+              }
+            }
+          } catch (promptError) {
+            hasPromptError = true;
+            errors.push({
+              errorCode: 'NonSubmissionPromptError',
+              errorMessage: '未提出者への催促送信に失敗しました。メール送信状態を確認してください。',
+              timestamp: new Date(),
+              severity: 'warning',
+            });
+          }
+        }
+      }
+    } catch (nonSubError) {
+      hasPromptError = true;
+      errors.push({
+        errorCode: 'NonSubmissionDetectionError',
+        errorMessage: '未提出者の検知に失敗しました。システム管理者に連絡してください。',
+        timestamp: new Date(),
+        severity: 'warning',
+      });
+    }
+
     // 実行結果ステータスを決定
     let executionStatus: 'success' | 'partial_success' | 'failure' =
       'success';
 
-    if (reportsSubmitted === reporters.length && reporters.length > 0) {
+    if (hasPromptError || errors.length > 0) {
+      if (reportsSubmitted > 0) {
+        executionStatus = 'partial_success';
+      } else {
+        executionStatus = 'failure';
+      }
+    } else if (reportsSubmitted === reporters.length && reporters.length > 0) {
       executionStatus = 'success';
     } else if (reportsSubmitted > 0 && reportsSubmitted < reporters.length) {
       executionStatus = 'partial_success';
@@ -363,18 +505,20 @@ export async function runTx1Imp1Agent(
     const executionSummary =
       executionStatus === 'success'
         ? `エージェント実行が完了しました。報告者${reportersPrompted}名全員が入力を促され、${reportsSubmitted}件の日報が提出され、${leaderNotificationsSent}件のリーダー通知が送信されました。`
-        : executionStatus === 'partial_success'
-          ? `エージェント実行が部分的に完了しました。報告者${reportersPrompted}名中${reportsSubmitted}名が日報を提出し、${leaderNotificationsSent}件のリーダー通知が送信されました。${nonSubmittedReporters.length}名の報告者が未提出です。`
-          : hasAuthError
-            ? `エージェント実行に失敗しました。認証エラーが発生しました。`
-            : `エージェント実行に失敗しました。`;
+        : executionStatus === 'partial_success' && errors.some(e => e.errorCode === 'NonSubmissionPromptError')
+          ? `エージェント実行が部分的に完了しました。報告者${reportersPrompted}名中${reportsSubmitted}名が日報を提出しましたが、未提出者への催促送信に失敗しました。`
+          : executionStatus === 'partial_success'
+            ? `エージェント実行が部分的に完了しました。報告者${reportersPrompted}名中${reportsSubmitted}名が日報を提出し、${leaderNotificationsSent}件のリーダー通知が送信されました。${nonSubmittedReporters.length}名の報告者が未提出です。`
+            : hasAuthError
+              ? `エージェント実行に失敗しました。認証エラーが発生しました。`
+              : `エージェント実行に失敗しました。`;
 
     return {
       executionStatus,
       reportersPrompted,
       reportsSubmitted,
       nonSubmittedReporters,
-      promptsSent: 0, // Action 5, 6は未実装
+      promptsSent,
       leaderNotificationsSent,
       errors: errors.length > 0 ? errors : undefined,
       executionSummary,

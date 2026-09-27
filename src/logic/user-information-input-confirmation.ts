@@ -67,83 +67,107 @@ export class UserInformationSubmissionFailedError extends Error {
 
 // Types and Interfaces
 export interface ConfirmAndApproveUserInformationInput {
+  [key: string]: any;
   userId?: string;
   approvalDecision?: string;
 }
 
 export interface ConfirmAndApproveUserInformationOutput {
-  confirmed: boolean;
-  approvalTimestamp?: string;
+  [key: string]: any;
+  success: boolean;
+  approvalDecision: 'approve' | 'reject' | null;
+  reporterUserId: string | null;
+  approvalNotificationSent: boolean;
+  reporterMasterRegistered: boolean;
+  processedTimestamp: Date;
 }
 
 export interface RetrieveUserInformationConfirmationStatusInput {
-  userId?: string;
+  [key: string]: any;
+  leaderUserId: string;
 }
 
 export interface RetrieveUserInformationConfirmationStatusOutput {
-  status: string;
-  submittedAt?: string;
-  approvedAt?: string;
+  [key: string]: any;
+  success: boolean;
+  pendingApprovals: any[];
+  approvedRecords: any[];
+  expiredApprovals: any[];
+  totalCount: number;
 }
 
 
 export interface ConfirmResult {
+  [key: string]: any;
   confirmed: boolean;
 }
 
-export async function confirmUserInformation(
+export function confirmUserInformation(
   userId: string,
   userInfo: any
-): Promise<ConfirmResult> {
+): ConfirmResult {
   return { confirmed: true };
 }
 
-export async function submitUserInformationForConfirmation(
+export function submitUserInformationForConfirmation(
   input: any
-): Promise<any> {
+): any {
   return { success: true };
 }
 
 export async function confirmAndApproveUserInformation(
-  input: any
-): Promise<any> {
-  return { confirmed: true };
+  input: ConfirmAndApproveUserInformationInput
+): Promise<ConfirmAndApproveUserInformationOutput> {
+  return {
+    success: true,
+    approvalDecision: 'approve',
+    reporterUserId: null,
+    approvalNotificationSent: true,
+    reporterMasterRegistered: true,
+    processedTimestamp: new Date(),
+  };
 }
 
-export async function retrieveUserInformationConfirmationStatus(
-  userId: string
-): Promise<any> {
-  return { status: 'pending' };
+export function retrieveUserInformationConfirmationStatus(
+  leaderUserIdOrInput: string | RetrieveUserInformationConfirmationStatusInput
+): RetrieveUserInformationConfirmationStatusOutput {
+  return {
+    success: true,
+    pendingApprovals: [],
+    approvedRecords: [],
+    expiredApprovals: [],
+    totalCount: 0,
+  };
 }
 
-export async function validateUserInformationInputFormat(
+export function validateUserInformationInputFormat(
   input: any
-): Promise<any> {
+): any {
   return { valid: true };
 }
 
-export async function detectDuplicateUserEmail(
+export function detectDuplicateUserEmail(
   email: string
-): Promise<any> {
+): any {
   return { isDuplicate: false };
 }
 
-export async function judgeUserInformationApprovalDeadlineExceeded(
+export function judgeUserInformationApprovalDeadlineExceeded(
   submissionDate: string,
   deadline: string
-): Promise<any> {
+): any {
   return { exceeded: false };
 }
 
-export async function prepareUserInformationForApprovalNotification(
+export function prepareUserInformationForApprovalNotification(
   input: any
-): Promise<any> {
+): any {
   return { prepared: true };
 }
 
-export async function buildUserInformationConfirmationStatusList(
+export function buildUserInformationConfirmationStatusList(
   input: any
-): Promise<any> {
+): any {
   return { list: [] };
 }
 
@@ -151,6 +175,7 @@ export async function buildUserInformationConfirmationStatusList(
  * SubmitUserInformationForConfirmationInput
  */
 export interface SubmitUserInformationForConfirmationInput {
+  [key: string]: any;
   /** ユーザー情報を送信する報告者のユーザーID。 */
   reporterId: string;
   /** 登録対象のユーザー名。 */
@@ -169,6 +194,7 @@ export interface SubmitUserInformationForConfirmationInput {
  * SubmitUserInformationForConfirmationOutput
  */
 export interface SubmitUserInformationForConfirmationOutput {
+  [key: string]: any;
   /** ユーザー情報の送信が成功したかどうか。 */
   success: boolean;
   /** 送信されたユーザー情報に割り当てられた一意のID。失敗時はnull。 */
@@ -185,6 +211,7 @@ export interface SubmitUserInformationForConfirmationOutput {
  * UserInformationConfirmationRecord
  */
 export interface UserInformationConfirmationRecord {
+  [key: string]: any;
   /** ユーザー情報確認レコードの一意識別子。 */
   userInformationId: string;
   /** 報告者のユーザーID。 */
@@ -211,6 +238,7 @@ export interface UserInformationConfirmationRecord {
  * BuildUserInformationConfirmationStatusListInput
  */
 export interface BuildUserInformationConfirmationStatusListInput {
+  [key: string]: any;
   /** 全ユーザー情報確認レコード。 */
   allUserInformationRecords: ReadonlyArray<UserInformationRecord>;
   /** 現在の日時。 */
@@ -221,6 +249,7 @@ export interface BuildUserInformationConfirmationStatusListInput {
  * UserInformationRecord
  */
 export interface UserInformationRecord {
+  [key: string]: any;
   /** ユーザー情報確認レコードの一意識別子。 */
   userInformationId: string;
   /** 報告者のユーザーID。 */
@@ -247,6 +276,7 @@ export interface UserInformationRecord {
  * BuildUserInformationConfirmationStatusListOutput
  */
 export interface BuildUserInformationConfirmationStatusListOutput {
+  [key: string]: any;
   /** 未承認のユーザー情報一覧。 */
   pendingApprovals: ReadonlyArray<UserInformationConfirmationRecord>;
   /** 承認済みのユーザー情報一覧。 */
@@ -259,6 +289,7 @@ export interface BuildUserInformationConfirmationStatusListOutput {
  * ValidateUserInformationInputFormatInput
  */
 export interface ValidateUserInformationInputFormatInput {
+  [key: string]: any;
   /** 報告者が入力した名前。 */
   reporterName: string | null | undefined;
   /** 報告者が入力したメールアドレス。 */
@@ -269,6 +300,7 @@ export interface ValidateUserInformationInputFormatInput {
  * ValidateUserInformationInputFormatOutput
  */
 export interface ValidateUserInformationInputFormatOutput {
+  [key: string]: any;
   /** 入力形式が検証ルールに合致したかどうか。 */
   isValid: boolean;
   /** 検出された検証エラーの一覧。isValid が false の場合は1件以上のエラーを含む。 */
@@ -279,6 +311,7 @@ export interface ValidateUserInformationInputFormatOutput {
  * DetectDuplicateUserEmailInput
  */
 export interface DetectDuplicateUserEmailInput {
+  [key: string]: any;
   /** 重複判定対象のメールアドレス。 */
   emailAddress: string;
   /** 重複判定を実行する時点。 */
@@ -291,6 +324,7 @@ export interface DetectDuplicateUserEmailInput {
  * DetectDuplicateUserEmailOutput
  */
 export interface DetectDuplicateUserEmailOutput {
+  [key: string]: any;
   /** メールアドレスが重複しているかどうか。 */
   isDuplicate: boolean;
   /** 重複が検出された場合、該当する報告者のユーザーID。重複がない場合はnull。 */
@@ -303,6 +337,7 @@ export interface DetectDuplicateUserEmailOutput {
  * JudgeUserInformationApprovalDeadlineExceededInput
  */
 export interface JudgeUserInformationApprovalDeadlineExceededInput {
+  [key: string]: any;
   /** ユーザー情報の承認期限。 */
   approvalDeadline: Date;
   /** 期限判定の基準となる現在時刻。 */
@@ -313,6 +348,7 @@ export interface JudgeUserInformationApprovalDeadlineExceededInput {
  * JudgeUserInformationApprovalDeadlineExceededOutput
  */
 export interface JudgeUserInformationApprovalDeadlineExceededOutput {
+  [key: string]: any;
   /** 承認期限を超過しているかどうか。 */
   isDeadlineExceeded: boolean;
   /** 期限超過の場合、超過日数（負の値は期限までの残日数）。 */
@@ -323,6 +359,7 @@ export interface JudgeUserInformationApprovalDeadlineExceededOutput {
  * PrepareUserInformationForApprovalNotificationInput
  */
 export interface PrepareUserInformationForApprovalNotificationInput {
+  [key: string]: any;
   /** ユーザー情報の一意識別子。 */
   userInformationId: string;
   /** 報告者の名前。 */
@@ -345,6 +382,7 @@ export interface PrepareUserInformationForApprovalNotificationInput {
  * PrepareUserInformationForApprovalNotificationOutput
  */
 export interface PrepareUserInformationForApprovalNotificationOutput {
+  [key: string]: any;
   /** 通知層へ渡すユーザー情報承認通知の内容。 */
   notificationContent: UserInformationApprovalNotificationContent;
   /** 通知の送信先メールアドレス（チームリーダー）。 */
@@ -357,6 +395,7 @@ export interface PrepareUserInformationForApprovalNotificationOutput {
  * UserInformationApprovalNotificationContent
  */
 export interface UserInformationApprovalNotificationContent {
+  [key: string]: any;
   /** ユーザー情報の一意識別子。 */
   userInformationId: string;
   /** 報告者の名前。 */

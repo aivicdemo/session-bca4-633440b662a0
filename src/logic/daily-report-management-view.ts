@@ -64,28 +64,45 @@ export class UnauthorizedLeaderAccess extends Error {
 
 // Types and Interfaces
 export interface EmailHistoryDetail {
+  [key: string]: any;
   id?: string;
+  historyId?: string;
   sentAt?: string;
   recipient?: string;
   subject?: string;
 }
 
 export interface RetrieveEmailSendingHistoryDetailsInput {
+  [key: string]: any;
   dateFrom?: string;
   dateTo?: string;
   reporterId?: string;
 }
 
 export interface RetrieveEmailSendingHistoryDetailsOutput {
-  details: EmailHistoryDetail[];
+  [key: string]: any;
+  details?: EmailHistoryDetail[];
+  emailHistoryList?: EmailHistoryDetail[];
+  totalCount?: number;
+  pageNumber?: number;
+  pageSize?: number;
+  hasNextPage?: boolean;
+}
+
+export interface RetrieveNonSubmissionDetectionDetailsInput {
+  [key: string]: any;
+  detectionLogId: string;
+  leaderId: string;
 }
 
 export interface RetrieveNonSubmissionDetectionDetailsOutput {
+  [key: string]: any;
   detectionDetails: any[];
 }
 
 // Existing interfaces
 export interface DashboardOutput {
+  [key: string]: any;
   progressSummary: string;
   submittedCount: number;
   nonSubmittedCount: number;
@@ -99,25 +116,40 @@ export async function formatEmailHistoryForDisplay(
 }
 
 export async function retrieveEmailSendingHistoryDetails(
-  input: RetrieveEmailSendingHistoryDetailsInput
-): Promise<RetrieveEmailSendingHistoryDetailsOutput> {
-  return { details: [] };
+  input?: RetrieveEmailSendingHistoryDetailsInput | any
+): Promise<RetrieveEmailSendingHistoryDetailsOutput | any> {
+  return {
+    details: [],
+    emailHistoryList: [],
+    totalCount: 0,
+    pageNumber: 1,
+    pageSize: 10,
+    hasNextPage: false
+  };
 }
 
 export async function retrieveNonSubmissionDetectionDetails(
-  detectionLogId: string
+  input: RetrieveNonSubmissionDetectionDetailsInput
 ): Promise<RetrieveNonSubmissionDetectionDetailsOutput> {
   return { detectionDetails: [] };
 }
 
 export async function retrieveLeaderDashboardData(
-  targetDate: string,
-  leaderUserId: string
-): Promise<DashboardOutput> {
+  targetDateOrInput?: string | RetrieveLeaderDashboardDataInput,
+  leaderUserIdOrUndefined?: string
+): Promise<RetrieveLeaderDashboardDataOutput> {
   return {
-    progressSummary: '',
-    submittedCount: 0,
-    nonSubmittedCount: 0,
+    submittedReports: [],
+    nonSubmittedReporters: [],
+    detectionLogs: [],
+    emailSendingHistory: [],
+    submissionStatusSummary: {
+      totalReporters: 0,
+      submittedCount: 0,
+      nonSubmittedCount: 0,
+      reminderSentCount: 0,
+      submissionRate: 0,
+    },
   };
 }
 
@@ -125,6 +157,7 @@ export async function retrieveLeaderDashboardData(
  * RetrieveLeaderDashboardDataInput
  */
 export interface RetrieveLeaderDashboardDataInput {
+  [key: string]: any;
   /** リーダーのユーザーID。 */
   leaderId: string;
   /** 管理画面で表示する対象日付（ISO 8601形式: YYYY-MM-DD）。 */
@@ -135,6 +168,7 @@ export interface RetrieveLeaderDashboardDataInput {
  * RetrieveLeaderDashboardDataOutput
  */
 export interface RetrieveLeaderDashboardDataOutput {
+  [key: string]: any;
   /** 本日提出済みの日報一覧（統一フォーマットで整形済み）。 */
   submittedReports: Array<SubmittedDailyReportSummary>;
   /** 本日未提出の報告者一覧。 */
@@ -151,6 +185,7 @@ export interface RetrieveLeaderDashboardDataOutput {
  * SubmittedDailyReportSummary
  */
 export interface SubmittedDailyReportSummary {
+  [key: string]: any;
   /** 日報ID。 */
   reportId: string;
   /** 報告者のユーザーID。 */
@@ -173,6 +208,7 @@ export interface SubmittedDailyReportSummary {
  * EmailHistorySummary
  */
 export interface EmailHistorySummary {
+  [key: string]: any;
   /** メール送信履歴ID。 */
   historyId: string;
   /** 受信者のユーザーID。 */
@@ -195,6 +231,7 @@ export interface EmailHistorySummary {
  * SubmissionStatusSummary
  */
 export interface SubmissionStatusSummary {
+  [key: string]: any;
   /** 対象報告者の総数。 */
   totalReporters: number;
   /** 提出済みの報告者数。 */
@@ -208,19 +245,10 @@ export interface SubmissionStatusSummary {
 }
 
 /**
- * RetrieveNonSubmissionDetectionDetailsInput
- */
-export interface RetrieveNonSubmissionDetectionDetailsInput {
-  /** 詳細を確認する検知ログの一意識別子。 */
-  detectionLogId: string;
-  /** アクセス権限を検証するリーダーの一意識別子。 */
-  leaderId: string;
-}
-
-/**
  * NonSubmittedReporterDetail
  */
 export interface NonSubmittedReporterDetail {
+  [key: string]: any;
   /** 未提出者の一意識別子。 */
   reporterId: string;
   /** 未提出者の氏名。 */
@@ -237,6 +265,7 @@ export interface NonSubmittedReporterDetail {
  * ReminderSendingStatus
  */
 export interface ReminderSendingStatus {
+  [key: string]: any;
   /** リマインダー通知が送信されたかどうか。 */
   reminderSent: boolean;
   /** リマインダー送信日時（ISO 8601形式）、未送信の場合はnull。 */
@@ -253,6 +282,7 @@ export interface ReminderSendingStatus {
  * SubmissionStatusAfterReminder
  */
 export interface SubmissionStatusAfterReminder {
+  [key: string]: any;
   /** リマインダー送信後に提出した者の数。 */
   submittedAfterReminderCount: number;
   /** リマインダー送信後も未提出のままの者の数。 */
@@ -265,6 +295,7 @@ export interface SubmissionStatusAfterReminder {
  * AggregateDailyReportSubmissionStatusInput
  */
 export interface AggregateDailyReportSubmissionStatusInput {
+  [key: string]: any;
   /** 集計を要求したリーダーのユーザーID。 */
   leaderId: string;
   /** 集計対象日付（ISO 8601形式: YYYY-MM-DD）。 */
@@ -275,6 +306,7 @@ export interface AggregateDailyReportSubmissionStatusInput {
  * FormatDailyReportForDisplayInput
  */
 export interface FormatDailyReportForDisplayInput {
+  [key: string]: any;
   /** 日報ID。 */
   reportId: string;
   /** 報告者のユーザーID。 */
@@ -297,6 +329,7 @@ export interface FormatDailyReportForDisplayInput {
  * FormatNonSubmittedReportersListInput
  */
 export interface FormatNonSubmittedReportersListInput {
+  [key: string]: any;
   /** 未提出者の検知結果リスト。 */
   nonSubmittedReporters: Array<{reporterId: string, reporterName: string, reporterEmail: string, department: string, detectionDateTime: string, reminderSentDateTime?: string | null, reminderSendingMethod?: string | null}>;
   /** 本日の日報提出期限時刻（HH:mm 形式）。 */
@@ -309,6 +342,7 @@ export interface FormatNonSubmittedReportersListInput {
  * NonSubmittedReporterSummary
  */
 export interface NonSubmittedReporterSummary {
+  [key: string]: any;
   /** 報告者のユーザーID。 */
   reporterId: string;
   /** 報告者の氏名。 */
@@ -333,6 +367,7 @@ export interface NonSubmittedReporterSummary {
  * FormatDetectionLogForDisplayInput
  */
 export interface FormatDetectionLogForDisplayInput {
+  [key: string]: any;
   /** 整形対象の検知ログを特定するID。 */
   detectionLogId: string;
   /** 未提出者のユーザーID。 */
@@ -359,6 +394,7 @@ export interface FormatDetectionLogForDisplayInput {
  * FormatEmailHistoryForDisplayInput
  */
 export interface FormatEmailHistoryForDisplayInput {
+  [key: string]: any;
   /** メール送信履歴の一意識別子。 */
   historyId: string;
   /** 受信者のユーザーID。 */

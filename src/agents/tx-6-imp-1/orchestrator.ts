@@ -3,13 +3,19 @@
  * ユーザー情報受け取りから確認・承認・通知までを統合・実行するオーケストレーター
  */
 
+export class UserInformationApprovalTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserInformationApprovalTimeoutError';
+  }
+}
+
 import {
   confirmUserInformation,
   ConfirmResult,
 } from '../../logic/user-information-input-confirmation';
 import {
-  validateEmailFormat,
-  ValidationResult,
+  validateEmailAddress,
 } from '../../logic/input-validation-formatting';
 import {
   detectNonSubmittedReportersAtDeadline,
@@ -21,21 +27,22 @@ import {
 } from '../../logic/email-notification-management';
 
 export interface Tx6Imp1AiClient {
-  invokeModel?: (prompt: string, systemPrompt?: string) => any;
   [key: string]: any;
+  invokeModel?: (prompt: string, systemPrompt?: string) => any;
 }
 
 export interface UserInfo {
+  [key: string]: any;
   userId: string;
   userName: string;
   email: string;
   department?: string;
   role?: string;
   phoneNumber?: string;
-  [key: string]: any;
 }
 
 export interface Tx6Imp1AgentInput {
+  [key: string]: any;
   executionTimestamp?: Date;
   targetDate?: Date;
   userInfoList?: UserInfo[];
@@ -48,17 +55,16 @@ export interface Tx6Imp1AgentInput {
     locale?: string;
     systemName?: string;
     supportEmail?: string;
-    [key: string]: any;
   };
   reminderConfig?: {
     firstReminderDelayHours?: number;
     secondReminderDelayHours?: number;
     finalReminderDelayHours?: number;
   };
-  [key: string]: any;
 }
 
 export interface CollectedUserInfo {
+  [key: string]: any;
   userId: string;
   userName: string;
   email: string;
@@ -69,6 +75,7 @@ export interface CollectedUserInfo {
 }
 
 export interface ValidationInfo {
+  [key: string]: any;
   userId: string;
   isValid: boolean;
   validationResults: any;
@@ -78,6 +85,7 @@ export interface ValidationInfo {
 }
 
 export interface ApprovalInfo {
+  [key: string]: any;
   userId: string;
   approved: boolean;
   approvalStatus: string;
@@ -88,6 +96,7 @@ export interface ApprovalInfo {
 }
 
 export interface EmailNotification {
+  [key: string]: any;
   userId: string;
   recipientEmail: string;
   notificationType: 'approval' | 'reminder';
@@ -99,6 +108,7 @@ export interface EmailNotification {
 }
 
 export interface NonSubmittedUserInfo {
+  [key: string]: any;
   userId: string;
   userName: string;
   email: string;
@@ -109,6 +119,7 @@ export interface NonSubmittedUserInfo {
 }
 
 export interface AgentExecutionError {
+  [key: string]: any;
   errorCode: string;
   errorMessage: string;
   timestamp: Date;
@@ -117,6 +128,7 @@ export interface AgentExecutionError {
 }
 
 export interface Tx6Imp1AgentOutput {
+  [key: string]: any;
   executionStatus: 'success' | 'partial_success' | 'failure';
   usersProcessed: number;
   usersValidated: number;
@@ -132,7 +144,6 @@ export interface Tx6Imp1AgentOutput {
   errors?: AgentExecutionError[];
   executionSummary: string;
   executionTimestamp: string;
-  [key: string]: any;
 }
 
 /**
@@ -218,7 +229,7 @@ JSON形式で確認応答を生成してください。`;
         let validationResult: ValidationInfo;
         try {
           // メール形式の検証
-          const emailValidation = await validateEmailFormat(userInfo.email);
+          const emailValidation = await validateEmailAddress({ emailAddress: userInfo.email });
 
           // Action 2 プロンプト実行
           const action02Prompt = `以下のユーザー情報の正確性を検証してください:

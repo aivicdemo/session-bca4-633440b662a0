@@ -50,7 +50,7 @@ export interface ValidateUserInformationRequiredInput {
   emailAddress: string | null | undefined;
   department: string | null | undefined;
   maximumUserNameLength?: number;
-  [key: string]: any;
+  maximumDepartmentLength?: number;
 }
 
 export interface ValidateUserInformationRequiredOutput {
@@ -62,25 +62,29 @@ export interface ValidateUserInformationRequiredOutput {
   errorDetails?: Array<{field: string; errorCode: string}>;
 }
 
-export interface ValidationResult {
-  isValid: boolean;
-  errors?: string[];
-}
-
-export function validateDailyReportContent(
+export async function validateDailyReportContent(
   input: ValidateDailyReportContentInput
-): ValidateDailyReportContentOutput {
+): Promise<ValidateDailyReportContentOutput> {
   const minLen = input.minimumCharacterLength || 10;
 
-  if (!input.content || input.content.trim().length === 0) {
+  if (input.content === null || input.content === undefined || input.content === '') {
     return {
       isValid: false,
       validatedContent: null,
-      errorCode: input.content === null ? 'EmptyOrNullContentError' : 'WhitespaceOnlyContentError'
+      errorCode: 'EmptyOrNullContentError'
     };
   }
 
-  if (input.content.length < minLen) {
+  if (input.content.trim().length === 0) {
+    return {
+      isValid: false,
+      validatedContent: null,
+      errorCode: 'WhitespaceOnlyContentError'
+    };
+  }
+
+  const trimmedContent = input.content.trim();
+  if (trimmedContent.length < minLen) {
     return {
       isValid: false,
       validatedContent: null,
@@ -90,56 +94,67 @@ export function validateDailyReportContent(
 
   return {
     isValid: true,
-    validatedContent: input.content,
+    validatedContent: trimmedContent,
     errorCode: null
   };
 }
 
-export function validateEmailAddress(
+export async function validateEmailAddress(
   input: ValidateEmailAddressInput
-): ValidateEmailAddressOutput {
-  if (!input.emailAddress || input.emailAddress.trim().length === 0) {
+): Promise<ValidateEmailAddressOutput> {
+  if (input.emailAddress === null || input.emailAddress === undefined || input.emailAddress === '') {
     return {
       isValid: false,
       validatedEmailAddress: null,
-      errorCode: 'EmailAddressEmptyError'
+      errorCode: 'EMAIL_NOT_PROVIDED'
     };
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(input.emailAddress)) {
+  const trimmedEmail = input.emailAddress.trim();
+
+  if (trimmedEmail.length === 0) {
     return {
       isValid: false,
       validatedEmailAddress: null,
-      errorCode: 'EmailAddressInvalidFormatError'
+      errorCode: 'EMAIL_NOT_PROVIDED'
+    };
+  }
+
+  // Check for consecutive dots (not RFC 5322 compliant)
+  if (trimmedEmail.includes('..')) {
+    return {
+      isValid: false,
+      validatedEmailAddress: null,
+      errorCode: 'INVALID_EMAIL_FORMAT'
+    };
+  }
+
+  // RFC 5322 compliant email validation
+  // Local part: alphanumeric, dot, hyphen, underscore only
+  // Domain: alphanumeric, hyphen, dot only
+  // TLD: at least 2 characters
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(trimmedEmail)) {
+    return {
+      isValid: false,
+      validatedEmailAddress: null,
+      errorCode: 'INVALID_EMAIL_FORMAT'
     };
   }
 
   return {
     isValid: true,
-    validatedEmailAddress: input.emailAddress,
+    validatedEmailAddress: trimmedEmail,
     errorCode: null
   };
 }
 
-export async function validateDailyReportInput(
-  content: string
-): Promise<ValidationResult> {
-  return { isValid: true };
-}
-
-export async function validateEmailFormat(
-  email: string
-): Promise<ValidationResult> {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return { isValid: emailRegex.test(email) };
-}
-
-export function validateUserInformationRequired(
+export async function validateUserInformationRequired(
   input: ValidateUserInformationRequiredInput
-): ValidateUserInformationRequiredOutput {
+): Promise<ValidateUserInformationRequiredOutput> {
   const errors: Array<{field: string; errorCode: string}> = [];
   const maxUserNameLen = input.maximumUserNameLength || 100;
+  const maxDepartmentLen = input.maximumDepartmentLength || 100;
 
   let validatedUserName: string | null = null;
   let validatedEmailAddress: string | null = null;
@@ -147,30 +162,40 @@ export function validateUserInformationRequired(
 
   // userName validation
   if (!input.userName || input.userName.trim().length === 0) {
-    errors.push({ field: 'userName', errorCode: 'UserNameEmpty' });
-  } else if (input.userName.length > maxUserNameLen) {
-    errors.push({ field: 'userName', errorCode: 'UserNameTooLong' });
+    errors.push({ field: 'userName', errorCode: 'NameEmpty' });
+  } else if (input.userName.trim().length > maxUserNameLen) {
+    errors.push({ field: 'userName', errorCode: 'NameInvalidFormat' });
   } else {
-    validatedUserName = input.userName;
+    validatedUserName = input.userName.trim();
   }
 
   // emailAddress validation
   if (!input.emailAddress || input.emailAddress.trim().length === 0) {
     errors.push({ field: 'emailAddress', errorCode: 'EmailAddressEmpty' });
   } else {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(input.emailAddress)) {
+    const trimmedEmail = input.emailAddress.trim();
+
+    // Check for consecutive dots (not RFC 5322 compliant)
+    if (trimmedEmail.includes('..')) {
       errors.push({ field: 'emailAddress', errorCode: 'EmailAddressInvalidFormat' });
     } else {
-      validatedEmailAddress = input.emailAddress;
+      // RFC 5322 compliant email validation
+      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        errors.push({ field: 'emailAddress', errorCode: 'EmailAddressInvalidFormat' });
+      } else {
+        validatedEmailAddress = trimmedEmail;
+      }
     }
   }
 
   // department validation
   if (!input.department || input.department.trim().length === 0) {
     errors.push({ field: 'department', errorCode: 'DepartmentEmpty' });
+  } else if (input.department.trim().length > maxDepartmentLen) {
+    errors.push({ field: 'department', errorCode: 'DepartmentInvalidFormat' });
   } else {
-    validatedDepartment = input.department;
+    validatedDepartment = input.department.trim();
   }
 
   const firstError = errors.length > 0 ? errors[0].errorCode : null;
@@ -185,9 +210,9 @@ export function validateUserInformationRequired(
   };
 }
 
-export function detectDuplicateEmailAddress(
+export async function detectDuplicateEmailAddress(
   input: DetectDuplicateEmailAddressInput
-): DetectDuplicateEmailAddressOutput {
+): Promise<DetectDuplicateEmailAddressOutput> {
   if (!input.emailAddress || input.emailAddress.trim().length === 0) {
     return {
       isDuplicate: false,
@@ -196,8 +221,9 @@ export function detectDuplicateEmailAddress(
     };
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(input.emailAddress)) {
+  const trimmedEmail = input.emailAddress.trim();
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(trimmedEmail)) {
     return {
       isDuplicate: false,
       validatedEmailAddress: null,
@@ -205,69 +231,108 @@ export function detectDuplicateEmailAddress(
     };
   }
 
-  const isDuplicate = input.existingUserEmails.includes(input.emailAddress);
+  const isDuplicate = input.existingUserEmails?.includes(trimmedEmail) || false;
+
+  if (isDuplicate) {
+    return {
+      isDuplicate: true,
+      validatedEmailAddress: null,
+      errorCode: 'DuplicateEmailAddress'
+    };
+  }
 
   return {
-    isDuplicate,
-    validatedEmailAddress: input.emailAddress,
+    isDuplicate: false,
+    validatedEmailAddress: trimmedEmail,
     errorCode: null
   };
 }
 
 export async function validateReporterNameFormat(
-  name: string
-): Promise<ValidationResult> {
-  return { isValid: true };
+  input: ValidateReporterNameFormatInput
+): Promise<ValidateReporterNameFormatOutput> {
+  const maxNameLen = input.maximumNameLength || 100;
+
+  if (!input.reporterName || input.reporterName.trim().length === 0) {
+    return {
+      isValid: false,
+      validatedReporterName: null,
+      errorCode: 'ReporterNameEmptyError'
+    };
+  }
+
+  const trimmedName = input.reporterName.trim();
+  if (trimmedName.length > maxNameLen) {
+    return {
+      isValid: false,
+      validatedReporterName: null,
+      errorCode: 'ReporterNameExceedsMaximumLength'
+    };
+  }
+
+  return {
+    isValid: true,
+    validatedReporterName: trimmedName,
+    errorCode: null
+  };
 }
 
 export async function validateMinimumContentLength(
-  content: string,
-  minimumLength?: number
-): Promise<ValidationResult> {
-  const minLen = minimumLength || 1;
-  return { isValid: (content?.length || 0) >= minLen };
+  input: ValidateMinimumContentLengthInput
+): Promise<ValidateMinimumContentLengthOutput> {
+  if (input.content === null || input.content === undefined || input.content === '') {
+    return {
+      isValid: false,
+      validatedContent: null,
+      errorCode: 'EmptyOrNullContentError'
+    };
+  }
+
+  if (input.content.trim().length === 0) {
+    return {
+      isValid: false,
+      validatedContent: null,
+      errorCode: 'WhitespaceOnlyContentError'
+    };
+  }
+
+  const trimmedContent = input.content.trim();
+  if (trimmedContent.length < input.minimumCharacterLength) {
+    return {
+      isValid: false,
+      validatedContent: null,
+      errorCode: 'ContentBelowMinimumLengthError'
+    };
+  }
+
+  return {
+    isValid: true,
+    validatedContent: trimmedContent,
+    errorCode: null
+  };
 }
 
 /**
  * ValidateReporterNameFormatInput
  */
 export interface ValidateReporterNameFormatInput {
-  /** 検証対象の報告者名入力値。 */
   reporterName: string | null | undefined;
-  /** 報告者名の最大許容文字数（指定時のみ検証）。 */
   maximumNameLength?: number | undefined;
 }
 
-/**
- * ValidateReporterNameFormatOutput
- */
 export interface ValidateReporterNameFormatOutput {
-  /** 報告者名が検証基準を満たすか否か。 */
   isValid: boolean;
-  /** 検証済みの報告者名（トリム済み）、またはnull。 */
   validatedReporterName: string | null;
-  /** 検証失敗時のエラーコード、または正常時はnull。 */
   errorCode: string | null;
 }
 
-/**
- * ValidateMinimumContentLengthInput
- */
 export interface ValidateMinimumContentLengthInput {
-  /** 検証対象の日報内容テキスト。 */
   content: string | null | undefined;
-  /** 日報内容が満たすべき最小文字数。 */
   minimumCharacterLength: number;
 }
 
-/**
- * ValidateMinimumContentLengthOutput
- */
 export interface ValidateMinimumContentLengthOutput {
-  /** 入力内容が最小文字数要件を満たしているか。 */
   isValid: boolean;
-  /** 検証後の日報内容。不正な場合はnull。 */
   validatedContent: string | null;
-  /** 検証失敗時のエラーコード。成功時はnull。 */
   errorCode: string | null;
 }

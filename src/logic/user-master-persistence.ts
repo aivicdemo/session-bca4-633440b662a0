@@ -79,6 +79,7 @@ export class UserNotFoundError extends Error {
 
 // Types and Interfaces
 export interface RetrieveReporterByUserIdOutput {
+  [key: string]: any;
   reporterId?: string;
   userId?: string;
   name?: string;
@@ -86,17 +87,26 @@ export interface RetrieveReporterByUserIdOutput {
 }
 
 export interface SaveReminderNotificationSettingsInput {
+  [key: string]: any;
   userId?: string;
   settings?: any;
 }
 
 export interface SaveReminderNotificationSettingsOutput {
-  saved: boolean;
+  [key: string]: any;
+  saved?: boolean;
+  success?: boolean;
   settingId?: string;
+  reminderSettingId?: string | null;
+  message?: string;
+  operation?: string;
+  appliedAt?: Date;
+  errorDetails?: any;
 }
 
 
 export interface PersistResult {
+  [key: string]: any;
   persisted: boolean;
   recordId?: string;
 }
@@ -186,6 +196,7 @@ export async function retrieveEmailSendingHistoryByDateRange(
  * RegisterReporterToMasterInput
  */
 export interface RegisterReporterToMasterInput {
+  [key: string]: any;
   /** 登録する報告者の氏名。 */
   reporterName: string;
   /** 登録する報告者のメールアドレス。 */
@@ -202,6 +213,7 @@ export interface RegisterReporterToMasterInput {
  * RegisterReporterToMasterOutput
  */
 export interface RegisterReporterToMasterOutput {
+  [key: string]: any;
   /** 報告者マスタへの登録が成功したかどうか。 */
   success: boolean;
   /** 登録された報告者に割り当てられたユーザーID。登録失敗時はnull。 */
@@ -214,6 +226,7 @@ export interface RegisterReporterToMasterOutput {
  * UpdateReporterInMasterInput
  */
 export interface UpdateReporterInMasterInput {
+  [key: string]: any;
   /** 更新対象の報告者ID。 */
   reporterId: string;
   /** 更新後の報告者名。 */
@@ -234,6 +247,7 @@ export interface UpdateReporterInMasterInput {
  * UpdateReporterInMasterOutput
  */
 export interface UpdateReporterInMasterOutput {
+  [key: string]: any;
   /** 更新が成功したかどうか。 */
   success: boolean;
   /** 更新された報告者ID。失敗時はnull。 */
@@ -246,6 +260,7 @@ export interface UpdateReporterInMasterOutput {
  * DeactivateReporterInMasterInput
  */
 export interface DeactivateReporterInMasterInput {
+  [key: string]: any;
   /** 無効化対象の報告者ID。 */
   reporterId: string;
   /** 無効化操作を実行するチームリーダーのユーザーID。 */
@@ -260,6 +275,7 @@ export interface DeactivateReporterInMasterInput {
  * DeactivateReporterInMasterOutput
  */
 export interface DeactivateReporterInMasterOutput {
+  [key: string]: any;
   /** 無効化処理の成功可否。 */
   success: boolean;
   /** 無効化された報告者ID。失敗時はnull。 */
@@ -272,6 +288,7 @@ export interface DeactivateReporterInMasterOutput {
  * RetrieveActiveReportersForDateInput
  */
 export interface RetrieveActiveReportersForDateInput {
+  [key: string]: any;
   /** 有効な報告者を検索する対象日付（ISO 8601形式）。 */
   targetDate: string;
   /** 検索対象を特定部門に限定する場合の部門ID。 */
@@ -282,6 +299,7 @@ export interface RetrieveActiveReportersForDateInput {
  * RetrieveActiveReportersForDateOutput
  */
 export interface RetrieveActiveReportersForDateOutput {
+  [key: string]: any;
   /** 検索処理の成功可否。 */
   success: boolean;
   /** 指定日付において有効な報告者の一覧。 */
@@ -296,6 +314,7 @@ export interface RetrieveActiveReportersForDateOutput {
  * RetrieveReporterByUserIdInput
  */
 export interface RetrieveReporterByUserIdInput {
+  [key: string]: any;
   /** 検索対象のユーザーID。 */
   userId: string;
 }
@@ -304,6 +323,7 @@ export interface RetrieveReporterByUserIdInput {
  * PersistReporterMasterChangeHistoryInput
  */
 export interface PersistReporterMasterChangeHistoryInput {
+  [key: string]: any;
   /** 変更対象の報告者ID。 */
   reporterId: string;
   /** 実行された操作の種別（登録、更新、削除）。 */
@@ -324,6 +344,7 @@ export interface PersistReporterMasterChangeHistoryInput {
  * PersistReporterMasterChangeHistoryOutput
  */
 export interface PersistReporterMasterChangeHistoryOutput {
+  [key: string]: any;
   /** 変更履歴の記録が成功したかどうか。 */
   success: boolean;
   /** 記録された変更履歴のID（失敗時はnull）。 */
@@ -336,6 +357,7 @@ export interface PersistReporterMasterChangeHistoryOutput {
  * RetrieveReminderNotificationSettingsByUserIdInput
  */
 export interface RetrieveReminderNotificationSettingsByUserIdInput {
+  [key: string]: any;
   /** リマインダー設定を検索するユーザーID。 */
   userId: string;
 }
@@ -344,6 +366,7 @@ export interface RetrieveReminderNotificationSettingsByUserIdInput {
  * RetrieveReminderNotificationSettingsByUserIdOutput
  */
 export interface RetrieveReminderNotificationSettingsByUserIdOutput {
+  [key: string]: any;
   /** 検索処理の成功可否。 */
   success: boolean;
   /** 検索されたリマインダー設定レコード、存在しない場合はnull。 */
@@ -356,6 +379,7 @@ export interface RetrieveReminderNotificationSettingsByUserIdOutput {
  * SaveDailyReportRecordInput
  */
 export interface SaveDailyReportRecordInput {
+  [key: string]: any;
   /** 日報を提出したユーザーの一意識別子。 */
   userId: string;
   /** 日報の対象日付（YYYY-MM-DD形式）。 */
@@ -376,6 +400,7 @@ export interface SaveDailyReportRecordInput {
  * SaveDailyReportRecordOutput
  */
 export interface SaveDailyReportRecordOutput {
+  [key: string]: any;
   /** 日報レコードの保存が成功したかどうか。 */
   success: boolean;
   /** 保存された日報レコードの一意識別子。失敗時は null。 */
@@ -388,6 +413,7 @@ export interface SaveDailyReportRecordOutput {
  * RetrieveDailyReportByUserIdAndDateInput
  */
 export interface RetrieveDailyReportByUserIdAndDateInput {
+  [key: string]: any;
   /** 日報を検索する対象ユーザーの一意識別子。 */
   userId: string;
   /** 検索対象の報告日付（ISO 8601形式: YYYY-MM-DD）。 */
@@ -398,6 +424,7 @@ export interface RetrieveDailyReportByUserIdAndDateInput {
  * RetrieveDailyReportByUserIdAndDateOutput
  */
 export interface RetrieveDailyReportByUserIdAndDateOutput {
+  [key: string]: any;
   /** 日報レコードの検索が成功したかどうかを示す。 */
   success: boolean;
   /** 検索された日報レコード。存在しない場合はnull。 */
@@ -410,6 +437,7 @@ export interface RetrieveDailyReportByUserIdAndDateOutput {
  * RetrieveNonSubmissionDetectionLogsByTargetDateInput
  */
 export interface RetrieveNonSubmissionDetectionLogsByTargetDateInput {
+  [key: string]: any;
   /** 検索対象の日付（YYYY-MM-DD 形式）。 */
   targetDate: string;
   /** 部門でフィルタリングする場合の部門名。指定しない場合は全部門を対象とする。 */
@@ -422,6 +450,7 @@ export interface RetrieveNonSubmissionDetectionLogsByTargetDateInput {
  * RetrieveNonSubmissionDetectionLogsByTargetDateOutput
  */
 export interface RetrieveNonSubmissionDetectionLogsByTargetDateOutput {
+  [key: string]: any;
   /** 検索が成功したかどうか。 */
   success: boolean;
   /** 検索条件に合致した未提出者検知ログの一覧。 */
@@ -436,6 +465,7 @@ export interface RetrieveNonSubmissionDetectionLogsByTargetDateOutput {
  * SaveEmailSendingHistoryInput
  */
 export interface SaveEmailSendingHistoryInput {
+  [key: string]: any;
   /** メール受信者のユーザーID。 */
   userId: string;
   /** メールの種別（日報提出通知、未提出者催促、リマインダー通知、ユーザー情報承認通知）。 */
@@ -464,6 +494,7 @@ export interface SaveEmailSendingHistoryInput {
  * SaveEmailSendingHistoryOutput
  */
 export interface SaveEmailSendingHistoryOutput {
+  [key: string]: any;
   /** メール送信履歴の保存成功の可否。 */
   success: boolean;
   /** 保存されたメール送信履歴レコードのID。失敗時はnull。 */
@@ -476,6 +507,7 @@ export interface SaveEmailSendingHistoryOutput {
  * RetrieveEmailSendingHistoryByDateRangeInput
  */
 export interface RetrieveEmailSendingHistoryByDateRangeInput {
+  [key: string]: any;
   /** 検索対象期間の開始日時。 */
   startDateTime: Date;
   /** 検索対象期間の終了日時。 */
@@ -496,6 +528,7 @@ export interface RetrieveEmailSendingHistoryByDateRangeInput {
  * RetrieveEmailSendingHistoryByDateRangeOutput
  */
 export interface RetrieveEmailSendingHistoryByDateRangeOutput {
+  [key: string]: any;
   /** 検索処理の成功可否。 */
   success: boolean;
   /** 検索条件に合致したメール送信履歴レコード一覧。 */

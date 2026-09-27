@@ -10,6 +10,41 @@
  * 5. 催促実行 - 催促メッセージを生成し送信
  */
 
+export class SchedulerExecutionTimingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchedulerExecutionTimingError';
+  }
+}
+
+export class SubmissionStatusCheckFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SubmissionStatusCheckFailure';
+  }
+}
+
+export class PromptDecisionFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PromptDecisionFailure';
+  }
+}
+
+export class PromptNotificationSendFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PromptNotificationSendFailure';
+  }
+}
+
+export class DetectionLogRecordingFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DetectionLogRecordingFailure';
+  }
+}
+
 import { buildAction01Prompt } from './prompts/action-01';
 import { buildAction02Prompt } from './prompts/action-02';
 import { buildAction03Prompt } from './prompts/action-03';
@@ -17,11 +52,12 @@ import { buildAction04Prompt } from './prompts/action-04';
 import { buildAction05Prompt } from './prompts/action-05';
 
 export interface Tx5Imp1AiClient {
-  invokeModel?: (prompt: string, systemPrompt?: string) => any;
   [key: string]: any;
+  invokeModel?: (prompt: string, systemPrompt?: string) => any;
 }
 
 export interface Tx5Imp1AgentInput {
+  [key: string]: any;
   executionTimestamp?: Date;
   targetDate?: string; // YYYY-MM-DD
   teamId?: string;
@@ -33,17 +69,15 @@ export interface Tx5Imp1AgentInput {
     locale?: string;
     scheduledAt?: string;
     executedBy?: string;
-    [key: string]: any;
   };
   executionContext?: {
     scheduledAt?: string;
     executedBy?: string;
-    [key: string]: any;
   };
-  [key: string]: any;
 }
 
 export interface ProgressStatus {
+  [key: string]: any;
   targetDate: string;
   totalReporters: number;
   submittedCount: number;
@@ -56,6 +90,7 @@ export interface ProgressStatus {
 }
 
 export interface NonSubmittedReporter {
+  [key: string]: any;
   reporterId?: string;
   userId?: string;
   userName?: string;
@@ -70,10 +105,10 @@ export interface NonSubmittedReporter {
   priority?: number;
   minutesLate?: number;
   minutesUntilDeadline?: number;
-  [key: string]: any;
 }
 
 export interface PromptDecision {
+  [key: string]: any;
   reporterId: string;
   promptRequired: boolean;
   confidence: number;
@@ -86,6 +121,7 @@ export interface PromptDecision {
 }
 
 export interface PromptExecution {
+  [key: string]: any;
   reporterId: string;
   reporterName: string;
   method: 'email' | 'chat' | 'phone' | 'escalate';
@@ -96,6 +132,7 @@ export interface PromptExecution {
 }
 
 export interface AgentExecutionError {
+  [key: string]: any;
   errorCode: string;
   errorMessage: string;
   timestamp: Date;
@@ -104,6 +141,7 @@ export interface AgentExecutionError {
 }
 
 export interface Tx5Imp1AgentOutput {
+  [key: string]: any;
   executionStatus: 'success' | 'partial_success' | 'failure';
   executionTimestamp?: string;
   targetDate?: string;
@@ -142,7 +180,6 @@ export interface Tx5Imp1AgentOutput {
   // Summary and errors
   errors?: AgentExecutionError[] | any[];
   executionSummary?: string;
-  [key: string]: any;
 }
 
 /**

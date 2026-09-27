@@ -8,17 +8,19 @@ import { sendNonSubmissionPromptNotification } from '../../logic/email-notificat
 import { retrieveLeaderDashboardData } from '../../logic/daily-report-management-view';
 
 export interface Tx4Imp1AiClient {
-  invokeModel?(prompt: string, systemPrompt?: string): Promise<string>;
   [key: string]: any;
+  invokeModel?(prompt: string, systemPrompt?: string): Promise<string>;
 }
 
 export interface Tx4Imp1AgentInput {
+  [key: string]: any;
   targetDate: string;
   leaderUserId: string;
   teamId: string;
 }
 
 export interface Tx4Imp1AgentOutput {
+  [key: string]: any;
   executionStatus: 'success' | 'partial_success' | 'failure';
   targetDate: string;
   submittedReportCount: number;
@@ -31,14 +33,14 @@ export interface Tx4Imp1AgentOutput {
   detectionLogId: string;
   executionTimestamp: string;
   errors?: any[];
-  [key: string]: any;
 }
 
 export async function runTx4Imp1Agent(
   input: Tx4Imp1AgentInput,
   aiClient: Tx4Imp1AiClient
 ): Promise<Tx4Imp1AgentOutput> {
-  const executionTimestamp = new Date().toISOString();
+  const now = new Date();
+  const executionTimestamp = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
 
   try {
     const businessDay = await judgeBusinessDayAndDeadline({
@@ -53,10 +55,11 @@ export async function runTx4Imp1Agent(
       targetDate: typeof input.targetDate === 'string' ? new Date(input.targetDate) : input.targetDate
     });
 
-    const submittedReportsResult = await retrieveDailyReportsForLeaderReview(
-      input.targetDate,
-      input.teamId
-    );
+    const submittedReportsResult = await retrieveDailyReportsForLeaderReview({
+      leaderId: input.leaderUserId,
+      startDate: input.targetDate,
+      endDate: input.targetDate,
+    });
 
     const nonSubmittedResult = await detectNonSubmittedReportersAtDeadline({
       targetDate: input.targetDate,
@@ -76,7 +79,11 @@ export async function runTx4Imp1Agent(
     }
 
     const leaderNotification = await sendLeaderNonSubmissionPromptNotification({
-      promptCount: promptsSent,
+      leaderId: input.leaderUserId,
+      targetDate: new Date(input.targetDate),
+      nonSubmittedReporterIds: nonSubmittedResult.nonSubmittedReporters.map((r: any) => r.userId),
+      reminderSettingId: 'default',
+      executionTimestamp: new Date(),
     });
 
     const dashboardData = await retrieveLeaderDashboardData(
@@ -87,17 +94,28 @@ export async function runTx4Imp1Agent(
     return {
       executionStatus: 'success',
       targetDate: input.targetDate,
-      submittedReportCount: submittedReportsResult.count,
+      submittedReportCount: submittedReportsResult.totalCount,
       nonSubmittedReporterCount: nonSubmittedResult.nonSubmittedReporters.length,
       nonSubmittedReporters: nonSubmittedResult.nonSubmittedReporters,
       promptNotificationsSent: promptsSent,
       promptNotificationsFailed: promptsFailed,
       progressSummary: dashboardData.progressSummary,
-      leaderNotificationSent: leaderNotification.sent > 0 || true,
+      leaderNotificationSent: leaderNotification.success,
       detectionLogId: nonSubmittedResult.detectionLog.detectionLogId,
       executionTimestamp,
     };
   } catch (error) {
+    const errorMessage = (error as any)?.message || String(error);
+    let errorCode = 'UnknownError';
+
+    if (errorMessage.includes('未提出者検知')) {
+      errorCode = 'NonSubmissionDetectionFailed';
+    } else if (errorMessage.includes('業務日判定')) {
+      errorCode = 'BusinessDayJudgmentFailed';
+    } else if (errorMessage.includes('報告者取得')) {
+      errorCode = 'ReporterFetchFailed';
+    }
+
     return {
       executionStatus: 'failure',
       targetDate: input.targetDate,
@@ -110,7 +128,10 @@ export async function runTx4Imp1Agent(
       leaderNotificationSent: false,
       detectionLogId: '',
       executionTimestamp,
-      errors: [{ message: String(error) }],
+      errors: [{
+        code: errorCode,
+        message: errorCode === 'NonSubmissionDetectionFailed' ? '未提出者の検知に失敗しました。' : errorMessage
+      }],
     };
   }
 }

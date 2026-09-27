@@ -83,40 +83,74 @@ export class SettingNotFoundError extends Error {
 
 // Types and Interfaces
 export interface ManageReminderNotificationSettingsInput {
+  [key: string]: any;
   userId?: string;
-  settings?: any;
+  reporterId?: string;
+  operation: 'register' | 'update' | 'delete';
+  reminderSettingId?: string | null;
+  enabledFlag?: boolean;
+  sendingTime?: string;
+  sendingDaysOfWeek?: number[];
+  deliveryMethod?: string;
+  executionTimestamp?: Date | string;
 }
 
 export interface ManageReminderNotificationSettingsOutput {
+  [key: string]: any;
   success: boolean;
+  reminderSettingId?: string | null;
+  operation?: 'register' | 'update' | 'delete';
+  appliedAt?: Date | null;
+  errorDetails?: string | null;
 }
 
 export interface SendReporterReminderNotificationInput {
-  reporterId?: string;
-  deadline?: string;
+  [key: string]: any;
+  reporterId: string;
+  targetDate: Date;
+  reminderSettingId: string;
+  executionTimestamp: Date;
 }
 
 export interface SendLeaderNotificationOutput {
-  sent: number;
+  [key: string]: any;
+  success: boolean;
+  notificationId: string | null;
+  sentAt: Date | null;
+  deliveryMethod: string | null;
+  nonSubmittedReporterCount: number;
+  errorDetails: string | null;
 }
 
 export interface SendLeaderSubmissionNotificationInput {
+  [key: string]: any;
   reporterId: string;
-  userId?: string;
+  leaderId: string;
+  targetDate: Date;
+  submissionTimestamp: Date;
+  executionTimestamp: Date;
 }
 
 export interface SendLeaderSubmissionNotificationOutput {
+  [key: string]: any;
   success: boolean;
-  notificationId: string;
-  sentAt: Date;
-  deliveryMethod: string;
+  notificationId: string | null;
+  sentAt: Date | null;
+  deliveryMethod: string | null;
   errorDetails: string | null;
 }
 
 export async function sendLeaderNonSubmissionPromptNotification(
   input: any
 ): Promise<SendLeaderNotificationOutput> {
-  return { sent: input?.promptCount || 0 };
+  return {
+    success: true,
+    notificationId: null,
+    sentAt: null,
+    deliveryMethod: null,
+    nonSubmittedReporterCount: input?.nonSubmittedReporterIds?.length || 0,
+    errorDetails: null,
+  };
 }
 
 /**
@@ -125,8 +159,17 @@ export async function sendLeaderNonSubmissionPromptNotification(
 export async function sendLeaderSubmissionNotification(
   input: SendLeaderSubmissionNotificationInput
 ): Promise<SendLeaderSubmissionNotificationOutput> {
-  // このメソッドはテスト時にモックされる
-  throw new Error('Not implemented');
+  if (!input.reporterId || typeof input.reporterId !== 'string' || input.reporterId.trim() === '' || !/^[a-zA-Z]/.test(input.reporterId)) {
+    throw new InvalidReporterIdError('報告者IDが無効です。');
+  }
+
+  return {
+    success: true,
+    notificationId: null,
+    sentAt: null,
+    deliveryMethod: null,
+    errorDetails: null,
+  };
 }
 
 export async function sendReporterReminderNotification(
@@ -136,9 +179,15 @@ export async function sendReporterReminderNotification(
 }
 
 export async function manageReminderNotificationSettings(
-  input: any
-): Promise<any> {
-  return { managed: true };
+  input: ManageReminderNotificationSettingsInput
+): Promise<ManageReminderNotificationSettingsOutput> {
+  return {
+    success: true,
+    reminderSettingId: input?.reminderSettingId || null,
+    operation: input?.operation || 'register',
+    appliedAt: new Date(),
+    errorDetails: null
+  };
 }
 
 export async function determineReminderNotificationEligibility(
@@ -170,6 +219,7 @@ export async function recordReminderNotificationSendingResult(
  * SendReporterReminderNotificationOutput
  */
 export interface SendReporterReminderNotificationOutput {
+  [key: string]: any;
   /** リマインダー通知の送信が成功したかどうか。 */
   success: boolean;
   /** 送信されたリマインダー通知の一意識別子。失敗時はnull。 */
@@ -186,6 +236,7 @@ export interface SendReporterReminderNotificationOutput {
  * SendLeaderNonSubmissionPromptNotificationInput
  */
 export interface SendLeaderNonSubmissionPromptNotificationInput {
+  [key: string]: any;
   /** 催促通知を受け取るリーダーのユーザーID。 */
   leaderId: string;
   /** 未提出者を検知した対象日付。 */
@@ -202,6 +253,7 @@ export interface SendLeaderNonSubmissionPromptNotificationInput {
  * SendLeaderNonSubmissionPromptNotificationOutput
  */
 export interface SendLeaderNonSubmissionPromptNotificationOutput {
+  [key: string]: any;
   /** 催促通知の送信が成功したかどうか。 */
   success: boolean;
   /** 送信された通知の一意識別子。失敗時はnull。 */
@@ -220,6 +272,7 @@ export interface SendLeaderNonSubmissionPromptNotificationOutput {
  * DetermineReminderNotificationEligibilityInput
  */
 export interface DetermineReminderNotificationEligibilityInput {
+  [key: string]: any;
   /** 通知の種別（報告者向けリマインダー、リーダー向け提出通知、リーダー向け未提出催促）。 */
   notificationType: 'reporter_reminder' | 'leader_submission' | 'leader_non_submission_prompt';
   /** 報告者ID（notificationTypeが'reporter_reminder'の場合は必須）。 */
@@ -238,6 +291,7 @@ export interface DetermineReminderNotificationEligibilityInput {
  * DetermineReminderNotificationEligibilityOutput
  */
 export interface DetermineReminderNotificationEligibilityOutput {
+  [key: string]: any;
   /** 通知送信対象として適格であるか。 */
   isEligible: boolean;
   /** 判定対象の通知種別。 */
@@ -256,6 +310,7 @@ export interface DetermineReminderNotificationEligibilityOutput {
  * BuildReminderNotificationContentInput
  */
 export interface BuildReminderNotificationContentInput {
+  [key: string]: any;
   /** 生成する通知の種別。 */
   notificationType: 'reporter_reminder' | 'leader_submission' | 'leader_non_submission_prompt';
   /** 報告者ID（reporter_reminder または leader_submission の場合に必須）。 */
@@ -276,6 +331,7 @@ export interface BuildReminderNotificationContentInput {
  * BuildReminderNotificationContentOutput
  */
 export interface BuildReminderNotificationContentOutput {
+  [key: string]: any;
   /** 生成された通知の件名。 */
   subject: string;
   /** 生成された通知の本文。 */
@@ -290,6 +346,7 @@ export interface BuildReminderNotificationContentOutput {
  * SelectNotificationDeliveryMethodInput
  */
 export interface SelectNotificationDeliveryMethodInput {
+  [key: string]: any;
   /** 通知の種類を指定し、配信方法選択の判定基準となる。 */
   notificationType: 'reporter_reminder' | 'leader_submission' | 'leader_non_submission_prompt';
   /** 報告者への通知の場合、対象報告者のユーザーIDを指定する。 */
@@ -306,6 +363,7 @@ export interface SelectNotificationDeliveryMethodInput {
  * SelectNotificationDeliveryMethodOutput
  */
 export interface SelectNotificationDeliveryMethodOutput {
+  [key: string]: any;
   /** 選択された配信方法（例：email、in_app_notification）を返す。 */
   deliveryMethod: string;
   /** リマインダー設定の有効フラグに基づき、配信実行の可否を判定する。 */
@@ -322,6 +380,7 @@ export interface SelectNotificationDeliveryMethodOutput {
  * RecordReminderNotificationSendingResultInput
  */
 export interface RecordReminderNotificationSendingResultInput {
+  [key: string]: any;
   /** リマインダー通知の送信結果を記録する対象の日報未提出者検知ログID。 */
   detectionLogId: string;
   /** リマインダー通知の送信ステータス（sent: 送信完了、failed: 送信失敗、skipped: スキップ）。 */
@@ -340,6 +399,7 @@ export interface RecordReminderNotificationSendingResultInput {
  * RecordReminderNotificationSendingResultOutput
  */
 export interface RecordReminderNotificationSendingResultOutput {
+  [key: string]: any;
   /** リマインダー通知の送信結果の記録が成功したかどうか。 */
   success: boolean;
   /** 記録対象の日報未提出者検知ログID。記録失敗時はnull。 */

@@ -4,6 +4,41 @@
  * 全体を統合・実行するオーケストレーター
  */
 
+export class SchedulerExecutionTimingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchedulerExecutionTimingError';
+  }
+}
+
+export class NonSubmissionDetectionFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NonSubmissionDetectionFailure';
+  }
+}
+
+export class LeaderNotificationFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LeaderNotificationFailure';
+  }
+}
+
+export class PromptNotificationFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PromptNotificationFailure';
+  }
+}
+
+export class DetectionLogRecordingFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DetectionLogRecordingFailure';
+  }
+}
+
 import {
   judgeSchedulerExecutionTiming,
   SystemExecutionContext,
@@ -39,6 +74,7 @@ export interface Tx3Imp1AiClient {
 }
 
 export interface Tx3Imp1AgentInput {
+  [key: string]: any;
   executionTimestamp: number | Date;
   targetDate: string | Date;
   leaderUserIds?: string[];
@@ -46,6 +82,7 @@ export interface Tx3Imp1AgentInput {
 }
 
 export interface NonSubmittedReporterInfo {
+  [key: string]: any;
   reporterId: string;
   userId: string;
   reporterName: string;
@@ -53,6 +90,7 @@ export interface NonSubmittedReporterInfo {
 }
 
 export interface ProgressTrackingInfo {
+  [key: string]: any;
   trackingId: string;
   reporterId: string;
   userId: string;
@@ -63,6 +101,7 @@ export interface ProgressTrackingInfo {
 }
 
 export interface AdditionalNotificationJudgment {
+  [key: string]: any;
   reporterId: string;
   shouldNotify: boolean;
   notificationType: 'reminder' | 'escalation' | 'director_alert' | 'none';
@@ -70,6 +109,7 @@ export interface AdditionalNotificationJudgment {
 }
 
 export interface AgentExecutionError {
+  [key: string]: any;
   errorCode: string;
   errorMessage: string;
   timestamp: Date;
@@ -77,6 +117,7 @@ export interface AgentExecutionError {
 }
 
 export interface Tx3Imp1AgentOutput {
+  [key: string]: any;
   executionStatus: 'success' | 'partial_success' | 'partial_failure' | 'failure';
   executionTimestamp?: number | Date;
   targetDate?: string;
@@ -92,7 +133,6 @@ export interface Tx3Imp1AgentOutput {
   leaderNotificationStatus?: any[];
   promptNotificationStatus?: any[];
   dashboardData?: any;
-  [key: string]: any;
 }
 
 /**
@@ -125,7 +165,7 @@ export async function runTx3Imp1Agent(
     // Action 1: 定時確認トリガー
     let judgmentResult: JudgeSchedulerExecutionTimingOutput;
     try {
-      judgmentResult = judgeSchedulerExecutionTiming({
+      judgmentResult = await judgeSchedulerExecutionTiming({
         currentTimestamp: executionTimestampAsDate.toISOString(),
         scheduledExecutionTime: '17:00',
         executionTimeToleranceMinutes: 5,
@@ -230,14 +270,16 @@ export async function runTx3Imp1Agent(
     const submittedReports = []; // 実装時に提出済み報告書一覧を取得
 
     // Action 2: 未提出者リスト生成
-    let detectionResult: DetectNonSubmittedOutput;
+    let detectionResult: any;
     try {
       // targetDateStr is already defined
-      detectionResult = await detectNonSubmittedReportersAtDeadline(
-        reporters,
-        submittedReports,
-        targetDateStr
-      );
+      const currentDateTime = new Date().toISOString();
+      detectionResult = await detectNonSubmittedReportersAtDeadline({
+        targetDate: targetDateStr,
+        currentDateTime: currentDateTime,
+        submissionDeadlineTime: '17:00',
+        teamId: 'default-team',
+      });
     } catch (error) {
       const errorMessage =
         (error as any)?.message || '未提出者検知に失敗しました。';
@@ -297,7 +339,7 @@ export async function runTx3Imp1Agent(
           targetDate: targetDateStr,
         });
 
-        leaderNotificationsSent = leaderNotificationResult.sent || 0;
+        leaderNotificationsSent = leaderNotificationResult.success ? leaderNotificationResult.nonSubmittedReporterCount || 0 : 0;
 
         // 進捗追跡レコード更新
         for (const tracking of progressTrackingRecords) {
@@ -386,9 +428,9 @@ export async function runTx3Imp1Agent(
     ).length;
     const executionSummary =
       executionStatus === 'success'
-        ? `エージェント実行が完了しました。未提出者${detectionResult.count}名を検知し、リーダー通知${leaderNotificationsSent}件、催促メール${reminderEmailsSent}件を送信しました。${escalationCount}名に対し追加通知が判定されました。`
+        ? `エージェント実行が完了しました。未提出者${detectionResult?.nonSubmittedReporters?.length || 0}名を検知し、リーダー通知${leaderNotificationsSent}件、催促メール${reminderEmailsSent}件を送信しました。${escalationCount}名に対し追加通知が判定されました。`
         : executionStatus === 'partial_success'
-          ? `エージェント実行が部分的に完了しました。未提出者${detectionResult.count}名を検知し、リーダー通知${leaderNotificationsSent}件、催促メール${reminderEmailsSent}件を送信しました。一部の処理が失敗しました。`
+          ? `エージェント実行が部分的に完了しました。未提出者${detectionResult?.nonSubmittedReporters?.length || 0}名を検知し、リーダー通知${leaderNotificationsSent}件、催促メール${reminderEmailsSent}件を送信しました。一部の処理が失敗しました。`
           : `エージェント実行に失敗しました。`;
 
     return {
@@ -436,6 +478,7 @@ export async function runTx3Imp1Agent(
  * NonSubmittedReporter
  */
 export interface NonSubmittedReporter {
+  [key: string]: any;
   /** 未提出者のユーザーID。 */
   userId: string;
   /** 未提出者のユーザー名。 */
@@ -450,6 +493,7 @@ export interface NonSubmittedReporter {
  * NotificationStatus
  */
 export interface NotificationStatus {
+  [key: string]: any;
   /** 通知受信者のユーザーID。 */
   recipientUserId: string;
   /** 通知タイプ（leader_notification / prompt_notification）。 */
@@ -466,6 +510,7 @@ export interface NotificationStatus {
  * DailyReportSummary
  */
 export interface DailyReportSummary {
+  [key: string]: any;
   /** 日報ID。 */
   reportId: string;
   /** 報告者のユーザーID。 */
@@ -480,6 +525,7 @@ export interface DailyReportSummary {
  * DetectionLogSummary
  */
 export interface DetectionLogSummary {
+  [key: string]: any;
   /** 検知ログID。 */
   detectionLogId: string;
   /** 検知対象日付。 */
@@ -494,6 +540,7 @@ export interface DetectionLogSummary {
  * PromptNotificationSummary
  */
 export interface PromptNotificationSummary {
+  [key: string]: any;
   /** 送信した催促メール総数。 */
   totalSent: number;
   /** 送信成功数。 */
