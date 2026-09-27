@@ -4,9 +4,10 @@ frontend:
     preBuild:
       commands: []
     build:
-      commands: []
+      commands:
+        - node scripts/aivic-build.mjs
   artifacts:
-    baseDirectory: /
+    baseDirectory: dist
     files:
       - '**/*'
   cache:
