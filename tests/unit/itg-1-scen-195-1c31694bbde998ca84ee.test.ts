@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-195: 指定されたタイムゾーンで正しく判定される', () => {
-  it('should judge correctly with Asia/Tokyo timezone', async () => {
+  it('should judge correctly with Asia/Tokyo timezone', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -24,7 +24,7 @@ describe('SCEN-195: 指定されたタイムゾーンで正しく判定される
     expect(result.executionReason).toBe('営業日の実行時刻内');
   });
 
-  it('should judge execution window as false when local time is outside window with different timezone', async () => {
+  it('should judge execution window as false when local time is outside window with different timezone', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -39,7 +39,7 @@ describe('SCEN-195: 指定されたタイムゾーンで正しく判定される
     expect(result.executionReason).toMatch(/実行時刻外|営業日ではない/);
   });
 
-  it('should return different results for different timezones with same UTC timestamp', async () => {
+  it('should return different results for different timezones with same UTC timestamp', () => {
     const utcTimestamp = '2024-01-15T17:30:00Z';
     const scheduledTime = '17:30';
     const tolerance = 5;

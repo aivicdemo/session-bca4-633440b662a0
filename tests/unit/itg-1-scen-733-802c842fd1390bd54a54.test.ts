@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-dead
 import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-733: システムの現在日時が取得できないとき、エラーが発生して処理が中断される', () => {
-  it('should throw error when currentTimestamp is invalid ISO format', async () => {
+  it('should throw error when currentTimestamp is invalid ISO format', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: 'invalid-timestamp',
       scheduledExecutionTime: '17:30',
@@ -19,7 +19,7 @@ describe('SCEN-733: システムの現在日時が取得できないとき、エ
     }
   });
 
-  it('should throw error when currentTimestamp is empty string', async () => {
+  it('should throw error when currentTimestamp is empty string', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '',
       scheduledExecutionTime: '17:30',
@@ -36,7 +36,7 @@ describe('SCEN-733: システムの現在日時が取得できないとき、エ
     }
   });
 
-  it('should throw error when currentTimestamp is null', async () => {
+  it('should throw error when currentTimestamp is null', () => {
     const input = {
       currentTimestamp: null,
       scheduledExecutionTime: '17:30',

@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-192: 実行可能なとき、次回実行予定時刻はnullで返される', () => {
-  it('should return shouldExecute=true, isBusinessDay=true, isWithinExecutionWindow=true, nextScheduledExecutionTime=null, executionReason correct when execution is possible', async () => {
+  it('should return shouldExecute=true, isBusinessDay=true, isWithinExecutionWindow=true, nextScheduledExecutionTime=null, executionReason correct when execution is possible', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',

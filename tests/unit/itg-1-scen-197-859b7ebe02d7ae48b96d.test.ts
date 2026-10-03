@@ -5,7 +5,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-197: 指定された許容誤差の範囲内で実行可能と判定される', () => {
-  it('should judge execution as possible within specified tolerance (2 seconds after scheduled time)', async () => {
+  it('should judge execution as possible within specified tolerance (2 seconds after scheduled time)', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:02Z',
       scheduledExecutionTime: '17:30',
