@@ -36,10 +36,10 @@ describe('SCEN-308: InvalidReporterIdError when reporter ID is invalid', () => {
   });
 
   it.each(invalidReporterIds)('should throw InvalidReporterIdError for reporterId: %s', async (reporterId) => {
-    const input: SendLeaderSubmissionNotificationInput = {
+    const input = {
       ...baseInput,
-      reporterId: reporterId as any,
-    };
+      reporterId,
+    } as SendLeaderSubmissionNotificationInput;
 
     await expect(
       sendLeaderSubmissionNotification(input)
@@ -47,10 +47,10 @@ describe('SCEN-308: InvalidReporterIdError when reporter ID is invalid', () => {
   });
 
   it('InvalidReporterIdError should contain correct error message', async () => {
-    const input: SendLeaderSubmissionNotificationInput = {
+    const input = {
       ...baseInput,
       reporterId: '',
-    };
+    } as SendLeaderSubmissionNotificationInput;
 
     try {
       await sendLeaderSubmissionNotification(input);

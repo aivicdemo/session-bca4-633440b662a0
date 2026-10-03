@@ -35,12 +35,15 @@ describe('SCEN-580: 本日の検知ログが0件のとき、空の配列が返�
     const leaderId = 'leader001';
     const targetDate = '2024-01-15';
 
+    // @ts-ignore
+    // @ts-ignore
     (authenticateAndAuthorizeLeaderAccess as jest.Mock).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
       denialReason: null,
-    });
+    } as any);
 
+    // @ts-ignore
     (judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
@@ -48,8 +51,9 @@ describe('SCEN-580: 本日の検知ログが0件のとき、空の配列が返�
       submissionDeadlineForTargetDate: '2024-01-15T18:00:00Z',
       processingPolicy: 'accept',
       rejectionReason: null,
-    });
+    } as any); // @ts-ignore
 
+    // @ts-ignore
     (retrieveDailyReportsForLeaderReview as jest.Mock).mockResolvedValue({
       dailyReports: [
         {
@@ -67,14 +71,16 @@ describe('SCEN-580: 本日の検知ログが0件のとき、空の配列が返�
       pageNumber: 1,
       pageSize: 10,
       retrievedAt: '2024-01-15T20:00:00Z',
-    });
+    } as any); // @ts-ignore
 
+    // @ts-ignore
     (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T20:00:00Z',
-    });
+    } as any); // @ts-ignore
 
+    // @ts-ignore
     (retrieveEmailSendingHistoryByDateRange as jest.Mock).mockResolvedValue({
       success: true,
       emailSendingHistories: [
@@ -113,7 +119,7 @@ describe('SCEN-580: 本日の検知ログが0件のとき、空の配列が返�
       pageNumber: 1,
       pageSize: 10,
       message: '',
-    });
+    } as any); // @ts-ignore
 
     const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData({
       leaderId,

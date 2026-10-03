@@ -1,4 +1,4 @@
-import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-731: 提出期限時刻の形式が不正なとき、InvalidSchedulerConfigurationErrorが発生', () => {
   const currentTimestamp = '2024-01-15T17:30:00Z';
