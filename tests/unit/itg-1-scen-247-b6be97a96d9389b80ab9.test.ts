@@ -23,7 +23,7 @@ describe('SCEN-247: リーダーのメールアドレスが登録されていな
   });
 
   it('メールアドレスが設定されていない報告者がある場合、エラーを throw する', async () => {
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const reportersWithMissingEmails = [
       { userId: 'user-001', name: 'Reporter 1', email: 'reporter1@example.com', department: 'Sales' },
@@ -33,7 +33,7 @@ describe('SCEN-247: リーダーのメールアドレスが登録されていな
       { userId: 'user-005', name: 'Reporter 5', email: '', department: 'HR' },
     ];
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(reportersWithMissingEmails);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(reportersWithMissingEmails);
 
     await expect(
       detectNonSubmittedReportersAtDeadline({

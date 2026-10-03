@@ -26,16 +26,16 @@ describe('SCEN-343: 休職のメンバーの場合、br-tx_7-002により更新�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: emailAddress, errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
-    mockedRegisterReporterToMaster.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporterId: 'reporter-001',
       message: '',
     });
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       changeHistoryId: 'history-20250115-001',
       message: '',

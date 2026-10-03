@@ -45,15 +45,15 @@ describe('SCEN-570: リーダーメールアドレスがシステムで無効化
 
     // Setup successful stubs for authentication and business day judgment
     // @ts-ignore
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       leaderId: 'leader-001',
       leaderEmail: 'leader@example.com',
       isAuthorized: true,
     });
     // @ts-ignore
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
     // @ts-ignore
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([
       {
         reportId: 'report-001',
         reporterName: 'テスト太郎',
@@ -63,11 +63,11 @@ describe('SCEN-570: リーダーメールアドレスがシステムで無効化
       },
     ]);
     // @ts-ignore
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
 
     // Setup retrieveEmailSendingHistoryByDateRange to return sending history with disabled email warning
     // @ts-ignore
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([
       {
         historyId: 'mail-001',
         recipientId: 'leader-001',

@@ -25,7 +25,7 @@ describe('SCEN-523: リーダーメールアドレスが空の場合、送信を
     };
 
     const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockResolvedValue({
+    (mockSend as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

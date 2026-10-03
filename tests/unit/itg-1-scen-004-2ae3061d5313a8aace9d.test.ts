@@ -63,7 +63,7 @@ describe('SCEN-004: 簡潔な入力内容から詳細日報の生成に失敗し
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -71,7 +71,7 @@ describe('SCEN-004: 簡潔な入力内容から詳細日報の生成に失敗し
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,
@@ -115,7 +115,7 @@ describe('SCEN-004: 簡潔な入力内容から詳細日報の生成に失敗し
       })
     );
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       success: true,
       nonSubmittedReporters: [
         { userId: 'U004', reporterName: '報告者4', emailAddress: 'r004@example.com' },

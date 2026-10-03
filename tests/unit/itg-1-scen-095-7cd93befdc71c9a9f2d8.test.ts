@@ -25,13 +25,13 @@ describe('SCEN-095: 報告者マスタに登録済みで有効で所属チーム
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId,
       inactiveReason: null,
     });
 
-    mockedValidateUserHasReporterRole.mockResolvedValue({
+    (mockedValidateUserHasReporterRole as jest.Mock<any>).mockResolvedValue({
       hasReporterRole: true,
       userId,
       denialReason: null,

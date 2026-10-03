@@ -11,7 +11,7 @@ describe('SCEN-548: 定時リマインダー時刻に到達したとき、リー
     jest.setSystemTime(new Date('2024-01-15T17:00:00.000Z'));
 
     const mocked = jest.mocked(sendNonSubmissionPromptNotification);
-    mocked.mockResolvedValue({
+    (mocked as jest.Mock<any>).mockResolvedValue({
       success: true,
       totalTargets: 1,
       successCount: 1,

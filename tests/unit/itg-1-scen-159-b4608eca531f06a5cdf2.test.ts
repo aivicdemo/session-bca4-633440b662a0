@@ -18,7 +18,7 @@ const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<a
 describe('SCEN-159: 入力メールアドレスが既存ユーザーに1件以上重複している場合、重複エラーを返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'user@example.com',
       errorCode: null,

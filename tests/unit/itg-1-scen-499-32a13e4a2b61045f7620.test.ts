@@ -53,7 +53,7 @@ describe('SCEN-499: メールアドレスの形式が不正な場合、LeaderEma
       submissionTimestamp: '2024-01-15T14:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

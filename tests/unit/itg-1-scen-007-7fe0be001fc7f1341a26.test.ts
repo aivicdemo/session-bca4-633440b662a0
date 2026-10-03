@@ -57,7 +57,7 @@ describe('SCEN-007: 未提出者の検知処理に失敗し、未提出者への
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -65,7 +65,7 @@ describe('SCEN-007: 未提出者の検知処理に失敗し、未提出者への
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,

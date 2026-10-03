@@ -23,27 +23,27 @@ describe('SCEN-296: リマインダー送信条件をすべて満たし、通知
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedDetermineReminderNotificationEligibility.mockResolvedValue({
+    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
       isEligible: true,
       notificationType: 'reporter_reminder',
       reporterId: 'reporter-001',
       evaluatedAt: new Date('2024-01-15T09:00:00Z'),
     });
 
-    mockedBuildReminderNotificationContent.mockResolvedValue({
+    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '日報提出のお願い',
       body: '本日の日報入力をお願いします',
       notificationType: 'reporter_reminder',
       generatedAt: new Date('2024-01-15T09:00:00Z'),
     });
 
-    mockedSelectNotificationDeliveryMethod.mockResolvedValue({
+    (mockedSelectNotificationDeliveryMethod as jest.Mock<any>).mockResolvedValue({
       deliveryMethod: 'email',
       isDeliveryEnabled: true,
       selectedAt: new Date('2024-01-15T09:00:00Z'),
     });
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: null,
       sentAt: '2024-01-15T09:00:30Z',
@@ -51,7 +51,7 @@ describe('SCEN-296: リマインダー送信条件をすべて満たし、通知
       adminNotificationSent: true,
     });
 
-    mockedRecordReminderNotificationSendingResult.mockResolvedValue({
+    (mockedRecordReminderNotificationSendingResult as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogId: null,
       notificationStatus: 'sent',

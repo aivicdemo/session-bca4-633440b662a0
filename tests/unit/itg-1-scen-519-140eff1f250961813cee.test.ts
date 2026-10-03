@@ -25,7 +25,7 @@ describe('SCEN-519: メール送信に失敗し管理者への通知も失敗し
     };
 
     const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockResolvedValue({
+    (mockSend as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

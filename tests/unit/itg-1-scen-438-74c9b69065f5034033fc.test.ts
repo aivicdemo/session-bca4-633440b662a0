@@ -42,7 +42,7 @@ describe('SCEN-438: リーダーがページネーションを指定して検索
       retrievedAt: '2024-01-01T10:00:00Z',
     };
 
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue(expectedOutput);
+    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await retrieveDailyReportsForLeaderReview(input);
 

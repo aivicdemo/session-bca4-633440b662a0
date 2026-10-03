@@ -23,14 +23,14 @@ describe('SCEN-299: 報告者のメールアドレスが無効または配信方
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedDetermineReminderNotificationEligibility.mockResolvedValue({
+    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
       isEligible: true,
       notificationType: 'reporter_reminder',
       reporterId: 'reporter-001',
       evaluatedAt: new Date('2024-01-15T09:00:00Z'),
     });
 
-    mockedBuildReminderNotificationContent.mockResolvedValue({
+    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '日報提出のお願い',
       body: '本日の日報入力をお願いします',
       notificationType: 'reporter_reminder',

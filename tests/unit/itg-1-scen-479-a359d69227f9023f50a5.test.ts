@@ -38,25 +38,25 @@ describe('SCEN-479: 正常系：有効なリーダーメールアドレスに対
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockedBuildNotificationContent.mockResolvedValue({
+    (mockedBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年1月15日 田中太郎',
       body: '田中太郎さんからの日報です\n\n本日は顧客A向けシステム設計を実施。要件定義書を完成させた。明日は実装開始予定。',
     });
 
-    mockedRecordEmailSendingHistory.mockResolvedValue({
+    (mockedRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-uuid-001',
       recordedAt: '2024-01-15T18:30:01Z',
       errorMessage: null,
     });
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-uuid-001',
       sentAt: '2024-01-15T18:30:01Z',

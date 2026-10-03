@@ -53,7 +53,7 @@ describe('SCEN-547: emailSendingHistoryIds の件数が成功件数と失敗件�
       targetDate: '2024-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       totalTargets: 5,
       successCount: 3,

@@ -46,7 +46,7 @@ describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エ�
       },
       message: undefined,
     };
-    mockedRetrieveReporterByUserId.mockResolvedValue(validReporterOutput);
+    (mockedRetrieveReporterByUserId as jest.Mock<any>).mockResolvedValue(validReporterOutput);
 
     // 前提: persistReporterMasterChangeHistory をスタブ化して成功応答を返す
     const historyOutput: PersistReporterMasterChangeHistoryOutput = {
@@ -54,7 +54,7 @@ describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エ�
       changeHistoryId: 'history-001',
       message: 'Change history recorded',
     };
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue(historyOutput);
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue(historyOutput);
 
     // テスト実行: saveReminderNotificationSettings を呼び出し
     // 期待結果: PersistenceFailureError エラーが発生し、エラーメッセージは「リマインダー設定の保存に失敗しました。」
@@ -78,7 +78,7 @@ describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エ�
       },
       message: undefined,
     };
-    mockedRetrieveReporterByUserId.mockResolvedValue(validReporterOutput);
+    (mockedRetrieveReporterByUserId as jest.Mock<any>).mockResolvedValue(validReporterOutput);
 
     // 前提: persistReporterMasterChangeHistory をスタブ化
     const historyOutput: PersistReporterMasterChangeHistoryOutput = {
@@ -86,7 +86,7 @@ describe('SCEN-478: リマインダー通知設定の保存 - DB保存失敗エ�
       changeHistoryId: 'history-001',
       message: 'Change history recorded',
     };
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue(historyOutput);
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue(historyOutput);
 
     // 呼び出し元で PersistenceFailureError をキャッチして、失敗応答を構築
     let caughtError: Error | null = null;

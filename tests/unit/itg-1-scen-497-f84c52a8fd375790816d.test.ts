@@ -37,7 +37,7 @@ describe('SCEN-497: 有効なメールアドレスに対してメール送信が
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-20240115-001',
       sentAt: '2024-01-15T18:30:15Z',
@@ -66,7 +66,7 @@ describe('SCEN-497: 有効なメールアドレスに対してメール送信が
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-20240115-001',
       sentAt: '2024-01-15T18:30:15Z',

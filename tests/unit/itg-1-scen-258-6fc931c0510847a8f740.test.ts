@@ -30,8 +30,8 @@ describe('SCEN-258: 業務ルール br-tx_1-005 の制約 10 が設計どおり�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
       const submittedUserIds = ['U001', 'U002', 'U003'];

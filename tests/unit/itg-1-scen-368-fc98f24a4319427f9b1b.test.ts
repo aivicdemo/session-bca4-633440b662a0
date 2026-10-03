@@ -40,13 +40,13 @@ describe('SCEN-368: 報告者IDが空または不正な形式の場合、br-tx_7
     };
 
     // スタブの設定
-    mockedValidateReporterNameFormat.mockResolvedValue({ valid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ valid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true });
 
     // registerReporterToMasterが空文字列を返すように設定
-    mockedRegisterReporterToMaster.mockResolvedValue({ reporterId: '' });
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ reporterId: '' });
 
     // persistReporterMasterChangeHistoryが報告者IDが空のときエラーを発生させる
     mockedPersistReporterMasterChangeHistory.mockImplementation((input: any) => {

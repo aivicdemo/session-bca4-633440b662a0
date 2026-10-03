@@ -58,7 +58,7 @@ describe('SCEN-005: 生成された日報の提出処理に失敗し、その報
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -66,7 +66,7 @@ describe('SCEN-005: 生成された日報の提出処理に失敗し、その報
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,

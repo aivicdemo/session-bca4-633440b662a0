@@ -26,7 +26,7 @@ describe('SCEN-544: totalTargetsが催促対象者リストの件数と一致す
       targetDate: '2024-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       totalTargets: 3,
       successCount: 3,

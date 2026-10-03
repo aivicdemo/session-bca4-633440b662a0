@@ -23,9 +23,9 @@ describe('SCEN-332: メールアドレスが標準的なメールアドレス形
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: '有効な報告者名', errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: null, errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true, userId: validUserId, inactiveReason: null });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: '有効な報告者名', errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: null, errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true, userId: validUserId, inactiveReason: null });
   });
 
   it('メールアドレスに@がない場合、InvalidEmailAddressFormatエラーを返す', async () => {

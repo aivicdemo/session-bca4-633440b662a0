@@ -26,7 +26,7 @@ describe('SCEN-522: 複数の入力値が同時に不正な場合、最初に検
     };
 
     const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockResolvedValue({
+    (mockSend as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

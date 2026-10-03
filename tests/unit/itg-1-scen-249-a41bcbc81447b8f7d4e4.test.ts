@@ -31,7 +31,7 @@ describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレ�
     const submissionDeadlineTime = '17:00';
     const teamId = 'TEAM-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const activeReporters = [
       { userId: 'U001', userName: 'Reporter 1', emailAddress: 'u001@example.com', promptPriority: 'high' },
@@ -41,7 +41,7 @@ describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレ�
       { userId: 'U005', userName: 'Reporter 5', emailAddress: 'u005@example.com', promptPriority: 'high' },
     ];
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
       return Promise.resolve({
@@ -49,7 +49,7 @@ describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレ�
       });
     });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
     const result = await detectNonSubmittedReportersAtDeadline({
       targetDate,

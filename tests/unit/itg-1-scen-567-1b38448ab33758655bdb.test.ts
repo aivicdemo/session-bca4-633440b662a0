@@ -31,9 +31,9 @@ describe('SCEN-567: リーダーメールアドレスが登録され形式が正
     mockRetrieveNonSubmissionDetectionLogsByDate = detectionModule.retrieveNonSubmissionDetectionLogsByDate;
     mockRetrieveEmailSendingHistoryByDateRange = notificationModule.retrieveEmailSendingHistoryByDateRange;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue(true);
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([{
       reportId: 'report-001',
       reporterId: 'reporter-001',
       reporterName: '報告者A',
@@ -43,8 +43,8 @@ describe('SCEN-567: リーダーメールアドレスが登録され形式が正
       issues: '課題',
       tomorrowPlan: '明日の計画',
     }]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([{
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([{
       historyId: 'hist-001',
       recipientId: 'leader-001',
       recipientEmail: 'leader@example.com',

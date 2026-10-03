@@ -44,7 +44,7 @@ describe('SCEN-021: 未提出者への催促メール送信に失敗した場合
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -52,7 +52,7 @@ describe('SCEN-021: 未提出者への催促メール送信に失敗した場合
       executionReason: '定時実行タイミング内',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'U2', userName: '報告者2', emailAddress: 'r002@example.com', departmentId: 'D001' },
         { userId: 'U3', userName: '報告者3', emailAddress: 'r003@example.com', departmentId: 'D001' },
@@ -73,7 +73,7 @@ describe('SCEN-021: 未提出者への催促メール送信に失敗した場合
       new PromptNotificationSendingFailed('催促メール送信に失敗しました。')
     );
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+    (mockedSendLeaderSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-001',
       sentAt: new Date(executionTimestamp),
@@ -81,7 +81,7 @@ describe('SCEN-021: 未提出者への催促メール送信に失敗した場合
       errorDetails: null,
     });
 
-    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+    (mockedRetrieveLeaderDashboardData as jest.Mock<any>).mockResolvedValue({
       submittedReports: [
         { reportId: 'R1', reporterId: 'U1', reporterName: '報告者1', submissionTime: '2024-01-15T16:50:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },
         { reportId: 'R5', reporterId: 'U5', reporterName: '報告者5', submissionTime: '2024-01-15T16:59:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },

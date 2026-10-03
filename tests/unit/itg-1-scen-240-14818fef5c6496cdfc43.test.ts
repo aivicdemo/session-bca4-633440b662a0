@@ -28,14 +28,14 @@ describe('SCEN-240: 現在時刻が提出期限より前の場合は検知をス
 
   beforeEach(() => {
     jest.resetAllMocks();
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: false,
       isBusinessDay: true,
       isWithinExecutionWindow: false,
       nextScheduledExecutionTime: '2024-01-15T17:00:00Z',
       executionReason: 'Before deadline',
     });
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,

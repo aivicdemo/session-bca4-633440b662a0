@@ -54,7 +54,7 @@ describe('SCEN-003: 報告者の認証・認可に失敗し、対象報告者へ
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -62,7 +62,7 @@ describe('SCEN-003: 報告者の認証・認可に失敗し、対象報告者へ
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,

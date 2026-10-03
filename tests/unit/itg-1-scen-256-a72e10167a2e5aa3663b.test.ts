@@ -42,13 +42,13 @@ describe('SCEN-256: 業務ルール br-tx_1-005 の制約 8 が設計どおり�
       teamId: 'team-001',
     };
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(mockReporters);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(mockReporters);
     mockedCheckDailyReportExistsForDate.mockImplementation((reporterId: string) => {
       return Promise.resolve(submittedReporterIds.includes(reporterId));
     });
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
     const result = await detectNonSubmittedReportersAtDeadline(input as any);
 

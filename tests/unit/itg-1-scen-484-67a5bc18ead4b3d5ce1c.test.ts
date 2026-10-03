@@ -38,7 +38,7 @@ describe('SCEN-484: メール送信処理がシステム障害で失敗した場
       adminNotificationSent: true,
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue(result);
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(result);
 
     const output = await mockedSendDailyReportSubmissionNotification(input);
 

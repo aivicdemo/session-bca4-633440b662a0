@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { retrieveLeaderDashboardData, DataRetrievalFailedError } from '../../src/logic/daily-report-management-view';
 
-const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
-const judgeBusinessDayAndDeadlineMock = jest.fn();
-const retrieveDailyReportsForLeaderReviewMock = jest.fn();
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as jest.Mock<any>;
+const judgeBusinessDayAndDeadlineMock = jest.fn() as jest.Mock<any>;
+const retrieveDailyReportsForLeaderReviewMock = jest.fn() as jest.Mock<any>;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
@@ -28,12 +28,12 @@ describe('SCEN-562: 日報、検知ログ、メール送信履歴の取得に失
     const leaderId = 'leader-001';
     const targetDate = '2025-01-15';
 
-    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+    (authenticateAndAuthorizeLeaderAccessMock as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
-    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+    (judgeBusinessDayAndDeadlineMock as jest.Mock<any>).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,

@@ -37,18 +37,18 @@ describe('SCEN-516: buildNotificationContent が正常にメール本文を生�
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年01月15日 山田太郎',
       body: '山田太郎さんからの日報です\n\n顧客A社のシステム要件定義会議を実施。基本設計書のドラフト完了。明日は詳細設計に着手予定。',
     });
 
-    mockRecordEmailSendingHistory.mockResolvedValue({
+    (mockRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'HIST202401150001',
       recordedAt: '2024-01-15T09:30:05Z',
@@ -63,7 +63,7 @@ describe('SCEN-516: buildNotificationContent が正常にメール本文を生�
       adminNotificationSent: false,
     };
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await sendDailyReportSubmissionNotification(input);
 

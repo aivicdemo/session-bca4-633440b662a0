@@ -20,11 +20,11 @@ describe('SCEN-346: 削除対象のメンバーが過去7日以内に日報を�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: '削除対象メンバー名', errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: 'delete.member@example.com', errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'delete.member@example.com', errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
-    mockedRegisterReporterToMaster.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: '削除対象メンバー名', errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: 'delete.member@example.com', errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'delete.member@example.com', errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       success: false,
       reporterId: null,
       message: '最近の日報があります。削除前に確認してください',

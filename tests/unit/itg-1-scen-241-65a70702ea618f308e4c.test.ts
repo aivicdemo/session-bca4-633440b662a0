@@ -28,7 +28,7 @@ const mockedUpdateNonSubmissionDetectionLogWithReminderStatus = updateNonSubmiss
 describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正しく識別して返す', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -43,7 +43,7 @@ describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正し
     const teamId = 'team-001';
     const currentDateTime = '2024-01-15T17:30:00Z';
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: [
       {
@@ -92,13 +92,13 @@ describe('SCEN-241: 報告者ごとの提出状況を提出時刻付きで正し
       return submissionMap[input.userId];
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T17:30:00Z',
     });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue({
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue({
       detectionLogId: 'log-001',
       reminderSent: false,
       updatedAt: '2024-01-15T17:30:00Z',

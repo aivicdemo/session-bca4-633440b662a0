@@ -32,7 +32,7 @@ describe('SCEN-453: 必須項目と形式が正常な報告者情報を受け取
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateUserInformationRequired.mockResolvedValue({
+    (mockedValidateUserInformationRequired as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedUserName: reporterName,
       validatedEmailAddress: emailAddress,
@@ -40,19 +40,19 @@ describe('SCEN-453: 必須項目と形式が正常な報告者情報を受け取
       errorCode: null,
     });
 
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: emailAddress,
       errorCode: null,
     });
 
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: emailAddress,
       errorCode: null,
     });
 
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       changeHistoryId: 'CH-001',
       message: '履歴記録完了',

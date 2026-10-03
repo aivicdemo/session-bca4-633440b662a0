@@ -24,9 +24,9 @@ describe('SCEN-334: 指定されたユーザーIDがユーザーマスタに存�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: emailAddress, errorCode: null });
     mockedValidateUserAccountActiveStatus.mockRejectedValue(new UserNotFoundInUserMaster('User not found'));
   });
 

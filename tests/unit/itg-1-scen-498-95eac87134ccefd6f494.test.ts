@@ -53,7 +53,7 @@ describe('SCEN-498: チームリーダーのメールアドレスが登録され
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

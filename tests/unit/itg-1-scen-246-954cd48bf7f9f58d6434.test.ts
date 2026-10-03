@@ -23,8 +23,8 @@ describe('SCEN-246: 報告者マスタが空の場合は警告を返す', () => 
   });
 
   it('有効な報告者が存在しない場合、NoActiveReportersError を throw する', async () => {
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([]);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue([]);
 
     await expect(
       detectNonSubmittedReportersAtDeadline({

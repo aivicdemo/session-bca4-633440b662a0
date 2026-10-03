@@ -41,12 +41,12 @@ describe('SCEN-365: CREATE操作で報告者IDと必要な情報が指定され�
     };
 
     // スタブの設定
-    mockedValidateReporterNameFormat.mockResolvedValue({ valid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ valid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
-    mockedRegisterReporterToMaster.mockResolvedValue({ reporterId: 'RPT-2024-001' });
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({ changeHistoryId: 'CHG-2024-0001' });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true });
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ reporterId: 'RPT-2024-001' });
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({ changeHistoryId: 'CHG-2024-0001' });
 
     // registerReporter関数を呼び出す
     const result = await registerReporter(input);

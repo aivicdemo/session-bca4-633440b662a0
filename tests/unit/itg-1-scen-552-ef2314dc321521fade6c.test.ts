@@ -34,18 +34,18 @@ describe('SCEN-552: 却下理由が指定された場合、却下結果をリー
       confirmingLeaderUserId: 'leader-002',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【却下】ユーザー情報が却下されました',
       body: 'ユーザー情報が却下されました。却下理由：記入内容が不十分です',
     });
 
-    mockRecordEmailSendingHistory.mockResolvedValue({
+    (mockRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-001',
       recordedAt: '2024-01-15T14:30:05Z',

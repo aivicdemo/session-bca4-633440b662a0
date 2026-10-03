@@ -22,12 +22,12 @@ describe('SCEN-347: 報告者名が入力され、メールアドレスが入力
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: '山田太郎', errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: 'yamada@example.com', errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'yamada@example.com', errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
-    mockedRegisterReporterToMaster.mockResolvedValue({ success: true, reporterId: 'REPORTER001', message: '' });
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({ success: true, changeHistoryId: 'HISTORY001', message: '' });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: '山田太郎', errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: 'yamada@example.com', errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'yamada@example.com', errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ success: true, reporterId: 'REPORTER001', message: '' });
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({ success: true, changeHistoryId: 'HISTORY001', message: '' });
   });
 
   it('報告者名、メールアドレスが入力され、形式が正しく、重複がない場合、RegisterReporterOutput が成功で返される', async () => {

@@ -20,7 +20,7 @@ describe('SCEN-415: チームリーダーが有効な権限を持つ場合、未
 
   it('チームリーダーが有効な権限を持つ場合、正常にユーザー情報一覧を取得できる', async () => {
     // Arrange: スタブ設定
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderUserId,
     });

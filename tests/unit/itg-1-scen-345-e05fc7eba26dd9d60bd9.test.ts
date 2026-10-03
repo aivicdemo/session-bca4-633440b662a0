@@ -20,10 +20,10 @@ describe('SCEN-345: 既に登録されているメンバーIDが重複して登�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: 'テスト太郎', errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: 'テスト太郎', errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
   });
 
   it('既に登録されているメンバーIDが重複した場合、エラーメッセージ「このメンバーは既に登録されています」が返される', async () => {

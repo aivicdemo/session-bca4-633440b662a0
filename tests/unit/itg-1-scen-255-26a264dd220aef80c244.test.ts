@@ -23,7 +23,7 @@ describe('SCEN-255: 業務ルール br-tx_1-005 の制約 7 が設計どおり�
       teamId: 'team-001',
     };
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(false);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(false);
 
     await expect(
       detectNonSubmittedReportersAtDeadline(input as any)

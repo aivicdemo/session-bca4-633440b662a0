@@ -32,8 +32,8 @@ describe('SCEN-385: 報告者マスタの無効化更新に失敗した場合、
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
-    mockedArchivePastDailyReports.mockResolvedValue({
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
+    (mockedArchivePastDailyReports as jest.Mock<any>).mockResolvedValue({
       archivedReportCount: 5,
     });
     mockedDeactivateReporterInMaster.mockRejectedValue(

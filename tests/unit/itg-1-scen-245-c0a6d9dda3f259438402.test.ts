@@ -24,7 +24,7 @@ describe('SCEN-245: 報告期限時刻が不正な形式の場合は処理を拒
     const invalidTimestamps = ['25:00', '17時', '17-00', '17:0', '1700'];
 
     for (const invalidTime of invalidTimestamps) {
-      mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+      (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
       const input = {
         targetDate: '2024-01-15',

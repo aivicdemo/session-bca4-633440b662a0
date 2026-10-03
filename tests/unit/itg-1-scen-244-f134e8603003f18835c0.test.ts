@@ -31,7 +31,7 @@ describe('SCEN-244: 未提出者一覧と通知送信完了フラグを正しく
     const submissionDeadlineTime = '17:00';
     const teamId = 'team-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const activeReporters = [
       { userId: 'user-001', userName: 'Reporter 1', emailAddress: 'reporter1@example.com', promptPriority: 'high' },
@@ -41,7 +41,7 @@ describe('SCEN-244: 未提出者一覧と通知送信完了フラグを正しく
       { userId: 'user-005', userName: 'Reporter 5', emailAddress: 'reporter5@example.com', promptPriority: 'high' },
     ];
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string, date: string) => {
       return Promise.resolve({
@@ -50,7 +50,7 @@ describe('SCEN-244: 未提出者一覧と通知送信完了フラグを正しく
       });
     });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
     const result = await detectNonSubmittedReportersAtDeadline({
       targetDate,

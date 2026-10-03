@@ -41,12 +41,12 @@ describe('SCEN-367: DELETE操作が指定された場合、br-tx_7-007により�
     };
 
     // スタブの設定
-    mockedValidateReporterNameFormat.mockResolvedValue({ valid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ valid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ valid: true });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
-    mockedRegisterReporterToMaster.mockResolvedValue({ reporterId: 'RPT20240115001' });
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({ changeHistoryId: 'CHG20240115001' });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true });
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ reporterId: 'RPT20240115001' });
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({ changeHistoryId: 'CHG20240115001' });
 
     // registerReporter関数を呼び出す
     const result = await registerReporter(input);

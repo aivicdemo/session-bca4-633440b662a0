@@ -20,10 +20,10 @@ describe('SCEN-344: メンバーの変更内容が不明確な場合、br-tx_7-0
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: '田中太郎', errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: 'tanaka@example.com', errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'tanaka@example.com', errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: '田中太郎', errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: 'tanaka@example.com', errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: 'tanaka@example.com', errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
   });
 
   it('memberChangeTypeが不明確な値（空文字列）の場合、警告メッセージが返される', async () => {

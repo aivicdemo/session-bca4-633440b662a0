@@ -32,12 +32,12 @@ describe('SCEN-568: リーダーメールアドレスが空または登録され
     mockRetrieveEmailSendingHistoryByDateRange = notificationModule.retrieveEmailSendingHistoryByDateRange;
     mockValidateAndDeliverLeaderNotification = notificationModule.validateAndDeliverLeaderNotification;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'valid-leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
-    mockValidateAndDeliverLeaderNotification.mockResolvedValue({
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'valid-leader-001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue(true);
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
+    (mockValidateAndDeliverLeaderNotification as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       failureReason: 'メールアドレスが登録されていません',
     });

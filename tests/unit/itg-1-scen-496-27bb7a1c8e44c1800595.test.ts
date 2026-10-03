@@ -37,7 +37,7 @@ describe('SCEN-496: メール送信サーバーへの接続に失敗した場合
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,
@@ -66,7 +66,7 @@ describe('SCEN-496: メール送信サーバーへの接続に失敗した場合
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

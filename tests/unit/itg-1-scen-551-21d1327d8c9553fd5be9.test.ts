@@ -9,7 +9,7 @@ describe('SCEN-551: 承認結果をリーダーにメール送信し、送信履
     jest.clearAllMocks();
 
     const mocked = jest.mocked(sendUserInformationApprovalNotification);
-    mocked.mockResolvedValue({
+    (mocked as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'history-12345',
       sentAt: '2024-01-15T10:30:05Z',

@@ -26,7 +26,7 @@ describe('SCEN-252: 業務ルール br-tx_1-005 の制約 4 が設計どおり�
   });
 
   it('期限到達、有効報告者存在、提出状況確認成功、検知ログ記録成功時に正常終了する', async () => {
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const activeReporters = [
       { userId: 'user-001', userName: 'Reporter 1', emailAddress: 'reporter1@example.com', promptPriority: 'high' },
@@ -36,7 +36,7 @@ describe('SCEN-252: 業務ルール br-tx_1-005 の制約 4 が設計どおり�
       { userId: 'user-005', userName: 'Reporter 5', emailAddress: 'reporter5@example.com', promptPriority: 'high' },
     ];
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
       return Promise.resolve({
@@ -44,7 +44,7 @@ describe('SCEN-252: 業務ルール br-tx_1-005 の制約 4 が設計どおり�
       });
     });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
     const result = await detectNonSubmittedReportersAtDeadline({
       targetDate: '2024-01-15',

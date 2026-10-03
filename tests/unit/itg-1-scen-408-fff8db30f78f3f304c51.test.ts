@@ -35,7 +35,7 @@ describe('SCEN-408: チームリーダーが未処理のユーザー情報を却
 
     // authenticateAndAuthorizeLeaderAccess をスタブ化
     // リーダーが当該ユーザー情報の承認権限を持つことを返す
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
       hasApprovalAuthority: true,
       leaderTeamId: 'team-001',
@@ -44,14 +44,14 @@ describe('SCEN-408: チームリーダーが未処理のユーザー情報を却
 
     // judgeBusinessDayAndDeadline をスタブ化
     // 承認期限内であることを返す
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isWithinDeadline: true,
       daysRemaining: 2,
     });
 
     // sendUserInformationApprovalNotification をスタブ化
     // リーダーと報告者への通知送信が成功することを返す
-    mockedSendUserInformationApprovalNotification.mockResolvedValue({
+    (mockedSendUserInformationApprovalNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationSent: true,
     });

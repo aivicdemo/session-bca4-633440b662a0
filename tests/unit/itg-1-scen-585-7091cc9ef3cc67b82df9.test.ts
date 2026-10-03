@@ -22,7 +22,7 @@ describe('SCEN-585: リーダーが自身のチームの検知ログIDを指定�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogs: [
         {

@@ -55,7 +55,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -63,7 +63,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,
@@ -100,7 +100,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       })
     );
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       success: true,
       nonSubmittedReporters: [],
       totalDetected: 0,

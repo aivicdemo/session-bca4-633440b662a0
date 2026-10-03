@@ -25,14 +25,14 @@ describe('SCEN-572: ダッシュボード取得時にformatDailyReportDisplay処
     mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true });
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true });
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
   });
 
   it('formatDailyReportDisplay処理内で例外が発生した場合、DataRetrievalFailedErrorをスロー', async () => {
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([
       {
         reportId: 'report-001',
         reporterName: '太郎',
@@ -71,7 +71,7 @@ describe('SCEN-572: ダッシュボード取得時にformatDailyReportDisplay処
   });
 
   it('リーダー認可は正常に完了していること', async () => {
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([]);
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([]);
 
     const input: RetrieveLeaderDashboardDataInput = {
       leaderId: 'leader-001',

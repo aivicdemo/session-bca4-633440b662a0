@@ -36,13 +36,13 @@ describe('SCEN-512: メール送信に失敗した場合、sendDailyReportNotifi
     mockRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
     mockSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年1月15日 田中太郎',
       body: '田中太郎さんからの日報です\n\n本日は顧客A社との打ち合わせ完了。明日は資料作成予定。',
     });
@@ -61,7 +61,7 @@ describe('SCEN-512: メール送信に失敗した場合、sendDailyReportNotifi
       adminNotificationSent: true,
     };
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await sendDailyReportSubmissionNotification(testInput);
 

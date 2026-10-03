@@ -20,7 +20,7 @@ describe('SCEN-391: 指定日付が営業日でない場合、TargetDateInvalidE
 
   beforeEach(() => {
     jest.resetAllMocks();
-    mockedIsBusinessDay.mockResolvedValue(false);
+    (mockedIsBusinessDay as jest.Mock<any>).mockResolvedValue(false);
   });
 
   it('TargetDateInvalidError をスロー、エラー文言は「提出対象日付は営業日かつ本日以前である必要があります。」', async () => {

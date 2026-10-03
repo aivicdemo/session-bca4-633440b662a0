@@ -34,18 +34,18 @@ describe('SCEN-514: validateEmailAddressForDelivery が true を返した場合�
     mockRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
     mockSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2025年1月15日 山田太郎',
       body: '山田太郎さんからの日報です\n\n本日は顧客対応を実施',
     });
 
-    mockRecordEmailSendingHistory.mockResolvedValue({
+    (mockRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'hist_20250115_001',
       recordedAt: '2025-01-15T09:30:05Z',
@@ -54,7 +54,7 @@ describe('SCEN-514: validateEmailAddressForDelivery が true を返した場合�
   });
 
   it('validateEmailAddressForDelivery がtrueを返した場合、buildNotificationContent は正確に1回呼び出される', async () => {
-    mockSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'hist_20250115_001',
       sentAt: '2025-01-15T09:30:05Z',
@@ -68,7 +68,7 @@ describe('SCEN-514: validateEmailAddressForDelivery が true を返した場合�
   });
 
   it('buildNotificationContent の呼び出し時の引数を検証する', async () => {
-    mockSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'hist_20250115_001',
       sentAt: '2025-01-15T09:30:05Z',
@@ -82,7 +82,7 @@ describe('SCEN-514: validateEmailAddressForDelivery が true を返した場合�
   });
 
   it('validateEmailAddressForDelivery がtrueを返すと、buildNotificationContent に期待値が渡される', async () => {
-    mockSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'hist_20250115_001',
       sentAt: '2025-01-15T09:30:05Z',

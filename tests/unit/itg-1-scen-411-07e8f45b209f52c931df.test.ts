@@ -22,7 +22,7 @@ describe('SCEN-411: ApprovalDeadlineExceededError when approval deadline has pas
   });
 
   it('should throw ApprovalDeadlineExceededError with correct message when approval deadline has passed', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
     });
     mockedJudgeBusinessDayAndDeadline.mockRejectedValue(

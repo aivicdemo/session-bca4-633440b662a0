@@ -37,18 +37,18 @@ describe('SCEN-509: 有効なリーダーメールアドレスと報告内容が
       submissionTimestamp: '2025-01-15T09:30:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2025年1月15日 山田太郎',
       body: '山田太郎さんからの日報です\n\n本日は顧客A社との打ち合わせを実施。成果物の仕様書初版を完成させた。課題は承認待ち。明日は顧客レビュー対応予定。',
     });
 
-    mockRecordEmailSendingHistory.mockResolvedValue({
+    (mockRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'hist_20250115_001',
       recordedAt: '2025-01-15T09:30:05Z',
@@ -63,7 +63,7 @@ describe('SCEN-509: 有効なリーダーメールアドレスと報告内容が
       adminNotificationSent: false,
     };
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await sendDailyReportSubmissionNotification(input);
 

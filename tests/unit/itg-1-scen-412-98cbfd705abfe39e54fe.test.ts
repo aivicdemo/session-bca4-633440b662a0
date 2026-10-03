@@ -27,10 +27,10 @@ describe('SCEN-412: DuplicateEmailAddressDetectedError when email is already reg
   });
 
   it('should throw DuplicateEmailAddressDetectedError with correct message when email is already registered', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
     });
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       withinDeadline: true,
     });
     mockedDetectDuplicateEmailAddress.mockRejectedValue(

@@ -32,7 +32,7 @@ describe('SCEN-384: 過去日報のアーカイブ処理に失敗した場合、
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
     mockedArchivePastDailyReports.mockRejectedValue(
       new ArchiveFailureError('過去日報のアーカイブに失敗しました。')
     );

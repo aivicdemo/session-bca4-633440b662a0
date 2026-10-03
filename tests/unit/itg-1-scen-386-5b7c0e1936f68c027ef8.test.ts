@@ -32,12 +32,12 @@ describe('SCEN-386: 対象報告者が過去日報を1件も持たない場合�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
-    mockedArchivePastDailyReports.mockResolvedValue({
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
+    (mockedArchivePastDailyReports as jest.Mock<any>).mockResolvedValue({
       archivedReportCount: 0,
     });
-    mockedDeactivateReporterInMaster.mockResolvedValue({ success: true });
-    mockedRecordReporterMasterChangeHistory.mockResolvedValue({
+    (mockedDeactivateReporterInMaster as jest.Mock<any>).mockResolvedValue({ success: true });
+    (mockedRecordReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       changeHistoryId: 'CHG-xxxxx',
     });
   });

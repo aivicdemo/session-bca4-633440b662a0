@@ -31,7 +31,7 @@ describe('SCEN-039: 対象日が営業日でない場合', () => {
     const mockSendLeaderPrompt = notificationModule.sendLeaderNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: false });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: false });
 
     const fakeAiClient: Tx4Imp1AiClient = {};
 

@@ -33,8 +33,8 @@ describe('SCEN-389: アーカイブテーブルへの書き込みに失敗した
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
-    mockedRecordReporterMasterChangeHistory.mockResolvedValue({
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
+    (mockedRecordReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       changeHistoryId: 'history-001',
       message: '変更履歴を記録しました。',

@@ -31,7 +31,7 @@ describe('SCEN-507: メールアドレスの形式が不正な場合、sendLeade
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'メールアドレスの形式が無効です',
       errorCode: 'INVALID_FORMAT',
@@ -56,7 +56,7 @@ describe('SCEN-507: メールアドレスの形式が不正な場合、sendLeade
       submissionTimestamp: '2024-01-15T10:00:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'メールアドレスの形式が無効です',
       errorCode: 'INVALID_FORMAT',
@@ -81,7 +81,7 @@ describe('SCEN-507: メールアドレスの形式が不正な場合、sendLeade
       submissionTimestamp: '2024-01-15T11:00:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'メールアドレスの形式が無効です',
       errorCode: 'INVALID_FORMAT',
@@ -106,7 +106,7 @@ describe('SCEN-507: メールアドレスの形式が不正な場合、sendLeade
       submissionTimestamp: '2024-01-15T12:00:00Z',
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'メールアドレスの形式が無効です',
       errorCode: 'INVALID_FORMAT',

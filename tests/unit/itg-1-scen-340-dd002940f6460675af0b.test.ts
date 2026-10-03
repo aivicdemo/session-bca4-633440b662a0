@@ -42,34 +42,34 @@ describe('SCEN-340: 新入社員配属で既存報告者IDがない場合、br-t
   });
 
   it('新入社員配属シナリオで正常に報告者が登録される', async () => {
-    mockedValidateReporterNameFormat.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada.taro@company.example.com',
       errorCode: null,
     });
 
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada.taro@company.example.com',
       errorCode: null,
     });
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId: 'USER-001',
     });
 
-    mockedRegisterReporterToMaster.mockResolvedValue({
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       reporterId: 'REPORTER-001',
     });
 
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       changeHistoryId: 'HISTORY-001',
     });
 

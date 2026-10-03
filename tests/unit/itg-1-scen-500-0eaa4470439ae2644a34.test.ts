@@ -24,16 +24,16 @@ describe('SCEN-500: メール配信が技術的に失敗した場合、警告メ
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
     });
 
-    mockedBuildNotificationContent.mockResolvedValue({
+    (mockedBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年01月15日 田中太郎',
       body: '田中太郎さんからの日報です\n\n本日は顧客Aのシステム改修に従事し、API設計書を完成させた',
     });
 
-    mockedRecordEmailSendingHistory.mockResolvedValue({
+    (mockedRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       id: 'history-20240115-001',
       sentAt: '2024-01-15T09:30:15Z',
     });

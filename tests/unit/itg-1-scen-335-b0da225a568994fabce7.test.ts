@@ -42,25 +42,25 @@ describe('SCEN-335: UserNotFoundInUserMasterエラーが返される', () => {
   });
 
   it('指定されたユーザーIDのステータスが無効な場合、UserNotFoundInUserMasterエラーを返す', async () => {
-    mockedValidateReporterNameFormat.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: false,
       userId: 'USER-999',
       inactiveReason: 'ユーザーがユーザーマスタに存在しないか、ステータスが無効である',

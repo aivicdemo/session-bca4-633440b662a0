@@ -37,16 +37,16 @@ describe('SCEN-414: ApprovalNotificationSendFailureError when notification send 
   });
 
   it('should throw ApprovalNotificationSendFailureError with correct message when notification send fails', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
     });
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       withinDeadline: true,
     });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
     });
-    mockedRegisterReporterToMaster.mockResolvedValue({
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       success: true,
     });
     mockedSendUserInformationApprovalNotification.mockRejectedValue(

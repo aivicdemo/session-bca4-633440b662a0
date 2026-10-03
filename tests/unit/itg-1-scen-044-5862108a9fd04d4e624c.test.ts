@@ -33,31 +33,31 @@ describe('SCEN-044: チーム進捗サマリーの生成に失敗した場合', 
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', userName: 'user-001', reporterName: '報告者1' },
       { userId: 'reporter-002', userName: 'user-002', reporterName: '報告者2' },
       { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
     ]);
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2024-01-15T16:30:00Z' },
       { userId: 'reporter-002', submittedAt: '2024-01-15T16:45:00Z' },
     ]);
 
-    mockDetectNonSubmitted.mockResolvedValue({
+    (mockDetectNonSubmitted as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
       ],
       detectionLogId: 'log-001',
     });
 
-    mockJudgePromptNecessity.mockResolvedValue({ needsPrompt: true });
+    (mockJudgePromptNecessity as jest.Mock<any>).mockResolvedValue({ needsPrompt: true });
 
-    mockSendLeaderPrompt.mockResolvedValue(true);
+    (mockSendLeaderPrompt as jest.Mock<any>).mockResolvedValue(true);
 
-    mockSendNonSubmissionPrompt.mockResolvedValue(1);
+    (mockSendNonSubmissionPrompt as jest.Mock<any>).mockResolvedValue(1);
 
     mockRetrieveDashboard.mockRejectedValue(new Error('ダッシュボードデータ取得失敗'));
 

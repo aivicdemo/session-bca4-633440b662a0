@@ -41,37 +41,37 @@ describe('SCEN-357: 新規登録成功ケース', () => {
       executionTimestamp,
     };
 
-    mockValidateReporterNameFormat.mockResolvedValue({
+    (mockValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '田中太郎',
       errorCode: null,
     });
 
-    mockValidateEmailAddress.mockResolvedValue({
+    (mockValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'tanaka@example.com',
       errorCode: null,
     });
 
-    mockDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'tanaka@example.com',
       errorCode: null,
     });
 
-    mockValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId: 'U001',
       inactiveReason: null,
     });
 
-    mockRegisterReporterToMaster.mockResolvedValue({
+    (mockRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporterId: 'REP001',
       message: '報告者をマスタに登録しました',
     });
 
-    mockPersistReporterMasterChangeHistory.mockResolvedValue({
+    (mockPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       changeHistoryId: 'CHG001',
       message: '変更履歴を記録しました',

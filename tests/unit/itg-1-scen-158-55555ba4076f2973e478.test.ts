@@ -18,7 +18,7 @@ const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<a
 describe('SCEN-158: 有効なメールアドレスが入力され、既存ユーザーに重複がない場合、正規化されたメールアドレスを返して重複なしと判定する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'user@example.com',
       errorCode: null,

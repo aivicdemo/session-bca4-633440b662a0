@@ -19,7 +19,7 @@ describe('SCEN-553: リーダーのメールアドレス形式が無効な場合
   });
 
   it('リーダーのメールアドレス形式が無効な場合、InvalidLeaderEmailAddressErrorが発生する', async () => {
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'Invalid email format',
       errorCode: 'INVALID_FORMAT',

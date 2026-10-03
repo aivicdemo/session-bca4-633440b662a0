@@ -32,7 +32,7 @@ describe('SCEN-218: 業務ルール validateAndRecordDailyReportSubmission で�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: 'user001',
       denialReason: null,

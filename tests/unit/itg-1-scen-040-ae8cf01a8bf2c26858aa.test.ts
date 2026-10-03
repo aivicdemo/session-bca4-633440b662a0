@@ -33,9 +33,9 @@ describe('SCEN-040: 有効な報告者が存在しない場合', () => {
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([]);
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([]);
 
     const fakeAiClient: Tx4Imp1AiClient = {};
 

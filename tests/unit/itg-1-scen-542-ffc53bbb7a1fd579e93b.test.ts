@@ -26,7 +26,7 @@ describe('SCEN-542: メール送信に失敗が発生したとき、failedReport
       targetDate: '2024-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       totalTargets: 3,
       successCount: 2,

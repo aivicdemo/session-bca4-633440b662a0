@@ -31,7 +31,7 @@ describe('SCEN-251: 全員が期限までに提出しなかった場合は全員
     const submissionDeadlineTime = '17:00';
     const teamId = 'TEAM-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const activeReporters = [
       { userId: 'R001', name: 'Reporter 1', email: 'r001@example.com', department: 'Sales' },
@@ -41,13 +41,13 @@ describe('SCEN-251: 全員が期限までに提出しなかった場合は全員
       { userId: 'R005', name: 'Reporter 5', email: 'r005@example.com', department: 'HR' },
     ];
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(activeReporters);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation(() => {
       return Promise.resolve({ exists: false });
     });
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue(true);
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
     const result = await detectNonSubmittedReportersAtDeadline({
       targetDate,

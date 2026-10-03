@@ -33,9 +33,9 @@ describe('SCEN-043: 催促メール送信に一部失敗した場合', () => {
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2025-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2025-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', userName: 'user-001', reporterName: '報告者1' },
       { userId: 'reporter-002', userName: 'user-002', reporterName: '報告者2' },
       { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
@@ -43,12 +43,12 @@ describe('SCEN-043: 催促メール送信に一部失敗した場合', () => {
       { userId: 'reporter-005', userName: 'user-005', reporterName: '報告者5' },
     ]);
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2025-01-15T16:30:00Z' },
       { userId: 'reporter-002', submittedAt: '2025-01-15T16:45:00Z' },
     ]);
 
-    mockDetectNonSubmitted.mockResolvedValue({
+    (mockDetectNonSubmitted as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
         { userId: 'reporter-004', userName: 'user-004', reporterName: '報告者4' },
@@ -57,9 +57,9 @@ describe('SCEN-043: 催促メール送信に一部失敗した場合', () => {
       detectionLogId: 'log-001',
     });
 
-    mockJudgePromptNecessity.mockResolvedValue({ needsPrompt: true });
+    (mockJudgePromptNecessity as jest.Mock<any>).mockResolvedValue({ needsPrompt: true });
 
-    mockSendLeaderPrompt.mockResolvedValue(true);
+    (mockSendLeaderPrompt as jest.Mock<any>).mockResolvedValue(true);
 
     let callCount = 0;
     mockSendNonSubmissionPrompt.mockImplementation(async () => {
@@ -70,7 +70,7 @@ describe('SCEN-043: 催促メール送信に一部失敗した場合', () => {
       return true;
     });
 
-    mockRetrieveDashboard.mockResolvedValue({
+    (mockRetrieveDashboard as jest.Mock<any>).mockResolvedValue({
       progressSummary: '提出率66.7%、未提出者3名',
     });
 

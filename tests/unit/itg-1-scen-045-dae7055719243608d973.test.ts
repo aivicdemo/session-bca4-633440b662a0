@@ -33,9 +33,9 @@ describe('SCEN-045: リーダーへの通知送信に失敗した場合', () => 
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', userName: 'user-001', reporterName: '報告者1' },
       { userId: 'reporter-002', userName: 'user-002', reporterName: '報告者2' },
       { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
@@ -43,13 +43,13 @@ describe('SCEN-045: リーダーへの通知送信に失敗した場合', () => 
       { userId: 'reporter-005', userName: 'user-005', reporterName: '報告者5' },
     ]);
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2024-01-15T16:30:00Z' },
       { userId: 'reporter-002', submittedAt: '2024-01-15T16:45:00Z' },
       { userId: 'reporter-003', submittedAt: '2024-01-15T15:00:00Z' },
     ]);
 
-    mockDetectNonSubmitted.mockResolvedValue({
+    (mockDetectNonSubmitted as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'reporter-004', userName: 'user-004', reporterName: '報告者4', lastSubmissionDate: '2024-01-14' },
         { userId: 'reporter-005', userName: 'user-005', reporterName: '報告者5', lastSubmissionDate: null },
@@ -57,13 +57,13 @@ describe('SCEN-045: リーダーへの通知送信に失敗した場合', () => 
       detectionLogId: 'log-001',
     });
 
-    mockJudgePromptNecessity.mockResolvedValue({ needsPrompt: true });
+    (mockJudgePromptNecessity as jest.Mock<any>).mockResolvedValue({ needsPrompt: true });
 
     mockSendLeaderPrompt.mockRejectedValue(new Error('通知送信失敗'));
 
-    mockSendNonSubmissionPrompt.mockResolvedValue(2);
+    (mockSendNonSubmissionPrompt as jest.Mock<any>).mockResolvedValue(2);
 
-    mockRetrieveDashboard.mockResolvedValue({
+    (mockRetrieveDashboard as jest.Mock<any>).mockResolvedValue({
       progressSummary: '提出率60%、未提出者2名：ユーザーA（最終提出:2024-01-14）、ユーザーB（未提出）、主要課題：進捗遅延',
     });
 

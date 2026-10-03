@@ -38,7 +38,7 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -46,7 +46,7 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: [
         { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
@@ -59,7 +59,7 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
       message: '対象報告者を取得しました。',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [],
       detectionLog: {
         detectionLogId: 'detection-log-20240115-001',
@@ -72,9 +72,9 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
       detectionTimestamp: '2024-01-15T18:00:00Z',
     });
 
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue([]);
+    (mockedJudgePromptNecessityAndMethod as jest.Mock<any>).mockResolvedValue([]);
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendLeaderNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'notif-20240115-001',
       sentAt: new Date('2024-01-15T18:00:00Z'),
@@ -83,7 +83,7 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
       errorDetails: null,
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       detectionLogs: [
         {
           detectionLogId: 'detection-log-20240115-001',

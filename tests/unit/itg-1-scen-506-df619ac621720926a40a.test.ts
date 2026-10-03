@@ -21,13 +21,13 @@ describe('SCEN-506: リーダーのメールアドレスが登録されていな
     const mockRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
     const mockSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'リーダーのメールアドレスが未設定です',
       errorCode: 'LEADER_EMAIL_NOT_SET',
     } as ValidateEmailAddressForDeliveryOutput);
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

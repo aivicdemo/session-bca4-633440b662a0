@@ -34,7 +34,7 @@ describe('SCEN-502: 報告内容が空文字列の場合、generateDailyReportNo
       new Error('日報内容が入力されていません')
     );
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

@@ -37,7 +37,7 @@ describe('SCEN-016: 提出期限に達した対象日付で、全員が日報を
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -45,7 +45,7 @@ describe('SCEN-016: 提出期限に達した対象日付で、全員が日報を
       executionReason: '定時実行タイミング内',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [],
       detectionLog: {
         detectionLogId: 'LOG-001',
@@ -58,7 +58,7 @@ describe('SCEN-016: 提出期限に達した対象日付で、全員が日報を
       detectionTimestamp: '2024-01-15T17:00:00Z',
     });
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+    (mockedSendLeaderSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-001',
       sentAt: new Date(executionTimestamp),
@@ -66,7 +66,7 @@ describe('SCEN-016: 提出期限に達した対象日付で、全員が日報を
       errorDetails: null,
     });
 
-    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+    (mockedRetrieveLeaderDashboardData as jest.Mock<any>).mockResolvedValue({
       submittedReports: [
         { reportId: 'R1', reporterId: 'U1', reporterName: '報告者1', submissionTime: '2024-01-15T16:50:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },
         { reportId: 'R2', reporterId: 'U2', reporterName: '報告者2', submissionTime: '2024-01-15T16:55:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },

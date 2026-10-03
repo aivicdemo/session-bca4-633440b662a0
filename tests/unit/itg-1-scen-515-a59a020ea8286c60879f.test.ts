@@ -45,7 +45,7 @@ describe('SCEN-515: validateEmailAddressForDelivery が false を返した場合
       adminNotificationSent: true,
     };
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await sendDailyReportSubmissionNotification(input);
 

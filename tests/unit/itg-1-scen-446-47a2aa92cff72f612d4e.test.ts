@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-446: 検索対象期間内に提出済み日報が存在しない場合', () => {
-  it('空の日報配列とtotalCountが0で返される', () => {
+  it('空の日報配列とtotalCountが0で返される', async () => {
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: 'leader-001',
       startDate: '2024-01-01',
@@ -19,7 +19,7 @@ describe('SCEN-446: 検索対象期間内に提出済み日報が存在しない
     };
 
     const result: RetrieveDailyReportsForLeaderReviewOutput =
-      retrieveDailyReportsForLeaderReview(input);
+      await retrieveDailyReportsForLeaderReview(input);
 
     expect(result.dailyReports).toEqual([]);
     expect(result.totalCount).toBe(0);

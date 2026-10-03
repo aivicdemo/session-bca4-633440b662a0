@@ -43,31 +43,31 @@ describe('SCEN-356: 報告者ID重複エラー', () => {
       executionTimestamp,
     };
 
-    mockValidateReporterNameFormat.mockResolvedValue({
+    (mockValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '重複ID報告者',
       errorCode: null,
     });
 
-    mockValidateEmailAddress.mockResolvedValue({
+    (mockValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'duplicate-id@example.com',
       errorCode: null,
     });
 
-    mockDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'duplicate-id@example.com',
       errorCode: null,
     });
 
-    mockValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId: 'USER-TL001',
       inactiveReason: null,
     });
 
-    mockRetrieveReporterByUserId.mockResolvedValue({
+    (mockRetrieveReporterByUserId as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporter: {
         reporterId: 'USER-NEW001',

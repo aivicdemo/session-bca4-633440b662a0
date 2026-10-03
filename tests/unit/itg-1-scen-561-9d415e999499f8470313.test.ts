@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { retrieveLeaderDashboardData, TargetDateInvalidError } from '../../src/logic/daily-report-management-view';
 
-const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
-const judgeBusinessDayAndDeadlineMock = jest.fn();
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as jest.Mock<any>;
+const judgeBusinessDayAndDeadlineMock = jest.fn() as jest.Mock<any>;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
@@ -27,12 +27,12 @@ describe('SCEN-561: 指定された対象日付が営業日判定に失敗した
     const leaderId = 'leader-001';
     const targetDate = '2024-02-30';
 
-    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+    (authenticateAndAuthorizeLeaderAccessMock as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
-    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+    (judgeBusinessDayAndDeadlineMock as jest.Mock<any>).mockResolvedValue({
       isAcceptable: false,
       isBusinessDay: false,
       isWithinDeadline: false,

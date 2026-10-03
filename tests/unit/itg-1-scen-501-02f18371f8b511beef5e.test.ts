@@ -24,16 +24,16 @@ describe('SCEN-501: 有効なリーダーメールアドレスに対してメー
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
     });
 
-    mockedBuildNotificationContent.mockResolvedValue({
+    (mockedBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年01月15日 山田太郎',
       body: '山田太郎さんからの日報です\n\n顧客A社との打ち合わせを実施。要件定義書をレビューし、修正箇所を整理した。明日は修正対応を進める予定。',
     });
 
-    mockedRecordEmailSendingHistory.mockResolvedValue({
+    (mockedRecordEmailSendingHistory as jest.Mock<any>).mockResolvedValue({
       id: 'history-20240115-001',
       sentAt: '2024-01-15T14:30:15Z',
     });

@@ -41,12 +41,12 @@ describe('SCEN-364: 同じメールアドレスで複数の報告者が登録さ
     };
 
     // スタブの設定
-    mockedValidateEmailAddress.mockResolvedValue({ valid: true });
-    mockedValidateReporterNameFormat.mockResolvedValue({ valid: true });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true });
 
     // 重複検出を「重複あり」として設定
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: true,
       existingReporterId: 'R001',
       existingReporterName: '既存報告者'

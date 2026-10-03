@@ -21,14 +21,14 @@ describe('SCEN-098: 報告者が別チーム所属のとき拒否される', () 
     jest.resetAllMocks();
 
     // validateUserHasReporterRole をスタブ化し、戻り値として報告者ロールを持つ状態（true）を返すよう設定
-    mockedValidateUserHasReporterRole.mockResolvedValue({
+    (mockedValidateUserHasReporterRole as jest.Mock<any>).mockResolvedValue({
       hasReporterRole: true,
       userId: 'reporter-001',
       denialReason: null,
     });
 
     // validateUserAccountActiveStatus をスタブ化し、戻り値としてアカウントが有効な状態（true）を返すよう設定
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId: 'reporter-001',
       inactiveReason: null,
@@ -79,7 +79,7 @@ describe('SCEN-098: 報告者が別チーム所属のとき拒否される', () 
 
   it('ユーザーが別チーム所属である場合、アクセスが拒否される', async () => {
     // 別チーム所属である状態をシミュレート
-    mockedValidateUserHasReporterRole.mockResolvedValue({
+    (mockedValidateUserHasReporterRole as jest.Mock<any>).mockResolvedValue({
       hasReporterRole: true,
       userId: 'reporter-001',
       denialReason: 'このユーザーは日報提出対象として登録されていません。',

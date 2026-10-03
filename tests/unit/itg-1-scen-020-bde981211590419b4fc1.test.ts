@@ -41,7 +41,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -49,7 +49,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
       executionReason: '定時実行タイミング内',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'U2', userName: '報告者2', emailAddress: 'r002@example.com', departmentId: 'D001' },
         { userId: 'U4', userName: '報告者4', emailAddress: 'r004@example.com', departmentId: 'D001' },
@@ -65,7 +65,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
       detectionTimestamp: '2024-01-15T17:00:00Z',
     });
 
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+    (mockedJudgePromptNecessityAndMethod as jest.Mock<any>).mockResolvedValue({
       isPromptNecessary: true,
       promptPriority: 'high',
       promptMethod: 'email',
@@ -74,7 +74,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
       overdueDurationMinutes: 60,
     });
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendLeaderNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-002',
       sentAt: new Date(executionTimestamp),
@@ -83,7 +83,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
       errorDetails: null,
     });
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+    (mockedSendLeaderSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-001',
       sentAt: new Date(executionTimestamp),
@@ -91,7 +91,7 @@ describe('SCEN-020: 提出期限に達した対象日付で、一部の報告者
       errorDetails: null,
     });
 
-    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+    (mockedRetrieveLeaderDashboardData as jest.Mock<any>).mockResolvedValue({
       submittedReports: [
         { reportId: 'R1', reporterId: 'U1', reporterName: '報告者1', submissionTime: '2024-01-15T16:50:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },
         { reportId: 'R3', reporterId: 'U3', reporterName: '報告者3', submissionTime: '2024-01-15T16:58:00Z', businessContent: '営業活動', achievements: '目標達成', issues: 'なし', tomorrowPlan: '続行' },

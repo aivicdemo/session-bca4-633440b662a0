@@ -33,7 +33,7 @@ describe('SCEN-046: teamIdが指定された場合のみのチーム限定処理
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2025-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2025-01-16T17:00:00Z' });
 
     mockGetActiveReporters.mockImplementation(async (targetDate, teamId) => {
       if (teamId === 'team-A') {
@@ -46,25 +46,25 @@ describe('SCEN-046: teamIdが指定された場合のみのチーム限定処理
       return [];
     });
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2025-01-15T16:30:00Z' },
       { userId: 'reporter-002', submittedAt: '2025-01-15T16:45:00Z' },
     ]);
 
-    mockDetectNonSubmitted.mockResolvedValue({
+    (mockDetectNonSubmitted as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3', lastSubmissionDate: null },
       ],
       detectionLogId: 'log-001',
     });
 
-    mockJudgePromptNecessity.mockResolvedValue({ needsPrompt: true });
+    (mockJudgePromptNecessity as jest.Mock<any>).mockResolvedValue({ needsPrompt: true });
 
-    mockSendLeaderPrompt.mockResolvedValue(true);
+    (mockSendLeaderPrompt as jest.Mock<any>).mockResolvedValue(true);
 
-    mockSendNonSubmissionPrompt.mockResolvedValue(1);
+    (mockSendNonSubmissionPrompt as jest.Mock<any>).mockResolvedValue(1);
 
-    mockRetrieveDashboard.mockResolvedValue({
+    (mockRetrieveDashboard as jest.Mock<any>).mockResolvedValue({
       progressSummary: '提出率66.7%、未提出者1名、主要課題情報',
     });
 

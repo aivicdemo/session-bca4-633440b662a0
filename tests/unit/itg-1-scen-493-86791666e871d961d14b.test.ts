@@ -37,7 +37,7 @@ describe('SCEN-493: リーダーメールアドレスが更新待ち状態の場
       errorCode: 'EMAIL_UPDATE_PENDING',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue(mockValidateResult);
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue(mockValidateResult);
 
     const result: SendDailyReportSubmissionNotificationOutput = await sendDailyReportSubmissionNotification(input);
 

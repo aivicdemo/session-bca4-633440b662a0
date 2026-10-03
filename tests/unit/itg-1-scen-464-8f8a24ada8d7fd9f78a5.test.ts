@@ -27,7 +27,7 @@ const mockedPersistChangeHistory = persistReporterMasterChangeHistory as jest.Mo
 describe('SCEN-464: 報告者情報を更新すると、変更履歴が記録される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedPersistChangeHistory.mockResolvedValue({ success: true });
+    (mockedPersistChangeHistory as jest.Mock<any>).mockResolvedValue({ success: true });
   });
 
   it('should record change history when reporter info is updated', async () => {

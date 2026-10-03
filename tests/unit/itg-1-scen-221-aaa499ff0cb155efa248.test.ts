@@ -50,20 +50,20 @@ describe('SCEN-221: 送信時刻記録・重複確認・送信完了判定を実
     };
 
     // スタブ設定
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: 'reporter-001',
     });
 
-    mockedValidateDailyReportContent.mockResolvedValue({
+    (mockedValidateDailyReportContent as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedContent: input.businessContent,
       errorCode: null,
     });
 
-    mockedCheckDailyReportExistsForDate.mockResolvedValue(false);
+    (mockedCheckDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue(false);
 
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
@@ -72,14 +72,14 @@ describe('SCEN-221: 送信時刻記録・重複確認・送信完了判定を実
       rejectionReason: null,
     });
 
-    mockedSaveDailyReport.mockResolvedValue({
+    (mockedSaveDailyReport as jest.Mock<any>).mockResolvedValue({
       dailyReportId: 'daily-report-20240115-001',
       savedAt: '2024-01-15T14:30:00Z',
       userId: 'reporter-001',
       reportDate: '2024-01-15',
     });
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'email-001',
       sentAt: '2024-01-15T14:30:10Z',

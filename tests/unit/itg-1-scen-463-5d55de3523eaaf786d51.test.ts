@@ -27,7 +27,7 @@ const mockedPersistChangeHistory = persistReporterMasterChangeHistory as jest.Mo
 describe('SCEN-463: 複数の更新可能項目（名前、メールアドレス、部門、ステータス）のいずれかのみを指定して更新すると、指定された項目だけが反映される', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedPersistChangeHistory.mockResolvedValue({ success: true });
+    (mockedPersistChangeHistory as jest.Mock<any>).mockResolvedValue({ success: true });
   });
 
   it('should update only reporterName when only name is specified', async () => {

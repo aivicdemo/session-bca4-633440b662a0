@@ -35,10 +35,10 @@ describe('SCEN-366: UPDATE操作で変更前後の値が異なる場合、br-tx_
     const executionTimestamp2 = new Date('2024-01-15T10:31:00Z');
 
     // スタブの設定
-    mockedValidateReporterNameFormat.mockResolvedValue({ valid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ valid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ valid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true });
 
     let callCount = 0;
     mockedRegisterReporterToMaster.mockImplementation(() => {

@@ -33,14 +33,14 @@ describe('SCEN-569: リーダーメールアドレスの形式が不正である
     mockRetrieveEmailSendingHistoryByDateRange = notificationModule.retrieveEmailSendingHistoryByDateRange;
     mockValidateAndDeliverLeaderNotification = notificationModule.validateAndDeliverLeaderNotification;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       leaderId: 'leader-001',
       isAuthorized: true,
     });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue(true);
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue(true);
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
 
     mockValidateAndDeliverLeaderNotification.mockImplementation(() => {
       const error = new Error('メールアドレスの形式が無効です。正しいアドレスを入力してください。');

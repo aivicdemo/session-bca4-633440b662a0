@@ -43,19 +43,19 @@ describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: userId,
       denialReason: null,
     });
 
-    mockedValidateDailyReportContent.mockResolvedValue({
+    (mockedValidateDailyReportContent as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedContent: businessContent,
       errorCode: null,
     });
 
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
@@ -64,23 +64,23 @@ describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻�
       rejectionReason: null,
     });
 
-    mockedCheckDailyReportExistsForDate.mockResolvedValue(false);
+    (mockedCheckDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue(false);
 
-    mockedSaveDailyReport.mockResolvedValue({
+    (mockedSaveDailyReport as jest.Mock<any>).mockResolvedValue({
       dailyReportId: dailyReportId,
       savedAt: submissionTimestamp,
       userId: userId,
       reportDate: reportDate,
     });
 
-    mockedUpdateDailyReportSubmissionTimestamp.mockResolvedValue({
+    (mockedUpdateDailyReportSubmissionTimestamp as jest.Mock<any>).mockResolvedValue({
       dailyReportId: dailyReportId,
       previousSubmittedAt: null,
       updatedSubmittedAt: submissionTimestamp,
       updatedAt: submissionTimestamp,
     });
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: 'notif-001',
       sentAt: submissionTimestamp,

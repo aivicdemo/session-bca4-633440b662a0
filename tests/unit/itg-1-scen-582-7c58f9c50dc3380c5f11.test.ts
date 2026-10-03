@@ -30,19 +30,19 @@ describe('SCEN-582: 本日のメール送信履歴が0件のとき、空の配�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       leaderId: 'leader001',
       denialReason: null,
     });
 
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isBusinessDay: true,
       isWithinDeadline: true,
       deadlineTime: '18:00',
     });
 
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue({
       success: true,
       reports: [
         {
@@ -59,7 +59,7 @@ describe('SCEN-582: 本日のメール送信履歴が0件のとき、空の配�
       totalCount: 1,
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogs: [
         {
@@ -75,7 +75,7 @@ describe('SCEN-582: 本日のメール送信履歴が0件のとき、空の配�
       totalCount: 1,
     });
 
-    mockedRetrieveEmailSendingHistoryByDateRange.mockResolvedValue({
+    (mockedRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailHistory: [],
       totalCount: 0,

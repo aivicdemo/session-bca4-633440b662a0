@@ -30,20 +30,20 @@ describe('SCEN-583: 提出状況サマリーの提出者数、未提出者数、
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       leaderId: 'leader001',
       denialReason: null,
     });
 
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isBusinessDay: true,
       isWithinDeadline: true,
       deadlineTime: '18:00',
     });
 
     // 提出済み日報3件
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue({
       success: true,
       reports: [
         {
@@ -81,7 +81,7 @@ describe('SCEN-583: 提出状況サマリーの提出者数、未提出者数、
     });
 
     // 未提出者検知ログ2件
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogs: [
         {
@@ -99,7 +99,7 @@ describe('SCEN-583: 提出状況サマリーの提出者数、未提出者数、
     });
 
     // メール送信履歴3件
-    mockedRetrieveEmailSendingHistoryByDateRange.mockResolvedValue({
+    (mockedRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailHistory: [
         {

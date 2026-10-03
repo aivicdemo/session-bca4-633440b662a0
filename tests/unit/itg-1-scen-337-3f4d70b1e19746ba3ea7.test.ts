@@ -39,25 +39,25 @@ describe('SCEN-337: ユーザーマスタが空の場合、br-tx_3-004の制約1
   });
 
   it('ユーザーマスタが空の状態の場合、制約1のエラーメッセージで処理が中断される', async () => {
-    mockedValidateReporterNameFormat.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId: 'U001',
     });

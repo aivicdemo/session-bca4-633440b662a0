@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { retrieveLeaderDashboardData, LeaderAuthorizationFailedError } from '../../src/logic/daily-report-management-view';
 
-const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as jest.Mock<any>;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
@@ -26,7 +26,7 @@ describe('SCEN-560: リーダーの認証・認可に失敗した場合', () => 
     const leaderId = 'leader_invalid_id';
     const targetDate = '2024-01-15';
 
-    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+    (authenticateAndAuthorizeLeaderAccessMock as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: false,
       userId: leaderId,
       denialReason: 'リーダー権限なし',

@@ -49,7 +49,7 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
 
   it('第1の呼び出し: TargetDateNotBusinessDayエラーで終了する', async () => {
     // Step 2: getActiveReportersForSubmissionCheckをスタブし、有効な報告者を返す
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: [
         { userId: 'user-A', userName: 'User A', reporterName: 'ユーザーA', status: 'active' },
@@ -84,14 +84,14 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
 
   it('第2の呼び出し: 成功し、無効な報告者は除外される', async () => {
     // Step 5: judgeBusinessDayAndDeadlineをスタブし、営業日を返す
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isBusinessDay: true,
       isWithinDeadline: true,
       submissionDeadlineForTargetDate: '2024-01-15T17:00:00',
     });
 
     // Step 2再: getActiveReportersForSubmissionCheckをスタブし、有効な報告者のみを返す
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: [
         { userId: 'user-A', userName: 'User A', reporterName: 'ユーザーA', status: 'active' },
@@ -102,7 +102,7 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
     });
 
     // Step 6: retrieveDailyReportsForLeaderReviewをスタブし、ユーザーAとBから提出を返す
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue({
       success: true,
       reports: [
         {
@@ -122,7 +122,7 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
     });
 
     // Step 7: detectNonSubmittedReportersAtDeadlineをスタブし、ユーザーDのみを検知
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       success: true,
       nonSubmittedReporters: [
         {
@@ -140,28 +140,28 @@ describe('SCEN-049: 報告者マスタの人事異動による更新が反映さ
     });
 
     // Step 8: judgePromptNecessityAndMethodをスタブし、催促が必要と返す
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+    (mockedJudgePromptNecessityAndMethod as jest.Mock<any>).mockResolvedValue({
       success: true,
       promptNecessary: true,
       promptMethod: 'email',
     });
 
     // Step 9: sendLeaderNonSubmissionPromptNotificationをスタブし、送信成功を返す
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendLeaderNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'notif-leader-001',
       sentAt: '2024-01-15T15:00:00Z',
     });
 
     // Step 10: sendNonSubmissionPromptNotificationをスタブし、送信成功を返す
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       sent: 1,
       failed: 0,
       sentAt: '2024-01-15T15:01:00Z',
     });
 
     // Step 11: retrieveLeaderDashboardDataをスタブし、ダッシュボードデータを返す
-    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+    (mockedRetrieveLeaderDashboardData as jest.Mock<any>).mockResolvedValue({
       success: true,
       progressSummary: 'チーム進捗サマリー',
       submissionRate: '66.67%',

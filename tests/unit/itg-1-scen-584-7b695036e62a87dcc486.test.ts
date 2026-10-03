@@ -32,31 +32,31 @@ describe('SCEN-584: targetDateがISO 8601形式（YYYY-MM-DD）で正しく指�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       leaderId: 'leader-001',
       denialReason: null,
     });
 
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isBusinessDay: true,
       isWithinDeadline: true,
       deadlineTime: '18:00',
     });
 
-    mockedRetrieveDailyReportsForLeaderReview.mockResolvedValue({
+    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue({
       success: true,
       reports: [],
       totalCount: 0,
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue({
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogs: [],
       totalCount: 0,
     });
 
-    mockedRetrieveEmailSendingHistoryByDateRange.mockResolvedValue({
+    (mockedRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailHistory: [],
       totalCount: 0,

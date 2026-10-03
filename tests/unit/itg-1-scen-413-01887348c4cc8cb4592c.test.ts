@@ -26,13 +26,13 @@ describe('SCEN-413: InvalidApprovalDecisionError when approvalDecision is invali
   });
 
   it('should throw InvalidApprovalDecisionError with correct message when approvalDecision is invalid', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
     });
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       withinDeadline: true,
     });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
     });
 
@@ -54,13 +54,13 @@ describe('SCEN-413: InvalidApprovalDecisionError when approvalDecision is invali
   });
 
   it('should throw InvalidApprovalDecisionError for empty string', async () => {
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
     });
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       withinDeadline: true,
     });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
     });
 

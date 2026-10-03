@@ -24,7 +24,7 @@ describe('SCEN-018: 対象日付にアクティブな報告者が存在しない
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -34,7 +34,7 @@ describe('SCEN-018: 対象日付にアクティブな報告者が存在しない
   });
 
   it('SubmissionDeadlineNotReachedエラーを発生させる', async () => {
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: false,
       isBusinessDay: true,
       isWithinExecutionWindow: false,

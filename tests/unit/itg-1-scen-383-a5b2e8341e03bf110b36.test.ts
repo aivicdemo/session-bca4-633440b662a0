@@ -34,7 +34,7 @@ describe('SCEN-383: 実行者が対象報告者の所属チームのリーダー
   });
 
   it('報告者が有効な状態であっても、teamLeaderIdが対象報告者の所属チームのリーダーではない場合、UnauthorizedLeaderErrorをスロー', async () => {
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
 
     const input = {
       reporterId,
@@ -47,7 +47,7 @@ describe('SCEN-383: 実行者が対象報告者の所属チームのリーダー
   });
 
   it('エラーメッセージが「この操作を実行する権限がありません。」を含む', async () => {
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
 
     const input = {
       reporterId,
@@ -66,7 +66,7 @@ describe('SCEN-383: 実行者が対象報告者の所属チームのリーダー
   });
 
   it('出力型 DeactivateReporterOutput は返されず、deactivateReporterInMaster は実行されない', async () => {
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
 
     const input = {
       reporterId,
@@ -85,7 +85,7 @@ describe('SCEN-383: 実行者が対象報告者の所属チームのリーダー
   });
 
   it('archivePastDailyReports は実行されない', async () => {
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
 
     const input = {
       reporterId,
@@ -104,7 +104,7 @@ describe('SCEN-383: 実行者が対象報告者の所属チームのリーダー
   });
 
   it('recordReporterMasterChangeHistory は実行されない', async () => {
-    mockedIsReporterActiveAndValid.mockResolvedValue(true);
+    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
 
     const input = {
       reporterId,

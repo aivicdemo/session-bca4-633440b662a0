@@ -25,17 +25,17 @@ describe('SCEN-573: ダッシュボード取得時にvalidateAndDeliverLeaderNot
     mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true });
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true });
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([{
       reportId: 'report-001',
       reporterName: '太郎',
       submissionDateTime: '2024-01-15T14:30:00Z',
       reportContent: '本日の業務',
       reportDate: '2024-01-15',
     }]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
   });
 
   it('validateAndDeliverLeaderNotification例外発生時、DataRetrievalFailedErrorをスロー', async () => {

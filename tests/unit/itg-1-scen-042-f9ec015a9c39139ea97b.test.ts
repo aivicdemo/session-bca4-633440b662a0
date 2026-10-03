@@ -29,9 +29,9 @@ describe('SCEN-042: 未提出者検知処理が失敗した場合', () => {
     const mockRetrieveDailyReports = persistenceModule.retrieveDailyReportsForLeaderReview as jest.MockedFunction<any>;
     const mockDetectNonSubmitted = detectionModule.detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', userName: 'user-001', reporterName: '報告者1' },
       { userId: 'reporter-002', userName: 'user-002', reporterName: '報告者2' },
       { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
@@ -39,7 +39,7 @@ describe('SCEN-042: 未提出者検知処理が失敗した場合', () => {
       { userId: 'reporter-005', userName: 'user-005', reporterName: '報告者5' },
     ]);
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2024-01-15T16:30:00Z' },
     ]);
 

@@ -34,7 +34,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
       timeZone: 'Asia/Tokyo'
     };
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -61,7 +61,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
     );
 
     // スケジューラ実行判定は成功
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -106,7 +106,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
      '(2)管理画面の未提出者一覧に「通知未送信」フラグが true に設定される。' +
      'スケジューラ実行判定自体は shouldExecute=true のまま継続', async () => {
     // Arrange: 複数の処理が並行実行される
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -155,7 +155,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
 
   it('営業日判定とスケジューラ時刻判定が両方 true の場合、shouldExecute=true', async () => {
     // Arrange: 営業日の営業時間内
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -181,7 +181,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
 
   it('営業日判定が false の場合、shouldExecute=false', async () => {
     // Arrange: 日曜日（非営業日）
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: false,
       isBusinessDay: false,
       isWithinExecutionWindow: true,
@@ -206,7 +206,7 @@ describe('SCEN-767: メール送信失敗時の代替動作検証', () => {
 
   it('スケジューラ時刻判定が false の場合、shouldExecute=false', async () => {
     // Arrange: 実行時刻外
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: false,
       isBusinessDay: true,
       isWithinExecutionWindow: false,

@@ -33,9 +33,9 @@ describe('SCEN-038: 全員提出 - 進捗サマリー生成成功', () => {
     const mockSendNonSubmissionPrompt = emailModule.sendNonSubmissionPromptNotification as jest.MockedFunction<any>;
     const mockRetrieveDashboard = dashboardModule.retrieveLeaderDashboardData as jest.MockedFunction<any>;
 
-    mockBusinessDay.mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
+    (mockBusinessDay as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, deadline: '2024-01-16T17:00:00Z' });
 
-    mockGetActiveReporters.mockResolvedValue([
+    (mockGetActiveReporters as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', userName: 'user-001', reporterName: '報告者1' },
       { userId: 'reporter-002', userName: 'user-002', reporterName: '報告者2' },
       { userId: 'reporter-003', userName: 'user-003', reporterName: '報告者3' },
@@ -43,7 +43,7 @@ describe('SCEN-038: 全員提出 - 進捗サマリー生成成功', () => {
       { userId: 'reporter-005', userName: 'user-005', reporterName: '報告者5' },
     ]);
 
-    mockRetrieveDailyReports.mockResolvedValue([
+    (mockRetrieveDailyReports as jest.Mock<any>).mockResolvedValue([
       { userId: 'reporter-001', submittedAt: '2024-01-15T16:30:00Z' },
       { userId: 'reporter-002', submittedAt: '2024-01-15T16:45:00Z' },
       { userId: 'reporter-003', submittedAt: '2024-01-15T15:00:00Z' },
@@ -51,18 +51,18 @@ describe('SCEN-038: 全員提出 - 進捗サマリー生成成功', () => {
       { userId: 'reporter-005', submittedAt: '2024-01-15T14:30:00Z' },
     ]);
 
-    mockDetectNonSubmitted.mockResolvedValue({
+    (mockDetectNonSubmitted as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [],
       detectionLogId: 'log-001',
     });
 
-    mockJudgePromptNecessity.mockResolvedValue({ needsPrompt: false });
+    (mockJudgePromptNecessity as jest.Mock<any>).mockResolvedValue({ needsPrompt: false });
 
-    mockSendLeaderPrompt.mockResolvedValue(true);
+    (mockSendLeaderPrompt as jest.Mock<any>).mockResolvedValue(true);
 
-    mockSendNonSubmissionPrompt.mockResolvedValue(0);
+    (mockSendNonSubmissionPrompt as jest.Mock<any>).mockResolvedValue(0);
 
-    mockRetrieveDashboard.mockResolvedValue({
+    (mockRetrieveDashboard as jest.Mock<any>).mockResolvedValue({
       progressSummary: '提出率100%、全員提出、未提出者なし',
     });
 

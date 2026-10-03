@@ -25,9 +25,9 @@ describe('SCEN-575: 提出済み日報が複数件存在するとき、すべて
     mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true });
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true });
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([
       {
         reportId: 'report001',
         reporterId: 'reporter-001',
@@ -53,8 +53,8 @@ describe('SCEN-575: 提出済み日報が複数件存在するとき、すべて
         reportDate: '2025-01-15',
       },
     ]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
   });
 
   it('複数件の日報が統一フォーマットで配列に集約される', async () => {

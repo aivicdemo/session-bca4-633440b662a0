@@ -26,7 +26,7 @@ describe('SCEN-545: successCountがメール送信に成功した対象者の数
       targetDate: '2024-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       totalTargets: 3,
       successCount: 3,

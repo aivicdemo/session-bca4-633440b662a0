@@ -46,7 +46,7 @@ describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -54,7 +54,7 @@ describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に
       executionReason: '定時実行タイミング内',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'U3', userName: '報告者3', emailAddress: 'r003@example.com', departmentId: 'D001' },
         { userId: 'U4', userName: '報告者4', emailAddress: 'r004@example.com', departmentId: 'D001' },
@@ -70,7 +70,7 @@ describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に
       detectionTimestamp: '2024-01-15T17:00:00Z',
     });
 
-    mockedJudgePromptNecessityAndMethod.mockResolvedValue({
+    (mockedJudgePromptNecessityAndMethod as jest.Mock<any>).mockResolvedValue({
       isPromptNecessary: true,
       promptPriority: 'high',
       promptMethod: 'email',
@@ -79,7 +79,7 @@ describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に
       overdueDurationMinutes: 60,
     });
 
-    mockedSendLeaderNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendLeaderNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-002',
       sentAt: new Date(executionTimestamp),
@@ -88,7 +88,7 @@ describe('SCEN-023: 管理画面表示用ダッシュボードデータ取得に
       errorDetails: null,
     });
 
-    mockedSendLeaderSubmissionNotification.mockResolvedValue({
+    (mockedSendLeaderSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationId: 'NOTIF-001',
       sentAt: new Date(executionTimestamp),

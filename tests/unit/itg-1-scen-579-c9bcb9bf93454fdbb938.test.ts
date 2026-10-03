@@ -41,13 +41,13 @@ describe('SCEN-579: 本日の検知ログが複数件存在するとき、すべ
     const mockRetrieveDetectionLogs = retrieveNonSubmissionDetectionLogsByDate as any;
     const mockRetrieveEmailHistory = retrieveEmailSendingHistoryByDateRange as any;
 
-    mockAuth.mockResolvedValue({
+    (mockAuth as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
       denialReason: null,
     });
 
-    mockJudge.mockResolvedValue({
+    (mockJudge as jest.Mock<any>).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
@@ -56,7 +56,7 @@ describe('SCEN-579: 本日の検知ログが複数件存在するとき、すべ
       rejectionReason: null,
     });
 
-    mockRetrieveReports.mockResolvedValue({
+    (mockRetrieveReports as jest.Mock<any>).mockResolvedValue({
       dailyReports: [],
       totalCount: 0,
       pageNumber: 1,
@@ -64,7 +64,7 @@ describe('SCEN-579: 本日の検知ログが複数件存在するとき、すべ
       retrievedAt: '2024-01-15T20:00:00Z',
     });
 
-    mockRetrieveDetectionLogs.mockResolvedValue({
+    (mockRetrieveDetectionLogs as jest.Mock<any>).mockResolvedValue({
       detectionLogs: [
         {
           detectionLogId: 'DL-001',
@@ -98,7 +98,7 @@ describe('SCEN-579: 本日の検知ログが複数件存在するとき、すべ
       retrievedAt: '2024-01-15T20:00:00Z',
     });
 
-    mockRetrieveEmailHistory.mockResolvedValue({
+    (mockRetrieveEmailHistory as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistories: [],
       totalCount: 0,

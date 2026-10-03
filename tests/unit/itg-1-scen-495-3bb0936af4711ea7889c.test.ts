@@ -58,7 +58,7 @@ describe('SCEN-495: メールアドレスの形式が不正な場合、sendDaily
       submissionTimestamp: '2025-01-15T14:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,
@@ -87,7 +87,7 @@ describe('SCEN-495: メールアドレスの形式が不正な場合、sendDaily
       submissionTimestamp: '2025-01-15T14:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

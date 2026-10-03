@@ -23,7 +23,7 @@ describe('SCEN-297: リマインダー設定が無効、送信時刻が未到来
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedDetermineReminderNotificationEligibility.mockResolvedValue({
+    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
       isEligible: false,
       notificationType: 'reporter_reminder',
       reporterId: 'reporter-001',

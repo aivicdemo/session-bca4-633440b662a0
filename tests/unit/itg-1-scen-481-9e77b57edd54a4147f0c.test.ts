@@ -38,7 +38,7 @@ describe('SCEN-481: リーダーメールアドレスが形式的に無効な場
       submissionTimestamp: '2024-01-15T09:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
       errorCode: 'INVALID_EMAIL_FORMAT',

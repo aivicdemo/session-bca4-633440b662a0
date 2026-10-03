@@ -26,7 +26,7 @@ describe('SCEN-543: 送信処理の実行日時がISO 8601形式で返される'
       targetDate: '2024-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       totalTargets: 3,
       successCount: 3,

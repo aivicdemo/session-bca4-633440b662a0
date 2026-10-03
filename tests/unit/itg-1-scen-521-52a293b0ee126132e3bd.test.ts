@@ -25,7 +25,7 @@ describe('SCEN-521: reporterName が null の場合、メール本文生成時�
     };
 
     const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockResolvedValue({
+    (mockSend as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

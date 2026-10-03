@@ -24,10 +24,10 @@ describe('SCEN-333: 入力されたメールアドレスが既にマスタに登
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: true, validatedEmailAddress: emailAddress, errorCode: null });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({ isActive: true, userId, inactiveReason: null });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: true, validatedEmailAddress: emailAddress, errorCode: null });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true, userId, inactiveReason: null });
     mockedRegisterReporterToMaster.mockRejectedValue(new Error('Should not be called'));
     mockedPersistReporterMasterChangeHistory.mockRejectedValue(new Error('Should not be called'));
   });

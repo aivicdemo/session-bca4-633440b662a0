@@ -45,7 +45,7 @@ describe('SCEN-407: チームリーダーが未処理のユーザー情報を承
 
     // ステップ1: authenticateAndAuthorizeLeaderAccess をスタブ化
     // leaderUserId='leader-001'に対して権限あり（当該ユーザー情報の承認権限を持つ同一チーム所属）
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
       hasApprovalAuthority: true,
       leaderTeamId: 'team-001',
@@ -54,28 +54,28 @@ describe('SCEN-407: チームリーダーが未処理のユーザー情報を承
 
     // ステップ2: judgeBusinessDayAndDeadline をスタブ化
     // userInformationId='userinfo-001'に対して承認期限内（期限経過なし）
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isWithinDeadline: true,
       daysRemaining: 2,
     });
 
     // ステップ3: detectDuplicateEmailAddress をスタブ化
     // メールアドレス='reporter@example.com'に対してシステム内に重複なし
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       duplicateReporterUserId: null,
     });
 
     // ステップ4: registerReporterToMaster をスタブ化
     // reporterUserId='reporter-001'に対して報告者マスタ登録成功
-    mockedRegisterReporterToMaster.mockResolvedValue({
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporterUserId: reporterUserId,
     });
 
     // ステップ5: sendUserInformationApprovalNotification をスタブ化
     // 承認通知メール送信成功
-    mockedSendUserInformationApprovalNotification.mockResolvedValue({
+    (mockedSendUserInformationApprovalNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       notificationSent: true,
     });

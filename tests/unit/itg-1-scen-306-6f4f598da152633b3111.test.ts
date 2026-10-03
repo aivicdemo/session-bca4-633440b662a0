@@ -22,20 +22,20 @@ describe('SCEN-306: 報告者が日報を提出し、リーダーへの通知が
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedBuildReminderNotificationContent.mockResolvedValue({
+    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '日報提出のお知らせ',
       body: '報告者による日報が提出されました。',
       notificationType: 'leader_submission',
       generatedAt: new Date('2024-01-15T09:31:00Z'),
     });
 
-    mockedSelectNotificationDeliveryMethod.mockResolvedValue({
+    (mockedSelectNotificationDeliveryMethod as jest.Mock<any>).mockResolvedValue({
       deliveryMethod: 'email',
       isDeliveryEnabled: true,
       selectedAt: new Date('2024-01-15T09:31:00Z'),
     });
 
-    mockedSendDailyReportSubmissionNotification.mockResolvedValue({
+    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistoryId: null,
       sentAt: '2024-01-15T09:31:05Z',
@@ -43,7 +43,7 @@ describe('SCEN-306: 報告者が日報を提出し、リーダーへの通知が
       adminNotificationSent: true,
     });
 
-    mockedRecordReminderNotificationSendingResult.mockResolvedValue({
+    (mockedRecordReminderNotificationSendingResult as jest.Mock<any>).mockResolvedValue({
       success: true,
       detectionLogId: null,
       notificationStatus: 'sent',

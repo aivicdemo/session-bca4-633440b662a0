@@ -151,10 +151,10 @@ describe('SCEN-063: ユーザー情報の承認期限を超過した場合、処
   });
 
   it('承認期限超過後の処理（reporterMasterUpdateResult等）は実行されない', async () => {
-    const registerReporterSpy = jest.fn();
-    const updateReporterSpy = jest.fn();
-    const detectNonSubmittedSpy = jest.fn();
-    const sendNonSubmissionSpy = jest.fn();
+    const registerReporterSpy = jest.fn() as jest.Mock<any>;
+    const updateReporterSpy = jest.fn() as jest.Mock<any>;
+    const detectNonSubmittedSpy = jest.fn() as jest.Mock<any>;
+    const sendNonSubmissionSpy = jest.fn() as jest.Mock<any>;
 
     mockAiClient.registerReporter = registerReporterSpy;
     mockAiClient.updateReporter = updateReporterSpy;

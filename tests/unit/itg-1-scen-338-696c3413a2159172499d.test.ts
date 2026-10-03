@@ -42,25 +42,25 @@ describe('SCEN-338: 全ユーザーが非アクティブの場合、br-tx_3-004�
   });
 
   it('全ユーザーが非アクティブ状態の場合、制約2の警告メッセージで処理が中断される', async () => {
-    mockedValidateReporterNameFormat.mockResolvedValue({
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    mockedValidateEmailAddress.mockResolvedValue({
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: false,
       userId: 'user-001',
       inactiveReason: 'All users are inactive',

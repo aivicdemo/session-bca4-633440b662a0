@@ -27,8 +27,8 @@ describe('SCEN-260: チームメンバーが空の場合の detectUnsubmittedMem
     const submissionDeadlineTime = '17:00';
     const teamId = 'team-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([]);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue([]);
 
     const input: DetectNonSubmittedReportersAtDeadlineInput = {
       targetDate,

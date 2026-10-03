@@ -44,7 +44,7 @@ describe('SCEN-022: リーダーへの提出状況報告メール送信に失敗
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -52,7 +52,7 @@ describe('SCEN-022: リーダーへの提出状況報告メール送信に失敗
       executionReason: '定時実行タイミング内',
     });
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       nonSubmittedReporters: [],
       detectionLog: {
         detectionLogId: 'LOG-001',
@@ -69,7 +69,7 @@ describe('SCEN-022: リーダーへの提出状況報告メール送信に失敗
       new LeaderNotificationSendingFailed('リーダーへの報告メール送信に失敗しました。')
     );
 
-    mockedRetrieveLeaderDashboardData.mockResolvedValue({
+    (mockedRetrieveLeaderDashboardData as jest.Mock<any>).mockResolvedValue({
       submittedReports: [],
       nonSubmittedReporters: [],
       detectionLogs: [],

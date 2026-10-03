@@ -25,9 +25,9 @@ describe('SCEN-574: 提出済み日報の提出時刻が17:00を超える場合�
     mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
     mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
 
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true });
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([{
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true });
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([{
       reportId: 'report-001',
       reporterId: 'reporter-001',
       reporterName: '太郎',
@@ -35,8 +35,8 @@ describe('SCEN-574: 提出済み日報の提出時刻が17:00を超える場合�
       reportContent: 'テスト報告',
       reportDate: '2025-01-15',
     }]);
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
   });
 
   it('提出時刻17:00:01の日報で遅延フラグが立つ', async () => {

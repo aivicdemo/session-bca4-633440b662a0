@@ -20,7 +20,7 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
 
   it('should correctly filter non-submitted reporters from registered reporters', async () => {
     const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
-    mockJudgeScheduler.mockResolvedValue({
+    (mockJudgeScheduler as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -37,7 +37,7 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
     ];
 
     const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
-    mockGetReporters.mockResolvedValue({
+    (mockGetReporters as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: reporters,
       totalCount: reporters.length,
@@ -50,14 +50,14 @@ describe('SCEN-237: 登録済み報告者リストから未提出者を正しく
     });
 
     const mockRetrieveLogs = jest.spyOn(persistence, 'retrieveNonSubmissionDetectionLogsByDate' as any);
-    mockRetrieveLogs.mockResolvedValue({
+    (mockRetrieveLogs as jest.Mock<any>).mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T17:30:00Z',
     });
 
     const mockUpdateLog = jest.spyOn(persistence, 'updateNonSubmissionDetectionLogWithReminderStatus' as any);
-    mockUpdateLog.mockResolvedValue({
+    (mockUpdateLog as jest.Mock<any>).mockResolvedValue({
       detectionLogId: 'log-001',
       reminderSent: false,
       updatedAt: '2024-01-15T17:30:00Z',

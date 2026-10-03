@@ -9,9 +9,8 @@ describe('SCEN-430: チームメンバーIDリストが空の場合にエラー�
     const input: SaveDailyReportInput = {
       userId: 'user001',
       reportDate: '2024-01-15',
-      content: '本日の業務内容',
-      teamMemberIds: [],
-      submittedReports: [],
+      businessContent: '本日の業務内容',
+      submittedAt: '2024-01-15T17:00:00Z',
     };
 
     // 関数の実行を開始し、エラーをスロー

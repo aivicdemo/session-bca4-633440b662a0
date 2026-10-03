@@ -51,7 +51,7 @@ describe('SCEN-390: 営業日かつ本日以前の指定日付で、有効な報
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedIsBusinessDay.mockResolvedValue(true);
+    (mockedIsBusinessDay as jest.Mock<any>).mockResolvedValue(true);
     mockedIsReporterActiveAndValid.mockImplementation((input: any) =>
       Promise.resolve(mockReporters.some((r) => r.reporterId === input.reporterId))
     );

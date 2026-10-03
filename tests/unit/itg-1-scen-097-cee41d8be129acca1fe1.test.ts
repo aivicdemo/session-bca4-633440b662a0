@@ -23,14 +23,14 @@ describe('SCEN-097: 報告者が無効化されているとき拒否される', 
     jest.resetAllMocks();
 
     // validateUserAccountActiveStatus のスタブ化: 戻り値を false に設定（ユーザーアカウントが無効化されている状態）
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: false,
       userId: 'reporter-001',
       inactiveReason: 'UserAccountInactiveException',
     });
 
     // validateUserHasReporterRole のスタブ化: 戻り値を true に設定（ユーザーが報告者ロールを持つ状態）
-    mockedValidateUserHasReporterRole.mockResolvedValue({
+    (mockedValidateUserHasReporterRole as jest.Mock<any>).mockResolvedValue({
       hasReporterRole: true,
       userId: 'reporter-001',
       denialReason: null,

@@ -25,7 +25,7 @@ describe('SCEN-518: メール送信に失敗した場合', () => {
     };
 
     const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockResolvedValue({
+    (mockSend as jest.Mock<any>).mockResolvedValue({
       success: false,
       emailSendingHistoryId: null,
       sentAt: null,

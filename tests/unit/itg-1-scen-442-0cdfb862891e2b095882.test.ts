@@ -1,7 +1,7 @@
 import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-442: 検索結果の出力に検索実行時刻がISO 8601形式で含まれる', () => {
-  it('検索実行時刻がISO 8601形式に準拠して返される', () => {
+  it('検索実行時刻がISO 8601形式に準拠して返される', async () => {
     const leaderId = 'leader001';
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
@@ -9,7 +9,7 @@ describe('SCEN-442: 検索結果の出力に検索実行時刻がISO 8601形式�
     // テスト実行前の時刻を記録
     const beforeCall = new Date();
 
-    const result = retrieveDailyReportsForLeaderReview({
+    const result = await retrieveDailyReportsForLeaderReview({
       leaderId,
       startDate,
       endDate,

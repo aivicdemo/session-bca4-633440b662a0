@@ -25,13 +25,13 @@ describe('SCEN-096: 報告者マスタに未登録のとき拒否される', () 
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateUserAccountActiveStatus.mockResolvedValue({
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
       isActive: true,
       userId,
       inactiveReason: null,
     });
 
-    mockedValidateUserHasReporterRole.mockResolvedValue({
+    (mockedValidateUserHasReporterRole as jest.Mock<any>).mockResolvedValue({
       hasReporterRole: true,
       userId,
       denialReason: null,

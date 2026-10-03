@@ -80,17 +80,17 @@ describe('SCEN-259: 業務ルール br-tx_1-005 の制約 11 が設計どおり�
       },
     ];
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue(mockReporters);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(mockReporters);
 
     mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
       const submittedUserIds = ['reporter-001', 'reporter-002', 'reporter-003'];
       return Promise.resolve({ exists: submittedUserIds.includes(userId) });
     });
 
-    mockedRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
 
-    mockedUpdateNonSubmissionDetectionLogWithReminderStatus.mockResolvedValue({
+    (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue({
       detectionLogId: 'log-001',
       targetDate,
       detectionDateTime: currentDateTime,

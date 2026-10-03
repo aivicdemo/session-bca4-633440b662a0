@@ -45,21 +45,21 @@ describe('SCEN-571: メール配信サービスが一時的に利用不可の場
 
     // Setup successful stubs for authentication and business day judgment
     // @ts-ignore
-    mockAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       leaderId: 'leader-001',
       leaderEmail: 'leader@example.com',
       isAuthorized: true,
     });
     // @ts-ignore
-    mockJudgeBusinessDayAndDeadline.mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
+    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true, withinDeadline: true });
     // @ts-ignore
-    mockRetrieveDailyReportsForLeaderReview.mockResolvedValue([]);
+    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([]);
     // @ts-ignore
-    mockRetrieveNonSubmissionDetectionLogsByDate.mockResolvedValue([]);
+    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
 
     // Setup retrieveEmailSendingHistoryByDateRange to return sending history with temporary delay warning
     // @ts-ignore
-    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([
+    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([
       {
         historyId: 'mail-001',
         recipientId: 'leader-001',

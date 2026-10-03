@@ -23,7 +23,7 @@ describe('SCEN-298: 通知内容の構築に失敗した場合、リマインダ
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedDetermineReminderNotificationEligibility.mockResolvedValue({
+    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
       isEligible: true,
       notificationType: 'reporter_reminder',
       reporterId: 'reporter-001',

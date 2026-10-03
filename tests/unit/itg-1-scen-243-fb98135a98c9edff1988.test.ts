@@ -26,7 +26,7 @@ describe('SCEN-243: 提出期限に達していない場合の検知をスキッ
     const submissionDeadlineTime = '17:00';
     const teamId = 'team-001';
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(false);
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(false);
 
     await expect(
       detectNonSubmittedReportersAtDeadline({

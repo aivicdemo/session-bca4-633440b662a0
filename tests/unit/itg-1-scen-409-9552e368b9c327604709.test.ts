@@ -28,14 +28,14 @@ describe('SCEN-409: 指定されたユーザー情報が存在しないか既に
 
     // authenticateAndAuthorizeLeaderAccessをスタブ化
     // 呼び出されたときに成功結果を返すように設定（リーダー権限ありの状態）
-    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       authorized: true,
       hasApprovalAuthority: true,
     });
 
     // judgeBusinessDayAndDeadlineをスタブ化
     // 呼び出されたときに期限内の結果を返すように設定
-    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isWithinDeadline: true,
       daysRemaining: 2,
     });

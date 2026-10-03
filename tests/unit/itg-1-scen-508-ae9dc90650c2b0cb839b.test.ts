@@ -37,13 +37,13 @@ describe('SCEN-508: メール送信サービスが一時的に利用不可の場
       submissionTimestamp: '2024-01-15T18:30:00Z'
     };
 
-    mockValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: true,
       reason: null,
       errorCode: null,
     });
 
-    mockBuildNotificationContent.mockResolvedValue({
+    (mockBuildNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '【日報】2024年01月15日 山田太郎',
       body: '山田太郎さんからの日報です\n\n本日の業務：システムテスト実施、成果：テスト仕様書作成完了、課題：なし、明日の予定：レビュー対応',
     });
@@ -60,7 +60,7 @@ describe('SCEN-508: メール送信サービスが一時的に利用不可の場
       adminNotificationSent: true,
     };
 
-    mockSendDailyReportSubmissionNotification.mockResolvedValue(expectedOutput);
+    (mockSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue(expectedOutput);
 
     const result = await sendDailyReportSubmissionNotification(input);
 

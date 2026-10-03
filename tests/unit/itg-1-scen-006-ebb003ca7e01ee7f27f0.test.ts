@@ -63,7 +63,7 @@ describe('SCEN-006: 提出済みの日報に対するリーダーへの通知送
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedJudgeSchedulerExecutionTiming.mockResolvedValue({
+    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -71,7 +71,7 @@ describe('SCEN-006: 提出済みの日報に対するリーダーへの通知送
       executionReason: '営業日の実行時刻内',
     });
 
-    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue({
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,
@@ -104,7 +104,7 @@ describe('SCEN-006: 提出済みの日報に対するリーダーへの通知送
       )
     );
 
-    mockedDetectNonSubmittedReportersAtDeadline.mockResolvedValue({
+    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
       success: true,
       nonSubmittedReporters: [
         { userId: 'U005', reporterName: '報告者5', emailAddress: 'r005@example.com' },

@@ -30,7 +30,7 @@ describe('SCEN-494: メールアドレスが登録されていない場合、val
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'リーダーのメールアドレスを設定してください',
       errorCode: 'LEADER_EMAIL_NOT_FOUND',
@@ -61,7 +61,7 @@ describe('SCEN-494: メールアドレスが登録されていない場合、val
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'リーダーのメールアドレスを設定してください',
       errorCode: 'LEADER_EMAIL_NOT_FOUND',
@@ -85,7 +85,7 @@ describe('SCEN-494: メールアドレスが登録されていない場合、val
       submissionTimestamp: '2024-01-15T18:30:00Z',
     };
 
-    mockedValidateEmailAddressForDelivery.mockResolvedValue({
+    (mockedValidateEmailAddressForDelivery as jest.Mock<any>).mockResolvedValue({
       isValid: false,
       reason: 'リーダーのメールアドレスを設定してください',
       errorCode: 'LEADER_EMAIL_NOT_FOUND',

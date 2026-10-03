@@ -23,21 +23,21 @@ describe('SCEN-300: メール送信処理に失敗した場合、リマインダ
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedDetermineReminderNotificationEligibility.mockResolvedValue({
+    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
       isEligible: true,
       notificationType: 'reporter_reminder',
       reporterId: 'reporter-001',
       evaluatedAt: new Date('2024-01-15T14:30:00Z'),
     });
 
-    mockedBuildReminderNotificationContent.mockResolvedValue({
+    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
       subject: '日報提出のお願い',
       body: '本日の日報入力をお願いします',
       notificationType: 'reporter_reminder',
       generatedAt: new Date('2024-01-15T14:30:00Z'),
     });
 
-    mockedSelectNotificationDeliveryMethod.mockResolvedValue({
+    (mockedSelectNotificationDeliveryMethod as jest.Mock<any>).mockResolvedValue({
       deliveryMethod: 'email',
       isDeliveryEnabled: true,
       selectedAt: new Date('2024-01-15T14:30:00Z'),

@@ -20,10 +20,10 @@ describe('SCEN-342: 退職または他部門異動の場合、br-tx_7-002によ�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
   });
 
   it('退職の場合、削除操作が決定され、registerReporterは呼び出されない', async () => {

@@ -35,7 +35,7 @@ describe('SCEN-204: 業務内容が最大文字数を超過している場合、
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
       userId: 'reporter-001',
       isAuthenticated: true,
       isEligibleForSubmission: true,
@@ -46,7 +46,7 @@ describe('SCEN-204: 業務内容が最大文字数を超過している場合、
       return Promise.reject(error);
     });
 
-    mockedCheckDailyReportExistsForDate.mockResolvedValue({
+    (mockedCheckDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue({
       exists: false,
     });
   });

@@ -26,12 +26,12 @@ describe('SCEN-341: 異動で既存報告者IDが存在する場合、br-tx_7-00
   beforeEach(() => {
     jest.resetAllMocks();
 
-    mockedValidateReporterNameFormat.mockResolvedValue({ isValid: true });
-    mockedValidateEmailAddress.mockResolvedValue({ isValid: true });
-    mockedDetectDuplicateEmailAddress.mockResolvedValue({ isDuplicate: false });
-    mockedValidateUserAccountActiveStatus.mockResolvedValue(true);
-    mockedRegisterReporterToMaster.mockResolvedValue({ success: true, reporterId: 'R001', message: '' });
-    mockedPersistReporterMasterChangeHistory.mockResolvedValue({ success: true, changeHistoryId: 'CHG-001', message: '' });
+    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true });
+    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true });
+    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false });
+    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
+    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({ success: true, reporterId: 'R001', message: '' });
+    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({ success: true, changeHistoryId: 'CHG-001', message: '' });
   });
 
   it('異動で既存reporterIdが存在する場合、更新操作が決定され、success=true、reporterId=R001、changeHistoryId=CHG-001を返す', async () => {

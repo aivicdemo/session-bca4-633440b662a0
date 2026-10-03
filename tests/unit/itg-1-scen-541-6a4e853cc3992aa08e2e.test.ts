@@ -26,7 +26,7 @@ describe('SCEN-541: 全件成功時、errorMessageがnullで返される', () =>
       targetDate: '2025-01-15',
     };
 
-    mockedSendNonSubmissionPromptNotification.mockResolvedValue({
+    (mockedSendNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
       success: true,
       totalTargets: 3,
       successCount: 3,

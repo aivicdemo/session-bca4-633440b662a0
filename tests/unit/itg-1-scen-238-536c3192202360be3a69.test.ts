@@ -17,7 +17,7 @@ describe('SCEN-238: チームに報告者が登録されていない場合は検
 
   it('should throw NoActiveReportersError when no active reporters exist', async () => {
     const mockJudgeScheduler = jest.spyOn(deadlineJudgment, 'judgeSchedulerExecutionTiming' as any);
-    mockJudgeScheduler.mockResolvedValue({
+    (mockJudgeScheduler as jest.Mock<any>).mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -26,7 +26,7 @@ describe('SCEN-238: チームに報告者が登録されていない場合は検
     });
 
     const mockGetReporters = jest.spyOn(reporterMaster, 'getActiveReportersForSubmissionCheck' as any);
-    mockGetReporters.mockResolvedValue({
+    (mockGetReporters as jest.Mock<any>).mockResolvedValue({
       success: true,
       reporters: [],
       totalCount: 0,

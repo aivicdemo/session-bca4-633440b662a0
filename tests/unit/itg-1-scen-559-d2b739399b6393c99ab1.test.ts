@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
 
-const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
-const judgeBusinessDayAndDeadlineMock = jest.fn();
-const retrieveDailyReportsForLeaderReviewMock = jest.fn();
-const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn();
-const retrieveEmailSendingHistoryByDateRangeMock = jest.fn();
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as jest.Mock<any>;
+const judgeBusinessDayAndDeadlineMock = jest.fn() as jest.Mock<any>;
+const retrieveDailyReportsForLeaderReviewMock = jest.fn() as jest.Mock<any>;
+const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn() as jest.Mock<any>;
+const retrieveEmailSendingHistoryByDateRangeMock = jest.fn() as jest.Mock<any>;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
@@ -30,18 +30,18 @@ describe('SCEN-559: リーダーが有効な認証情報で管理画面にアク
     const leaderId = 'leader001';
     const targetDate = '2024-01-15';
 
-    authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
+    (authenticateAndAuthorizeLeaderAccessMock as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
-    judgeBusinessDayAndDeadlineMock.mockResolvedValue({
+    (judgeBusinessDayAndDeadlineMock as jest.Mock<any>).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
     });
 
-    retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
+    (retrieveDailyReportsForLeaderReviewMock as jest.Mock<any>).mockResolvedValue({
       dailyReports: [
         {
           dailyReportId: 'RPT001',
@@ -70,7 +70,7 @@ describe('SCEN-559: リーダーが有効な認証情報で管理画面にアク
       retrievedAt: '2024-01-15T17:00:00',
     });
 
-    retrieveNonSubmissionDetectionLogsByDateMock.mockResolvedValue({
+    (retrieveNonSubmissionDetectionLogsByDateMock as jest.Mock<any>).mockResolvedValue({
       detectionLogs: [
         {
           detectionLogId: 'LOG_C',
@@ -104,7 +104,7 @@ describe('SCEN-559: リーダーが有効な認証情報で管理画面にアク
       retrievedAt: '2024-01-15T17:00:00',
     });
 
-    retrieveEmailSendingHistoryByDateRangeMock.mockResolvedValue({
+    (retrieveEmailSendingHistoryByDateRangeMock as jest.Mock<any>).mockResolvedValue({
       success: true,
       emailSendingHistories: [
         {
