@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import { saveDailyReport, DatabasePersistenceError } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-426: データベース保存処理が失敗するとDatabasePersistenceErrorが発生する', () => {
