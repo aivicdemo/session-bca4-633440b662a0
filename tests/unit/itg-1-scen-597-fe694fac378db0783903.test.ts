@@ -1,5 +1,5 @@
 jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveEmailSendingHistoryByDateRange: jest.fn(),
+  retrieveEmailSendingHistoryByDateRange: jest.fn() as any,
 }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';

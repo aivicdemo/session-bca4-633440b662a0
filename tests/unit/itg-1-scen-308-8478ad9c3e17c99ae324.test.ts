@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserHasLeaderRole: jest.fn(),
+  validateUserHasLeaderRole: jest.fn() as any,
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveDailyReportsForLeaderReview: jest.fn(),
+  retrieveDailyReportsForLeaderReview: jest.fn() as any,
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  buildReminderNotificationContent: jest.fn(),
-  selectNotificationDeliveryMethod: jest.fn(),
-  recordReminderNotificationSendingResult: jest.fn(),
+  buildReminderNotificationContent: jest.fn() as any,
+  selectNotificationDeliveryMethod: jest.fn() as any,
+  recordReminderNotificationSendingResult: jest.fn() as any,
 }));
 jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
+  sendDailyReportSubmissionNotification: jest.fn() as any,
 }));
 
 import {

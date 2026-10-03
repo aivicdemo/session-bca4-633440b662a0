@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
 
-const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
-const judgeBusinessDayAndDeadlineMock = jest.fn();
-const retrieveDailyReportsForLeaderReviewMock = jest.fn();
-const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn();
-const retrieveEmailSendingHistoryByDateRangeMock = jest.fn();
+const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as any;
+const judgeBusinessDayAndDeadlineMock = jest.fn() as any;
+const retrieveDailyReportsForLeaderReviewMock = jest.fn() as any;
+const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn() as any;
+const retrieveEmailSendingHistoryByDateRangeMock = jest.fn() as any;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,

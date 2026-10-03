@@ -2,20 +2,20 @@ import { registerReporter, InvalidEmailAddressFormat } from '../../src/logic/rep
 import type { RegisterReporterInput } from '../../src/logic/reporter-master-management';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateReporterNameFormat: jest.fn().mockResolvedValue(true),
-  validateEmailAddress: jest.fn().mockImplementation(() => {
+  validateReporterNameFormat: (jest.fn() as any).mockResolvedValue(true),
+  validateEmailAddress: (jest.fn() as any).mockImplementation(() => {
     throw new InvalidEmailAddressFormat('メールアドレスが未入力または不正です。確認してください');
   }),
-  detectDuplicateEmailAddress: jest.fn().mockResolvedValue(false),
+  detectDuplicateEmailAddress: (jest.fn() as any).mockResolvedValue(false),
 }));
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserAccountActiveStatus: jest.fn().mockResolvedValue(true),
+  validateUserAccountActiveStatus: (jest.fn() as any).mockResolvedValue(true),
 }));
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
-  registerReporterToMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
+  registerReporterToMaster: jest.fn() as any,
+  persistReporterMasterChangeHistory: jest.fn() as any,
 }));
 
 describe('SCEN-361: 報告者マスタの変更内容にメールアドレスが含まれていない場合、br-tx_7-005の制約1により「メールアドレスが未入力または不正です。確認してください」エラーメッセージが返される', () => {

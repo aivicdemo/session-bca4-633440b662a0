@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { deactivateReporterInMaster, persistReporterMasterChangeHistory, PersistenceFailureError } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
-  persistReporterMasterChangeHistory: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn() as any,
 }));
 
 describe('SCEN-470: 報告者マスタの更新がデータベース障害で失敗する', () => {

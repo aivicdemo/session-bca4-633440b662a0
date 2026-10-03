@@ -16,7 +16,7 @@ jest.mock('../../src/logic/user-information-input-confirmation', () => {
   const actual = jest.requireActual('../../src/logic/user-information-input-confirmation');
   return {
     ...actual,
-    judgeUserInformationApprovalDeadlineExceeded: jest.fn(),
+    judgeUserInformationApprovalDeadlineExceeded: jest.fn() as any,
   };
 });
 

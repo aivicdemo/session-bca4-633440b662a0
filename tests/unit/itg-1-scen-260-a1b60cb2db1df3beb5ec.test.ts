@@ -1,8 +1,8 @@
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
+  judgeSchedulerExecutionTiming: jest.fn() as any,
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
+  getActiveReportersForSubmissionCheck: jest.fn() as any,
 }));
 
 import {

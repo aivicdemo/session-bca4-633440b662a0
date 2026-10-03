@@ -1,7 +1,7 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-762: 日報提出期限に達し未提出者が1名以上いるとき、管理画面に表示され通知メール送信される', () => {
-  test('営業日の期限時刻でスケジューラが実行可能な状態であることを検証する', () => {
+  test('営業日の期限時刻でスケジューラが実行可能な状態であることを検証する', async () => {
     const input = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',

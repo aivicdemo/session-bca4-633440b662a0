@@ -1,7 +1,7 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-761: 日報提出期限17:00に達したとき、未提出者が検知される', () => {
-  test('営業日の期限時刻で judgeSchedulerExecutionTiming が呼び出されると、実行可能判定が得られる', () => {
+  test('営業日の期限時刻で judgeSchedulerExecutionTiming が呼び出されると、実行可能判定が得られる', async () => {
     // isBusinessDay を営業日（月曜日 2024-01-15）を返すようスタブ設定
     const input = {
       currentTimestamp: '2024-01-15T17:00:00Z',

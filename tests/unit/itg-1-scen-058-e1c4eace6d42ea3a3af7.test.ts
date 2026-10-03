@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
+  judgeSchedulerExecutionTiming: jest.fn() as any,
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
+  getActiveReportersForSubmissionCheck: jest.fn() as any,
 }));
 jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
+  detectNonSubmittedReportersAtDeadline: jest.fn() as any,
 }));
 jest.mock('../../src/logic/non-submission-prompt-decision', () => ({
-  judgePromptNecessityAndMethod: jest.fn(),
+  judgePromptNecessityAndMethod: jest.fn() as any,
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
+  sendLeaderNonSubmissionPromptNotification: jest.fn() as any,
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn() as any,
 }));
 
 import { runTx5Imp1Agent, type Tx5Imp1AiClient } from '../../src/agents/tx-5-imp-1/orchestrator';

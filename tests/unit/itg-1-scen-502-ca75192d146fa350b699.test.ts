@@ -1,6 +1,6 @@
 jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
-  buildNotificationContent: jest.fn(),
+  sendDailyReportSubmissionNotification: jest.fn() as any,
+  buildNotificationContent: jest.fn() as any,
 }));
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';

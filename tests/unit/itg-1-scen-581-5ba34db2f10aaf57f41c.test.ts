@@ -1,15 +1,19 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
+// @ts-ignore
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveDailyReportsForLeaderReview: jest.fn(),
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/user-master-persistence', () => ({
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
@@ -35,12 +39,14 @@ describe('SCEN-581: 本日のメール送信履歴が複数件存在するとき
     const leaderId = 'leader-001';
     const targetDate = '2024-01-15';
 
+    // @ts-ignore
     (authenticateAndAuthorizeLeaderAccess as jest.Mock).mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
       denialReason: null,
     });
 
+    // @ts-ignore
     (judgeBusinessDayAndDeadline as jest.Mock).mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
@@ -50,6 +56,7 @@ describe('SCEN-581: 本日のメール送信履歴が複数件存在するとき
       rejectionReason: null,
     });
 
+    // @ts-ignore
     (retrieveDailyReportsForLeaderReview as jest.Mock).mockResolvedValue({
       dailyReports: [
         {
@@ -69,12 +76,14 @@ describe('SCEN-581: 本日のメール送信履歴が複数件存在するとき
       retrievedAt: '2024-01-15T20:00:00Z',
     });
 
+    // @ts-ignore
     (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T20:00:00Z',
     });
 
+    // @ts-ignore
     (retrieveEmailSendingHistoryByDateRange as jest.Mock).mockResolvedValue({
       success: true,
       emailSendingHistories: [

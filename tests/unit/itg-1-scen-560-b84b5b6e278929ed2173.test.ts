@@ -3,16 +3,20 @@ import { retrieveLeaderDashboardData, LeaderAuthorizationFailedError } from '../
 
 const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
 
+// @ts-ignore
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveDailyReportsForLeaderReview: jest.fn(),
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/email-notification-management', () => ({
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
@@ -26,6 +30,7 @@ describe('SCEN-560: リーダーの認証・認可に失敗した場合', () => 
     const leaderId = 'leader_invalid_id';
     const targetDate = '2024-01-15';
 
+    // @ts-ignore
     authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
       isAccessGranted: false,
       userId: leaderId,

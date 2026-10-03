@@ -5,16 +5,20 @@ const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
 const judgeBusinessDayAndDeadlineMock = jest.fn();
 const retrieveDailyReportsForLeaderReviewMock = jest.fn();
 
+// @ts-ignore
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveDailyReportsForLeaderReview: retrieveDailyReportsForLeaderReviewMock,
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/email-notification-management', () => ({
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
@@ -28,18 +32,22 @@ describe('SCEN-562: 日報、検知ログ、メール送信履歴の取得に失
     const leaderId = 'leader-001';
     const targetDate = '2025-01-15';
 
+    // @ts-ignore
     authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
+    // @ts-ignore
     judgeBusinessDayAndDeadlineMock.mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
     });
 
+    // @ts-ignore
     retrieveDailyReportsForLeaderReviewMock.mockRejectedValue(
+      // @ts-ignore
       new DataRetrievalFailedError('管理画面データの取得に失敗しました。')
     );
 

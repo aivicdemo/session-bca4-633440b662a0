@@ -7,16 +7,20 @@ const retrieveDailyReportsForLeaderReviewMock = jest.fn();
 const retrieveNonSubmissionDetectionLogsByDateMock = jest.fn();
 const retrieveEmailSendingHistoryByDateRangeMock = jest.fn();
 
+// @ts-ignore
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveDailyReportsForLeaderReview: retrieveDailyReportsForLeaderReviewMock,
   retrieveNonSubmissionDetectionLogsByDate: retrieveNonSubmissionDetectionLogsByDateMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/email-notification-management', () => ({
   retrieveEmailSendingHistoryByDateRange: retrieveEmailSendingHistoryByDateRangeMock,
 }));
@@ -30,17 +34,20 @@ describe('SCEN-564: 提出済み日報の報告内容が空文字列またはnul
     const leaderId = 'leader-001';
     const targetDate = '2024-01-15';
 
+    // @ts-ignore
     authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
+    // @ts-ignore
     judgeBusinessDayAndDeadlineMock.mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
     });
 
+    // @ts-ignore
     retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
       dailyReports: [
         {
@@ -60,12 +67,14 @@ describe('SCEN-564: 提出済み日報の報告内容が空文字列またはnul
       retrievedAt: '2024-01-15T17:00:00',
     });
 
+    // @ts-ignore
     retrieveNonSubmissionDetectionLogsByDateMock.mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T17:00:00',
     });
 
+    // @ts-ignore
     retrieveEmailSendingHistoryByDateRangeMock.mockResolvedValue({
       success: true,
       emailSendingHistories: [],
@@ -88,17 +97,20 @@ describe('SCEN-564: 提出済み日報の報告内容が空文字列またはnul
     const leaderId = 'leader-001';
     const targetDate = '2024-01-15';
 
+    // @ts-ignore
     authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
+    // @ts-ignore
     judgeBusinessDayAndDeadlineMock.mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
     });
 
+    // @ts-ignore
     retrieveDailyReportsForLeaderReviewMock.mockResolvedValue({
       dailyReports: [
         {
@@ -118,12 +130,14 @@ describe('SCEN-564: 提出済み日報の報告内容が空文字列またはnul
       retrievedAt: '2024-01-15T17:00:00',
     });
 
+    // @ts-ignore
     retrieveNonSubmissionDetectionLogsByDateMock.mockResolvedValue({
       detectionLogs: [],
       totalCount: 0,
       retrievedAt: '2024-01-15T17:00:00',
     });
 
+    // @ts-ignore
     retrieveEmailSendingHistoryByDateRangeMock.mockResolvedValue({
       success: true,
       emailSendingHistories: [],

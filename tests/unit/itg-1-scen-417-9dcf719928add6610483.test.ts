@@ -10,7 +10,7 @@ jest.mock('../../src/logic/user-information-input-confirmation', () => {
   const actualModule = jest.requireActual('../../src/logic/user-information-input-confirmation');
   return {
     ...actualModule,
-    buildUserInformationConfirmationStatusList: jest.fn(),
+    buildUserInformationConfirmationStatusList: jest.fn() as any,
   };
 });
 

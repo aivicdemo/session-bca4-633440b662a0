@@ -4,16 +4,20 @@ import { retrieveLeaderDashboardData, TargetDateInvalidError } from '../../src/l
 const authenticateAndAuthorizeLeaderAccessMock = jest.fn();
 const judgeBusinessDayAndDeadlineMock = jest.fn();
 
+// @ts-ignore
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
   judgeBusinessDayAndDeadline: judgeBusinessDayAndDeadlineMock,
 }));
+// @ts-ignore
 jest.mock('../../src/logic/daily-report-persistence', () => ({
   retrieveDailyReportsForLeaderReview: jest.fn(),
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
+// @ts-ignore
 jest.mock('../../src/logic/email-notification-management', () => ({
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
@@ -27,11 +31,13 @@ describe('SCEN-561: 指定された対象日付が営業日判定に失敗した
     const leaderId = 'leader-001';
     const targetDate = '2024-02-30';
 
+    // @ts-ignore
     authenticateAndAuthorizeLeaderAccessMock.mockResolvedValue({
       isAccessGranted: true,
       userId: leaderId,
     });
 
+    // @ts-ignore
     judgeBusinessDayAndDeadlineMock.mockResolvedValue({
       isAcceptable: false,
       isBusinessDay: false,

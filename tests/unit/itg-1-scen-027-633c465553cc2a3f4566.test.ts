@@ -14,14 +14,14 @@ describe('SCEN-027: 定時スケジューラの実行タイミング判定に失
 
   beforeEach(() => {
     mockAiClient = {
-      judgeSchedulerExecutionTiming: jest.fn().mockRejectedValue(new SchedulerExecutionTimingError('定時スケジューラの実行タイミング判定に失敗しました。')),
-      detectNonSubmittedReportersAtDeadline: jest.fn(),
-      generateNonSubmissionDetectionResult: jest.fn(),
-      judgePromptNecessityAndMethod: jest.fn(),
-      sendLeaderNonSubmissionPromptNotification: jest.fn(),
-      sendNonSubmissionPromptNotification: jest.fn(),
-      retrieveDailyReportsForLeaderReview: jest.fn(),
-      retrieveLeaderDashboardData: jest.fn(),
+      judgeSchedulerExecutionTiming: (jest.fn() as any).mockRejectedValue(new SchedulerExecutionTimingError('定時スケジューラの実行タイミング判定に失敗しました。')),
+      detectNonSubmittedReportersAtDeadline: jest.fn() as any,
+      generateNonSubmissionDetectionResult: jest.fn() as any,
+      judgePromptNecessityAndMethod: jest.fn() as any,
+      sendLeaderNonSubmissionPromptNotification: jest.fn() as any,
+      sendNonSubmissionPromptNotification: jest.fn() as any,
+      retrieveDailyReportsForLeaderReview: jest.fn() as any,
+      retrieveLeaderDashboardData: jest.fn() as any,
     };
   });
 

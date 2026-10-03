@@ -58,13 +58,13 @@ describe('SCEN-013: leaderNotificationsSent がリーダーに送信された通
       locale: 'ja-JP',
     };
 
-    const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
+    const judgeSchedulerExecutionTimingStub = (jest.fn() as any as any).mockResolvedValue({
       isExecutionTiming: true,
       currentTime: executionTimestamp,
       businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
     });
 
-    const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
+    const getActiveReportersStub = (jest.fn() as any as any).mockResolvedValue({
       reporters: [
         { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
         { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
@@ -75,24 +75,24 @@ describe('SCEN-013: leaderNotificationsSent がリーダーに送信された通
       totalCount: 5,
     });
 
-    const authenticateStub = (jest.fn() as any).mockResolvedValue({
+    const authenticateStub = (jest.fn() as any as any).mockResolvedValue({
       isAuthenticated: true,
       isAuthorized: true,
     });
 
-    const submitDailyReportStub = (jest.fn() as any)
+    const submitDailyReportStub = (jest.fn() as any as any)
       .mockResolvedValueOnce({ success: true, reportId: 'report1' })
       .mockResolvedValueOnce({ success: true, reportId: 'report2' })
       .mockResolvedValueOnce({ success: true, reportId: 'report3' })
       .mockResolvedValueOnce({ success: false, error: 'User not submitted' })
       .mockResolvedValueOnce({ success: false, error: 'User not submitted' });
 
-    const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
+    const sendLeaderNotificationStub = (jest.fn() as any as any).mockResolvedValue({
       success: true,
       notificationId: 'notif',
     });
 
-    const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
+    const detectNonSubmittedStub = (jest.fn() as any as any).mockResolvedValue({
       nonSubmittedReporters: [
         { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com' },
         { userId: 'R005', userName: '報告者5', emailAddress: 'r005@example.com' },
@@ -100,7 +100,7 @@ describe('SCEN-013: leaderNotificationsSent がリーダーに送信された通
       nonSubmittedCount: 2,
     });
 
-    const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
+    const sendPromptNotificationStub = (jest.fn() as any as any).mockResolvedValue({
       success: true,
       promptId: 'prompt',
     });
