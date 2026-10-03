@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } fro
 import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-736: リーダーのメールアドレスが登録されていないとき、エラーが発生して処理が中断される', () => {
-  it('should throw InvalidSchedulerConfigurationError when scheduler configuration is invalid', () => {
+  it('should throw InvalidSchedulerConfigurationError when scheduler configuration is invalid', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -14,7 +14,7 @@ describe('SCEN-736: リーダーのメールアドレスが登録されていな
     // the function should throw InvalidSchedulerConfigurationError
     // The function validates scheduledExecutionTime format as the key check
     try {
-      judgeSchedulerExecutionTiming(input);
+      await judgeSchedulerExecutionTiming(input);
       // If execution succeeds without error, the configuration is valid
       // This test focuses on the error path when configuration is invalid
     } catch (e) {
@@ -23,7 +23,7 @@ describe('SCEN-736: リーダーのメールアドレスが登録されていな
     }
   });
 
-  it('should throw error when scheduledExecutionTime format is invalid', () => {
+  it('should throw error when scheduledExecutionTime format is invalid', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: 'invalid',
@@ -31,9 +31,9 @@ describe('SCEN-736: リーダーのメールアドレスが登録されていな
       timeZone: 'Asia/Tokyo',
     };
 
-    expect(() => judgeSchedulerExecutionTiming(input)).toThrow(InvalidSchedulerConfigurationError);
+    await expect(judgeSchedulerExecutionTiming(input)).rejects.toThrow(InvalidSchedulerConfigurationError);
     try {
-      judgeSchedulerExecutionTiming(input);
+      await judgeSchedulerExecutionTiming(input);
       fail('Should have thrown');
     } catch (e) {
       expect((e as Error).message).toBe('スケジューラ実行時刻の設定が無効です。管理者に確認してください。');

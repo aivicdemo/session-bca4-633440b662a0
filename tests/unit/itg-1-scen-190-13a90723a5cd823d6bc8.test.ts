@@ -16,7 +16,7 @@ describe('SCEN-190: 実行予定時刻が不正な形式のとき、スケジュ
     };
 
     try {
-      judgeSchedulerExecutionTiming(input);
+      await judgeSchedulerExecutionTiming(input);
       fail('InvalidSchedulerConfigurationError should be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(InvalidSchedulerConfigurationError);
