@@ -1,5 +1,5 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
 
 describe('SCEN-766: 営業日かつ実行時刻内のとき、shouldExecuteがtrueになり実行可能と判定される', () => {
   it('営業日の指定時刻内で実行タイムウィンドウに該当するとき、出力型JudgeSchedulerExecutionTimingOutputが正常に返される', async () => {

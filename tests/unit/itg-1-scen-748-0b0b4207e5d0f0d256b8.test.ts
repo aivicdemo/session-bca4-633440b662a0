@@ -3,7 +3,7 @@ import type {
   GetActiveReportersForSubmissionCheckInput,
   GetActiveReportersForSubmissionCheckOutput,
   ActiveReporterInfo,
-} from '../../src/logic/reporter-master-management';
+} from '../../.aivic/design/contract/src/logic/reporter-master-management';
 
 describe('SCEN-748: メール送信が3回失敗した場合、管理者に通知され検知ログに記録される', () => {
   const teamLeaderId = 'leader-001';

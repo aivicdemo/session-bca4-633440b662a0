@@ -1,13 +1,13 @@
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn() as any,
+  judgeSchedulerExecutionTiming: jest.fn(),
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn() as any,
+  getActiveReportersForSubmissionCheck: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  checkDailyReportExistsForDate: jest.fn() as any,
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn() as any,
-  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn() as any,
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
 }));
 
 import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';

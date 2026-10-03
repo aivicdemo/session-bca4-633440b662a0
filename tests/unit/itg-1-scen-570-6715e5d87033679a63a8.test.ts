@@ -6,20 +6,20 @@ import {
 } from '../../src/logic/daily-report-management-view';
 
 jest.mock('../../src/logic/user-authentication-authorization.ts', () => ({
-  authenticateAndAuthorizeLeaderAccess: jest.fn() as any,
+  authenticateAndAuthorizeLeaderAccess: jest.fn(),
 }));
 
 jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  judgeBusinessDayAndDeadline: jest.fn() as any,
+  judgeBusinessDayAndDeadline: jest.fn(),
 }));
 
 jest.mock('../../src/logic/daily-report-persistence.ts', () => ({
-  retrieveDailyReportsForLeaderReview: jest.fn() as any,
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn() as any,
+  retrieveDailyReportsForLeaderReview: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-master-persistence.ts', () => ({
-  retrieveEmailSendingHistoryByDateRange: jest.fn() as any,
+  retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
 
 describe('SCEN-570: リーダーメールアドレスがシステムで無効化されている場合、警告が記録される', () => {

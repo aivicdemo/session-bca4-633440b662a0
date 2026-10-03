@@ -59,13 +59,13 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         locale: 'ja-JP',
       };
 
-      const judgeSchedulerExecutionTimingStub = (jest.fn() as any as any).mockResolvedValue({
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
         isExecutionTiming: true,
         currentTime: executionTimestamp,
         businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      const getActiveReportersStub = (jest.fn() as any as any).mockResolvedValue({
+      const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
         reporters: [
           { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
           { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
@@ -76,29 +76,29 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         totalCount: 5,
       });
 
-      const authenticateStub = (jest.fn() as any as any).mockResolvedValue({
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
         isAuthenticated: true,
         isAuthorized: true,
       });
 
-      const submitDailyReportStub = (jest.fn() as any as any)
+      const submitDailyReportStub = (jest.fn() as any)
         .mockResolvedValueOnce({ success: true, reportId: 'report1' })
         .mockResolvedValueOnce({ success: true, reportId: 'report2' })
         .mockResolvedValueOnce({ success: true, reportId: 'report3' })
         .mockResolvedValueOnce({ success: true, reportId: 'report4' })
         .mockResolvedValueOnce({ success: true, reportId: 'report5' });
 
-      const sendLeaderNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
         notificationId: 'notif',
       });
 
-      const detectNonSubmittedStub = (jest.fn() as any as any).mockResolvedValue({
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
         nonSubmittedReporters: [],
         nonSubmittedCount: 0,
       });
 
-      const sendPromptNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
         promptId: 'prompt',
       });
@@ -153,13 +153,13 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         locale: 'ja-JP',
       };
 
-      const judgeSchedulerExecutionTimingStub = (jest.fn() as any as any).mockResolvedValue({
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
         isExecutionTiming: true,
         currentTime: executionTimestamp,
         businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      const getActiveReportersStub = (jest.fn() as any as any).mockResolvedValue({
+      const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
         reporters: [
           { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
           { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
@@ -170,24 +170,24 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         totalCount: 5,
       });
 
-      const authenticateStub = (jest.fn() as any as any).mockResolvedValue({
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
         isAuthenticated: true,
         isAuthorized: true,
       });
 
-      const submitDailyReportStub = (jest.fn() as any as any)
+      const submitDailyReportStub = (jest.fn() as any)
         .mockResolvedValueOnce({ success: true, reportId: 'report1' })
         .mockResolvedValueOnce({ success: true, reportId: 'report2' })
         .mockResolvedValueOnce({ success: false, error: 'User not submitted' })
         .mockResolvedValueOnce({ success: false, error: 'User not submitted' })
         .mockResolvedValueOnce({ success: false, error: 'User not submitted' });
 
-      const sendLeaderNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
         notificationId: 'notif',
       });
 
-      const detectNonSubmittedStub = (jest.fn() as any as any).mockResolvedValue({
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
         nonSubmittedReporters: [
           { userId: 'R003', userName: '報告者3', emailAddress: 'r003@example.com', promptSent: false },
           { userId: 'R004', userName: '報告者4', emailAddress: 'r004@example.com', promptSent: false },
@@ -196,7 +196,7 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         nonSubmittedCount: 3,
       });
 
-      const sendPromptNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: true,
         promptId: 'prompt',
       });
@@ -237,37 +237,37 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
         locale: 'ja-JP',
       };
 
-      const judgeSchedulerExecutionTimingStub = (jest.fn() as any as any).mockResolvedValue({
+      const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
         isExecutionTiming: false,
         currentTime: executionTimestamp,
         businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
       });
 
-      const getActiveReportersStub = (jest.fn() as any as any).mockRejectedValue(
+      const getActiveReportersStub = (jest.fn() as any).mockRejectedValue(
         new Error('Database error')
       );
 
-      const authenticateStub = (jest.fn() as any as any).mockResolvedValue({
+      const authenticateStub = (jest.fn() as any).mockResolvedValue({
         isAuthenticated: true,
         isAuthorized: true,
       });
 
-      const submitDailyReportStub = (jest.fn() as any as any).mockResolvedValue({
+      const submitDailyReportStub = (jest.fn() as any).mockResolvedValue({
         success: false,
         error: 'Not submitted',
       });
 
-      const sendLeaderNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: false,
         error: 'Notification failed',
       });
 
-      const detectNonSubmittedStub = (jest.fn() as any as any).mockResolvedValue({
+      const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
         nonSubmittedReporters: [],
         nonSubmittedCount: 0,
       });
 
-      const sendPromptNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+      const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
         success: false,
         error: 'Prompt failed',
       });
@@ -306,13 +306,13 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
       locale: 'ja-JP',
     };
 
-    const judgeSchedulerExecutionTimingStub = (jest.fn() as any as any).mockResolvedValue({
+    const judgeSchedulerExecutionTimingStub = (jest.fn() as any).mockResolvedValue({
       isExecutionTiming: true,
       currentTime: executionTimestamp,
       businessEndTime: new Date('2024-01-15T17:00:00+09:00'),
     });
 
-    const getActiveReportersStub = (jest.fn() as any as any).mockResolvedValue({
+    const getActiveReportersStub = (jest.fn() as any).mockResolvedValue({
       reporters: [
         { userId: 'R001', userName: '報告者1', emailAddress: 'r001@example.com' },
         { userId: 'R002', userName: '報告者2', emailAddress: 'r002@example.com' },
@@ -323,29 +323,29 @@ describe('SCEN-015: executionSummary に処理結果の要約メッセージが�
       totalCount: 5,
     });
 
-    const authenticateStub = (jest.fn() as any as any).mockResolvedValue({
+    const authenticateStub = (jest.fn() as any).mockResolvedValue({
       isAuthenticated: true,
       isAuthorized: true,
     });
 
-    const submitDailyReportStub = (jest.fn() as any as any)
+    const submitDailyReportStub = (jest.fn() as any)
       .mockResolvedValueOnce({ success: true, reportId: 'report1' })
       .mockResolvedValueOnce({ success: true, reportId: 'report2' })
       .mockResolvedValueOnce({ success: true, reportId: 'report3' })
       .mockResolvedValueOnce({ success: true, reportId: 'report4' })
       .mockResolvedValueOnce({ success: true, reportId: 'report5' });
 
-    const sendLeaderNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+    const sendLeaderNotificationStub = (jest.fn() as any).mockResolvedValue({
       success: true,
       notificationId: 'notif',
     });
 
-    const detectNonSubmittedStub = (jest.fn() as any as any).mockResolvedValue({
+    const detectNonSubmittedStub = (jest.fn() as any).mockResolvedValue({
       nonSubmittedReporters: [],
       nonSubmittedCount: 0,
     });
 
-    const sendPromptNotificationStub = (jest.fn() as any as any).mockResolvedValue({
+    const sendPromptNotificationStub = (jest.fn() as any).mockResolvedValue({
       success: true,
       promptId: 'prompt',
     });

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { deactivateReporterInMaster, persistReporterMasterChangeHistory, InvalidLeaderUserIdError } from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
-  persistReporterMasterChangeHistory: jest.fn() as any,
+  persistReporterMasterChangeHistory: jest.fn(),
 }));
 
 describe('SCEN-469: チームリーダーのユーザーIDがnullのため操作が拒否される', () => {

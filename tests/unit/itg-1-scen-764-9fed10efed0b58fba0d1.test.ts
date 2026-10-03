@@ -1,5 +1,5 @@
 import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
 
 describe('SCEN-764: 報告期限時刻が不正な形式のとき、処理が中断されエラーが発生する', () => {
   it('scheduledExecutionTimeが「25:99」形式の不正な値のとき、InvalidSchedulerConfigurationErrorが発生する', async () => {

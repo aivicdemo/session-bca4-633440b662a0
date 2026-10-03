@@ -1,5 +1,5 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
 
 describe('SCEN-763: 日報提出期限に達し全員が提出済みのとき、未提出者リストが空になり通知メールは送信されない', () => {
   it('営業日かつ実行時刻内で呼び出されるとき、スケジューラ実行タイミング判定が成功し、すべての出力フィールドが期待値を持つ', async () => {

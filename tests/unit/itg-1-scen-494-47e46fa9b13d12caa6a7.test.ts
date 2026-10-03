@@ -1,7 +1,7 @@
 jest.mock('../../src/logic/email-notification-management', () => ({
-  validateEmailAddressForDelivery: jest.fn() as any,
-  buildNotificationContent: jest.fn() as any,
-  recordEmailSendingHistory: jest.fn() as any,
+  validateEmailAddressForDelivery: jest.fn(),
+  buildNotificationContent: jest.fn(),
+  recordEmailSendingHistory: jest.fn(),
 }));
 
 import {

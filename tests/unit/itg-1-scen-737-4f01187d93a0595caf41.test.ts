@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-dead
 import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-737: 報告者5名全員が17:00までに日報を提出した場合、未提出者リストが空となり、リーダーへのアラートメールが送信されない', () => {
-  it('should return shouldExecute=true at scheduled execution time on business day', async () => {
+  it('should return shouldExecute=true at scheduled execution time on business day', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:00:00+09:00',
       scheduledExecutionTime: '17:00',
@@ -10,7 +10,7 @@ describe('SCEN-737: 報告者5名全員が17:00までに日報を提出した場
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // Expected conditions per SCEN-737:
     // (1) shouldExecute = true

@@ -10,8 +10,7 @@ describe('SCEN-429: 集計対象日が未来日の場合にエラーが発生す
     const input: SaveDailyReportInput = {
       userId: 'user001',
       reportDate: '2024-01-16',
-      businessContent: '本日の業務内容',
-      submittedAt: new Date().toISOString(),
+      content: '本日の業務内容',
     };
 
     // saveDailyReport 関数を呼び出す

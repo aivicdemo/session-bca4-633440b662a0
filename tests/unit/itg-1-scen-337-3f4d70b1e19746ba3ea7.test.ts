@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateReporterNameFormat: jest.fn() as any,
-  validateEmailAddress: jest.fn() as any,
-  detectDuplicateEmailAddress: jest.fn() as any,
+  validateReporterNameFormat: jest.fn(),
+  validateEmailAddress: jest.fn(),
+  detectDuplicateEmailAddress: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserAccountActiveStatus: jest.fn() as any,
+  validateUserAccountActiveStatus: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
-  registerReporterToMaster: jest.fn() as any,
-  persistReporterMasterChangeHistory: jest.fn() as any,
+  registerReporterToMaster: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
 }));
 
 import { registerReporter } from '../../src/logic/reporter-master-management';

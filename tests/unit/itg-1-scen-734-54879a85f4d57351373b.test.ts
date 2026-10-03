@@ -2,7 +2,7 @@ import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-dead
 import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-734: 登録済み報告者のリストが空のとき、警告が発生して処理が継続される', () => {
-  it('should return expected values when reporter list is empty', async () => {
+  it('should return expected values when reporter list is empty', () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
@@ -10,7 +10,7 @@ describe('SCEN-734: 登録済み報告者のリストが空のとき、警告が
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // (1) shouldExecute is false (when reporter list is empty, execution is not needed)
     expect(result.shouldExecute).toBe(false);

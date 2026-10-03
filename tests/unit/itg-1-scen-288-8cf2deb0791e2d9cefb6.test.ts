@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/non-submission-prompt-decision';
 
 jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  isWithinSubmissionDeadline: jest.fn() as any,
+  isWithinSubmissionDeadline: jest.fn(),
 }));
 
 describe('SCEN-288: 報告者IDが空または存在しない場合、エラーが発生する', () => {

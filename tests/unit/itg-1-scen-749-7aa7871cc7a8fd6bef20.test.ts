@@ -3,7 +3,7 @@ import type {
   GetActiveReportersForSubmissionCheckInput,
   GetActiveReportersForSubmissionCheckOutput,
   ActiveReporterInfo,
-} from '../../src/logic/reporter-master-management';
+} from '../../.aivic/design/contract/src/logic/reporter-master-management';
 
 describe('SCEN-749: 検知ログにリマインダー送信結果（送信日時、対象者、送信成否）が記録される', () => {
   const teamLeaderId = 'leader-001';

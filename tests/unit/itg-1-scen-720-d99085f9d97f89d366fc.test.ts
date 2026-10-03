@@ -1,5 +1,5 @@
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
 
 describe('SCEN-720: 検知した未提出者の情報が整形され、管理画面表示用の一覧データと検知ログ記録用のデータが生成される', () => {
   it('営業日の実行時刻内で呼び出されるとき、shouldExecuteがtrue、executionReasonが「営業日の実行時刻内」を返す', async () => {

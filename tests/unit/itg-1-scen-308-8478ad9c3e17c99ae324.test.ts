@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserHasLeaderRole: jest.fn() as any,
+  validateUserHasLeaderRole: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveDailyReportsForLeaderReview: jest.fn() as any,
+  retrieveDailyReportsForLeaderReview: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  buildReminderNotificationContent: jest.fn() as any,
-  selectNotificationDeliveryMethod: jest.fn() as any,
-  recordReminderNotificationSendingResult: jest.fn() as any,
+  buildReminderNotificationContent: jest.fn(),
+  selectNotificationDeliveryMethod: jest.fn(),
+  recordReminderNotificationSendingResult: jest.fn(),
 }));
 jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn() as any,
+  sendDailyReportSubmissionNotification: jest.fn(),
 }));
 
 import {
@@ -22,7 +22,7 @@ import {
 } from '../../src/logic/daily-report-reminder-notification';
 
 describe('SCEN-308: InvalidReporterIdError when reporter ID is invalid', () => {
-  const baseInput = {
+  const baseInput: Omit<SendLeaderSubmissionNotificationInput, 'reporterId'> = {
     leaderId: 'leader-001',
     targetDate: new Date('2025-01-15'),
     submissionTimestamp: new Date('2025-01-15T09:30:00Z'),

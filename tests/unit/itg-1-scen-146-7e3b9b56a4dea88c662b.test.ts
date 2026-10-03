@@ -7,14 +7,14 @@ import type {
 } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-146: 所属フィールドがnull・undefined・空白のみの場合、UserDepartmentEmptyErrorが発生して所属の確定値がnullになる', () => {
-  test('所属がnullで、メールアドレスと名前が有効な場合、UserDepartmentEmptyErrorエラーが発生してisValidがfalse、validatedDepartmentがnullになる', async () => {
+  test('所属がnullで、メールアドレスと名前が有効な場合、UserDepartmentEmptyErrorエラーが発生してisValidがfalse、validatedDepartmentがnullになる', () => {
     const input: ValidateUserInformationRequiredInput = {
       userName: '田中太郎',
       emailAddress: 'tanaka@example.com',
       department: null,
     };
 
-    const result: ValidateUserInformationRequiredOutput = await validateUserInformationRequired(input);
+    const result: ValidateUserInformationRequiredOutput = validateUserInformationRequired(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedDepartment).toBeNull();
