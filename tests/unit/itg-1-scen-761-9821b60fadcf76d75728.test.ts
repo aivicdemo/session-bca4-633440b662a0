@@ -10,7 +10,7 @@ describe('SCEN-761: 日報提出期限17:00に達したとき、未提出者が�
       timeZone: 'Asia/Tokyo'
     };
 
-    const result = judgeSchedulerExecutionTiming(input);
+    const result = await judgeSchedulerExecutionTiming(input);
 
     // 仕様の期待結果：shouldExecute=true、isBusinessDay=true、isWithinExecutionWindow=true、
     // nextScheduledExecutionTime=null、executionReason='営業日の実行時刻内'

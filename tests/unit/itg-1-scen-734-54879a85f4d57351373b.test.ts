@@ -10,7 +10,7 @@ describe('SCEN-734: 登録済み報告者のリストが空のとき、警告が
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // (1) shouldExecute is false (when reporter list is empty, execution is not needed)
     expect(result.shouldExecute).toBe(false);

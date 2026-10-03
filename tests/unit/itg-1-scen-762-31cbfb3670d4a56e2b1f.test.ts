@@ -9,7 +9,7 @@ describe('SCEN-762: 日報提出期限に達し未提出者が1名以上いる�
       timeZone: 'Asia/Tokyo'
     };
 
-    const result = judgeSchedulerExecutionTiming(input);
+    const result = await judgeSchedulerExecutionTiming(input);
 
     // スケジューラが営業日の指定時刻に実行される条件を検証
     expect(result.shouldExecute).toBe(true);

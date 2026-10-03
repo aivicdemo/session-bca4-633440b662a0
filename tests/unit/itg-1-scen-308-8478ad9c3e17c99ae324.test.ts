@@ -22,7 +22,7 @@ import {
 } from '../../src/logic/daily-report-reminder-notification';
 
 describe('SCEN-308: InvalidReporterIdError when reporter ID is invalid', () => {
-  const baseInput: Omit<SendLeaderSubmissionNotificationInput, 'reporterId'> = {
+  const baseInput = {
     leaderId: 'leader-001',
     targetDate: new Date('2025-01-15'),
     submissionTimestamp: new Date('2025-01-15T09:30:00Z'),

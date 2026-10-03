@@ -1,12 +1,12 @@
 import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-441: 検索対象期間に複数の日報が存在する場合、totalCountにフィルター条件に合致した全日報件数が返される', () => {
-  it('filterBySubmissionStatus="submitted"で複数の提出済み日報が存在する場合、totalCountが正確に返される', () => {
+  it('filterBySubmissionStatus="submitted"で複数の提出済み日報が存在する場合、totalCountが正確に返される', async () => {
     const leaderId = 'leader-001';
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
 
-    const result = retrieveDailyReportsForLeaderReview({
+    const result = await retrieveDailyReportsForLeaderReview({
       leaderId,
       startDate,
       endDate,

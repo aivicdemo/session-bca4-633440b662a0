@@ -10,7 +10,7 @@ describe('SCEN-735: 現在の日時が提出期限より前のとき、未提出
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // Expected results per SCEN-735:
     // (1) shouldExecute = false (16:00 is outside 17:25-17:35 window)

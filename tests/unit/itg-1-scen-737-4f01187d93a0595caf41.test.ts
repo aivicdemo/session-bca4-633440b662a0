@@ -10,7 +10,7 @@ describe('SCEN-737: 報告者5名全員が17:00までに日報を提出した場
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // Expected conditions per SCEN-737:
     // (1) shouldExecute = true

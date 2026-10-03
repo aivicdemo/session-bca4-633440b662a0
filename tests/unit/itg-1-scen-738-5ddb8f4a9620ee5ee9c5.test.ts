@@ -10,7 +10,7 @@ describe('SCEN-738: 報告者5名のうち1名だけが17:00までに日報を�
       timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
+    const result = await judgeSchedulerExecutionTiming(input) as JudgeSchedulerExecutionTimingOutput;
 
     // Expected conditions per SCEN-738:
     // shouldExecute = true (enables non-submission detection)
