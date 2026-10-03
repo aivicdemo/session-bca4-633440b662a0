@@ -1,3 +1,25 @@
 {
-  "skippedCodeFiles": []
+  "skippedCodeFiles": [
+    {
+      "item": "jest1:SCEN-302:itg-1:日報管理システム",
+      "fileLabel": "日報管理システム",
+      "errorMessage": "「日報管理システム」のテストコードは、プログラムとしての整合性の検査で指摘が残りました。未生成として記録し、次へ進みます。\ntests/unit/itg-1-scen-302-4a9f1efaf329b8cb1e7a.test.ts(27,19): error TS2339: Property 'sent' does not exist on type 'SendReporterReminderNotificationOutput'.",
+      "attempts": 3,
+      "jobId": "dcaa4474-e38c-4bea-8b58-bc60b18d64b7"
+    },
+    {
+      "item": "jest1:SCEN-428:itg-1:日報管理システム",
+      "fileLabel": "日報管理システム",
+      "errorMessage": "「日報管理システム」のテストコードは、書き方の決まり（対象の処理を実際に呼ぶ・他モジュールのモックで実物を残す・接続先を書かない）に合っていません。未生成として記録し、次へ進みます。\nテスト対象のモジュール（src/logic/daily-report-persistence.ts）から import した処理を、テストの中で一度も呼んでいません。対象の処理を実際に呼び出して結果を確かめます",
+      "attempts": 3,
+      "jobId": "dcaa4474-e38c-4bea-8b58-bc60b18d64b7"
+    },
+    {
+      "item": "jest1:SCEN-430:itg-1:日報管理システム",
+      "fileLabel": "日報管理システム",
+      "errorMessage": "「日報管理システム」のテストコードは、書き方の決まり（対象の処理を実際に呼ぶ・他モジュールのモックで実物を残す・接続先を書かない）に合っていません。未生成として記録し、次へ進みます。\nテスト対象のモジュール（src/logic/daily-report-persistence.ts）から import した処理を、テストの中で一度も呼んでいません。対象の処理を実際に呼び出して結果を確かめます",
+      "attempts": 3,
+      "jobId": "dcaa4474-e38c-4bea-8b58-bc60b18d64b7"
+    }
+  ]
 }

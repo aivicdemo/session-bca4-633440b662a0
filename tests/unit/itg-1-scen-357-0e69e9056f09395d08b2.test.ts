@@ -1,9 +1,27 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   registerReporter,
   RegisterReporterInput,
   RegisterReporterOutput,
 } from '../../src/logic/reporter-master-management';
+
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
+  validateReporterNameFormat: jest.fn(),
+  validateEmailAddress: jest.fn(),
+  detectDuplicateEmailAddress: jest.fn(),
+}));
+
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
+  validateUserAccountActiveStatus: jest.fn(),
+}));
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
+  registerReporterToMaster: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
+}));
+
 import {
   validateReporterNameFormat,
   validateEmailAddress,
@@ -15,22 +33,7 @@ import {
   persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/user-master-persistence');
-
 describe('SCEN-357: 新規登録成功ケース', () => {
-  const mockValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-  const mockValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-  const mockDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-  const mockValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-  const mockRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-  const mockPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('新規登録で有効なメールアドレスと報告者情報が入力された場合、br-tx_7-005により対象者リストに追加され、同期完了日時と次回日報対象者リストが返される', async () => {
     const executionTimestamp = new Date('2026-09-25T10:00:00Z');
     const input: RegisterReporterInput = {
@@ -41,37 +44,37 @@ describe('SCEN-357: 新規登録成功ケース', () => {
       executionTimestamp,
     };
 
-    (mockValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
+    (validateReporterNameFormat as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedReporterName: '田中太郎',
       errorCode: null,
     });
 
-    (mockValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (validateEmailAddress as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'tanaka@example.com',
       errorCode: null,
     });
 
-    (mockDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'tanaka@example.com',
       errorCode: null,
     });
 
-    (mockValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
+    (validateUserAccountActiveStatus as jest.Mock).mockResolvedValue({
       isActive: true,
       userId: 'U001',
       inactiveReason: null,
     });
 
-    (mockRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
+    (registerReporterToMaster as jest.Mock).mockResolvedValue({
       success: true,
       reporterId: 'REP001',
       message: '報告者をマスタに登録しました',
     });
 
-    (mockPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
+    (persistReporterMasterChangeHistory as jest.Mock).mockResolvedValue({
       success: true,
       changeHistoryId: 'CHG001',
       message: '変更履歴を記録しました',
@@ -84,11 +87,11 @@ describe('SCEN-357: 新規登録成功ケース', () => {
     expect(result.message).toBe('報告者を登録しました');
     expect(result.changeHistoryId).toBe('CHG001');
 
-    expect(mockValidateReporterNameFormat).toHaveBeenCalled();
-    expect(mockValidateEmailAddress).toHaveBeenCalled();
-    expect(mockDetectDuplicateEmailAddress).toHaveBeenCalled();
-    expect(mockValidateUserAccountActiveStatus).toHaveBeenCalled();
-    expect(mockRegisterReporterToMaster).toHaveBeenCalled();
-    expect(mockPersistReporterMasterChangeHistory).toHaveBeenCalled();
+    expect(validateReporterNameFormat).toHaveBeenCalled();
+    expect(validateEmailAddress).toHaveBeenCalled();
+    expect(detectDuplicateEmailAddress).toHaveBeenCalled();
+    expect(validateUserAccountActiveStatus).toHaveBeenCalled();
+    expect(registerReporterToMaster).toHaveBeenCalled();
+    expect(persistReporterMasterChangeHistory).toHaveBeenCalled();
   });
 });

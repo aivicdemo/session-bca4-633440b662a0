@@ -1,40 +1,45 @@
-jest.mock('../../src/logic/user-master-persistence');
+import { jest } from '@jest/globals';
+import { retrieveEmailSendingHistoryDetails } from '../../src/logic/daily-report-management-view';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+import type { RetrieveEmailSendingHistoryDetailsInput } from '../../src/logic/daily-report-management-view';
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  retrieveEmailSendingHistoryDetails,
-} from '../../src/logic/daily-report-management-view';
-import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof userMasterPersistence>('../../src/logic/user-master-persistence'),
+  retrieveEmailSendingHistoryByDateRange: jest.fn()
+}));
 
 describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール送信履歴が存在する場合、フィルター条件に合致した履歴を詳細表示形式で返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('フィルター条件に合致したメール送信履歴が詳細表示形式で返される', async () => {
-    const leaderId = 'leader-001';
-    const startDate = '2024-01-01';
-    const endDate = '2024-01-31';
-    const emailType = 'daily_report_submission';
-    const sendingStatus = 'success';
-    const recipientEmail = null;
-    const pageNumber = 1;
-    const pageSize = 10;
+  it('should return filtered email sending history in display format when leader has permission and history exists', async () => {
+    const input: RetrieveEmailSendingHistoryDetailsInput = {
+      leaderId: 'leader-001',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      emailType: 'daily_report_submission',
+      sendingStatus: 'success',
+      recipientEmail: null,
+      pageNumber: 1,
+      pageSize: 10
+    };
 
     const mockHistoryRecords = [
       {
         emailSendingHistoryId: 'EH-001',
         userId: 'USER-001',
         emailType: 'daily_report_submission',
-        recipientEmailAddress: 'user@company.com',
+        recipientEmailAddress: 'user1@company.com',
+        recipientName: 'User 1',
         subject: 'Daily Report',
         body: 'Body',
         sentDateTime: new Date('2024-01-15T09:30:00Z'),
-        sendingStatus: 'success' as const,
+        sendingStatus: 'success',
         errorMessage: null,
         relatedDailyReportId: null,
         relatedReminderSettingId: null,
-        resendFlag: false,
+        retryFlag: false,
         createdAt: new Date('2024-01-15T09:30:00Z'),
       },
       {
@@ -42,14 +47,15 @@ describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール
         userId: 'USER-002',
         emailType: 'daily_report_submission',
         recipientEmailAddress: 'user2@company.com',
+        recipientName: 'User 2',
         subject: 'Daily Report',
         body: 'Body',
         sentDateTime: new Date('2024-01-15T09:31:00Z'),
-        sendingStatus: 'success' as const,
+        sendingStatus: 'success',
         errorMessage: null,
         relatedDailyReportId: null,
         relatedReminderSettingId: null,
-        resendFlag: false,
+        retryFlag: false,
         createdAt: new Date('2024-01-15T09:31:00Z'),
       },
       {
@@ -57,14 +63,15 @@ describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール
         userId: 'USER-003',
         emailType: 'daily_report_submission',
         recipientEmailAddress: 'user3@company.com',
+        recipientName: 'User 3',
         subject: 'Daily Report',
         body: 'Body',
         sentDateTime: new Date('2024-01-16T09:30:00Z'),
-        sendingStatus: 'success' as const,
+        sendingStatus: 'success',
         errorMessage: null,
         relatedDailyReportId: null,
         relatedReminderSettingId: null,
-        resendFlag: false,
+        retryFlag: false,
         createdAt: new Date('2024-01-16T09:30:00Z'),
       },
       {
@@ -72,14 +79,15 @@ describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール
         userId: 'USER-004',
         emailType: 'daily_report_submission',
         recipientEmailAddress: 'user4@company.com',
+        recipientName: 'User 4',
         subject: 'Daily Report',
         body: 'Body',
         sentDateTime: new Date('2024-01-17T09:30:00Z'),
-        sendingStatus: 'success' as const,
+        sendingStatus: 'success',
         errorMessage: null,
         relatedDailyReportId: null,
         relatedReminderSettingId: null,
-        resendFlag: false,
+        retryFlag: false,
         createdAt: new Date('2024-01-17T09:30:00Z'),
       },
       {
@@ -87,36 +95,22 @@ describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール
         userId: 'USER-005',
         emailType: 'daily_report_submission',
         recipientEmailAddress: 'user5@company.com',
+        recipientName: 'User 5',
         subject: 'Daily Report',
         body: 'Body',
         sentDateTime: new Date('2024-01-18T09:30:00Z'),
-        sendingStatus: 'success' as const,
+        sendingStatus: 'success',
         errorMessage: null,
         relatedDailyReportId: null,
         relatedReminderSettingId: null,
-        resendFlag: false,
+        retryFlag: false,
         createdAt: new Date('2024-01-18T09:30:00Z'),
       },
     ];
 
-    (retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>).mockResolvedValue({
-      success: true,
-      emailSendingHistories: mockHistoryRecords,
-      totalCount: 5,
-      pageNumber: 1,
-      pageSize: 10,
-    });
+    (userMasterPersistence.retrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue(mockHistoryRecords);
 
-    const result = await retrieveEmailSendingHistoryDetails({
-      leaderId,
-      startDate,
-      endDate,
-      emailType,
-      sendingStatus,
-      recipientEmail,
-      pageNumber,
-      pageSize,
-    });
+    const result = await retrieveEmailSendingHistoryDetails(input);
 
     expect(result).toBeDefined();
     expect(result.emailHistoryList).toHaveLength(5);
@@ -126,6 +120,8 @@ describe('SCEN-589: リーダー権限あり、指定日付範囲内のメール
     expect(result.hasNextPage).toBe(false);
 
     result.emailHistoryList.forEach((history) => {
+      expect(history.sentTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+      expect(history.recipientEmail).toMatch(/^[a-zA-Z0-9@.]+@company\.com$/);
       expect(history.sendingStatus).toBe('success');
       expect(history.errorMessage).toBeNull();
     });

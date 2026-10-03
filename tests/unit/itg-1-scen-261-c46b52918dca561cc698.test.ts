@@ -1,93 +1,58 @@
-import {
-  generateNonSubmissionDetectionResult,
-  GenerateNonSubmissionDetectionResultInput,
-  GenerateNonSubmissionDetectionResultOutput,
-  NonSubmissionDetectionLog,
-} from '../../src/logic/daily-report-non-submission-detection';
+import { generateNonSubmissionDetectionResult } from '../../src/logic/daily-report-non-submission-detection';
+import type { GenerateNonSubmissionDetectionResultInput, NonSubmissionDetectionLog } from '../../src/logic/daily-report-non-submission-detection';
 import type { NonSubmittedReporter } from '../../src/agents/tx-3-imp-1/orchestrator';
 
 describe('SCEN-261: 未提出者リストと検知ログが正常に提供されたとき、管理画面表示用データと催促通知用データが整形される', () => {
-  it('未提出者リストと検知ログから管理画面表示用と催促通知用データを整形する', async () => {
-    const targetDate = '2024-01-15';
-    const detectionTimestamp = '2024-01-15T17:00:00Z';
-
-    const mockNonSubmittedReporters: NonSubmittedReporter[] = [
-      {
-        userId: 'reporter-001',
-        userName: 'Reporter One',
-        emailAddress: 'reporter-001@example.com',
-        promptPriority: 'high',
-        department: 'Engineering',
-      },
-      {
-        userId: 'reporter-002',
-        userName: 'Reporter Two',
-        emailAddress: 'reporter-002@example.com',
-        promptPriority: 'high',
-        department: 'Sales',
-      },
-      {
-        userId: 'reporter-003',
-        userName: 'Reporter Three',
-        emailAddress: 'reporter-003@example.com',
-        promptPriority: 'high',
-        department: 'Engineering',
-      },
+  it('検知結果を管理画面表示用と催促通知用に整形して返す', async () => {
+    const nonSubmittedReporters: NonSubmittedReporter[] = [
+      { userId: 'user-001', userName: '太郎', emailAddress: 'taro@example.com', department: '営業部', promptPriority: 'high' },
+      { userId: 'user-002', userName: '花子', emailAddress: 'hanako@example.com', department: '企画部', promptPriority: 'high' },
+      { userId: 'user-003', userName: '次郎', emailAddress: 'jiro@example.com', department: '営業部', promptPriority: 'medium' },
     ];
 
-    const mockDetectionLog: NonSubmissionDetectionLog = {
+    const detectionLog: NonSubmissionDetectionLog = {
       detectionLogId: 'log-001',
-      targetDate,
-      detectionDateTime: detectionTimestamp,
-      totalReportersCount: 10,
+      targetDate: '2024-01-15',
+      detectionDateTime: '2024-01-15T17:00:00Z',
+      totalReportersCount: 5,
       nonSubmittedCount: 3,
-      submittedCount: 7,
+      submittedCount: 2,
     };
+
+    const detectionTimestamp = '2024-01-15T17:00:00Z';
 
     const input: GenerateNonSubmissionDetectionResultInput = {
-      nonSubmittedReporters: mockNonSubmittedReporters,
-      detectionLog: mockDetectionLog,
+      nonSubmittedReporters,
+      detectionLog,
       detectionTimestamp,
     };
 
-    const result: GenerateNonSubmissionDetectionResultOutput =
-      await generateNonSubmissionDetectionResult(input);
+    const result = await generateNonSubmissionDetectionResult(input);
 
-    // dashboardDisplayData が存在し、整形済みの未提出者情報と検知ログを含むオブジェクトであることを確認
     expect(result.dashboardDisplayData).toBeDefined();
-    expect(result.dashboardDisplayData?.nonSubmittedReportersForDisplay).toHaveLength(3);
-    expect(result.dashboardDisplayData?.detectionLogForDisplay).toBeDefined();
+    expect(result.dashboardDisplayData.nonSubmittedReportersForDisplay).toHaveLength(3);
+    expect(result.dashboardDisplayData.detectionLogForDisplay).toBeDefined();
+    expect(result.dashboardDisplayData.summaryStatistics).toBeDefined();
 
-    // dashboardDisplayData に含まれる検知ログのタイムスタンプが入力の detectionTimestamp と一致することを確認
-    expect(result.dashboardDisplayData?.detectionLogForDisplay.detectionDateTime).toBe(
-      detectionTimestamp,
-    );
+    expect(result.dashboardDisplayData.detectionLogForDisplay.detectionDateTime).toBe('2024-01-15T17:00:00Z');
+    expect(result.dashboardDisplayData.detectionLogForDisplay.targetDate).toBe('2024-01-15');
+    expect(result.dashboardDisplayData.detectionLogForDisplay.totalReportersCount).toBe(5);
+    expect(result.dashboardDisplayData.detectionLogForDisplay.nonSubmittedCount).toBe(3);
 
-    // promptNotificationData が存在し、催促通知送信に必要な未提出者情報と通知対象者リストを含むオブジェクトであることを確認
     expect(result.promptNotificationData).toBeDefined();
-    expect(result.promptNotificationData?.nonSubmittedReportersForNotification).toHaveLength(3);
-    expect(result.promptNotificationData?.notificationContext).toBeDefined();
+    expect(result.promptNotificationData.nonSubmittedReportersForNotification).toHaveLength(3);
+    expect(result.promptNotificationData.notificationContext).toBeDefined();
+    expect(result.promptNotificationData.notificationContext.targetDate).toBe('2024-01-15');
+    expect(result.promptNotificationData.notificationContext.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
 
-    // dashboardDisplayData に含まれる未提出者情報が3件のレコード
-    expect(result.dashboardDisplayData?.nonSubmittedReportersForDisplay).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-001' }),
-    );
-    expect(result.dashboardDisplayData?.nonSubmittedReportersForDisplay).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-002' }),
-    );
-    expect(result.dashboardDisplayData?.nonSubmittedReportersForDisplay).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-003' }),
-    );
+    const displayReporters = result.dashboardDisplayData.nonSubmittedReportersForDisplay;
+    expect(displayReporters[0].userId).toBe('user-001');
+    expect(displayReporters[0].userName).toBe('太郎');
+    expect(displayReporters[0].emailAddress).toBe('taro@example.com');
 
-    // promptNotificationData に含まれる通知対象者リストが、入力された nonSubmittedReporters に対応する配列
-    expect(result.promptNotificationData?.nonSubmittedReportersForNotification).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-001' }),
-    );
-    expect(result.promptNotificationData?.nonSubmittedReportersForNotification).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-002' }),
-    );
-    expect(result.promptNotificationData?.nonSubmittedReportersForNotification).toContainEqual(
-      expect.objectContaining({ userId: 'reporter-003' }),
-    );
+    const notificationReporters = result.promptNotificationData.nonSubmittedReportersForNotification;
+    expect(notificationReporters[0].userId).toBe('user-001');
+    expect(notificationReporters[0].userName).toBe('太郎');
+    expect(notificationReporters[0].emailAddress).toBe('taro@example.com');
   });
 });

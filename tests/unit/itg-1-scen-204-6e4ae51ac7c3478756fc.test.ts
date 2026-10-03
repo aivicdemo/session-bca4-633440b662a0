@@ -1,57 +1,33 @@
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
-}));
-jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateDailyReportContent: jest.fn(),
-}));
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  checkDailyReportExistsForDate: jest.fn(),
-  saveDailyReport: jest.fn(),
-  updateDailyReportSubmissionTimestamp: jest.fn(),
-}));
-jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
-}));
+import { submitDailyReport, DailyReportContentExceedsMaxLengthException, type SubmitDailyReportInput } from '../../src/logic/daily-report-submission';
 
-import { submitDailyReport, SubmitDailyReportInput, DailyReportContentExceedsMaxLengthException } from '../../src/logic/daily-report-submission';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
-import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
-import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
-
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
-const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
-const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
+jest.mock('../../src/logic/user-authentication-authorization');
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/email-notification-management');
 
 describe('SCEN-204: 業務内容が最大文字数を超過している場合、超過エラーが発生して提出が拒否される', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
-      userId: 'reporter-001',
-      isAuthenticated: true,
-      isEligibleForSubmission: true,
-    });
+    const mockAuth = require('../../src/logic/user-authentication-authorization');
+    const mockValidation = require('../../src/logic/input-validation-formatting');
+    const mockBusinessDay = require('../../src/logic/business-day-deadline-judgment');
+    const mockPersistence = require('../../src/logic/daily-report-persistence');
+    const mockNotification = require('../../src/logic/email-notification-management');
 
-    mockedValidateDailyReportContent.mockImplementation(() => {
-      const error = new DailyReportContentExceedsMaxLengthException('日報内容が長すぎます。');
-      return Promise.reject(error);
-    });
-
-    (mockedCheckDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue({
-      exists: false,
-    });
+    mockAuth.authenticateAndAuthorizeReporterAccess = jest.fn().mockResolvedValue({ isAccessGranted: true });
+    mockValidation.validateDailyReportContent = jest.fn().mockRejectedValue(
+      new DailyReportContentExceedsMaxLengthException('日報内容が長すぎます。')
+    );
+    mockBusinessDay.judgeBusinessDayAndDeadline = jest.fn();
+    mockPersistence.checkDailyReportExistsForDate = jest.fn();
+    mockPersistence.saveDailyReport = jest.fn();
+    mockPersistence.updateDailyReportSubmissionTimestamp = jest.fn();
+    mockNotification.sendDailyReportSubmissionNotification = jest.fn();
   });
 
-  it('should throw DailyReportContentExceedsMaxLengthException when business content exceeds max length', async () => {
+  it('DailyReportContentExceedsMaxLengthException が発生して提出が拒否される', async () => {
     const oversizedContent = 'a'.repeat(1001);
 
     const input: SubmitDailyReportInput = {
@@ -67,12 +43,11 @@ describe('SCEN-204: 業務内容が最大文字数を超過している場合、
     await expect(submitDailyReport(input)).rejects.toThrow(DailyReportContentExceedsMaxLengthException);
     await expect(submitDailyReport(input)).rejects.toThrow('日報内容が長すぎます。');
 
-    expect(mockedAuthenticateAndAuthorizeReporterAccess).toHaveBeenCalledTimes(1);
-    expect(mockedValidateDailyReportContent).toHaveBeenCalledTimes(1);
-    expect(mockedJudgeBusinessDayAndDeadline).toHaveBeenCalledTimes(0);
-    expect(mockedCheckDailyReportExistsForDate).toHaveBeenCalledTimes(0);
-    expect(mockedSaveDailyReport).toHaveBeenCalledTimes(0);
-    expect(mockedUpdateDailyReportSubmissionTimestamp).toHaveBeenCalledTimes(0);
-    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledTimes(0);
+    const mockPersistence = require('../../src/logic/daily-report-persistence');
+    const mockNotification = require('../../src/logic/email-notification-management');
+
+    expect(mockPersistence.saveDailyReport).not.toHaveBeenCalled();
+    expect(mockPersistence.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
+    expect(mockNotification.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
   });
 });

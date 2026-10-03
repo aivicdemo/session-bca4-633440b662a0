@@ -1,115 +1,61 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeLeaderAccess: jest.fn(),
-}));
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveDailyReportsForLeaderReview: jest.fn(),
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveEmailSendingHistoryByDateRange: jest.fn(),
-}));
+import {
+  retrieveLeaderDashboardData,
+  RetrieveLeaderDashboardDataInput,
+  RetrieveLeaderDashboardDataOutput,
+} from '../../src/logic/daily-report-management-view';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
 
-import { retrieveLeaderDashboardData } from '../../src/logic/daily-report-management-view';
-import { authenticateAndAuthorizeLeaderAccess } from '../../src/logic/user-authentication-authorization';
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
-import { retrieveDailyReportsForLeaderReview, retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
-import { retrieveEmailSendingHistoryByDateRange } from '../../src/logic/user-master-persistence';
-
-const mockedAuthenticateAndAuthorizeLeaderAccess = authenticateAndAuthorizeLeaderAccess as jest.MockedFunction<any>;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
-const mockedRetrieveDailyReportsForLeaderReview = retrieveDailyReportsForLeaderReview as jest.MockedFunction<any>;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
-const mockedRetrieveEmailSendingHistoryByDateRange = retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>;
 
 describe('SCEN-582: 本日のメール送信履歴が0件のとき、空の配列が返される', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
+    (userAuthModule.authenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
       isAccessGranted: true,
-      leaderId: 'leader001',
+      userId: 'leader001',
       denialReason: null,
     });
 
-    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
+    (businessDayModule.judgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
       isBusinessDay: true,
-      isWithinDeadline: true,
-      deadlineTime: '18:00',
     });
 
-    (mockedRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      reports: [
-        {
-          reportId: 'R001',
-          reporterId: 'REP-001',
-          reporterName: '太郎',
-          submissionTime: '2024-01-15T17:30:00Z',
-          businessContent: '顧客対応',
-          achievements: '2件の受注取得',
-          issues: 'なし',
-          tomorrowPlan: '提案資料作成',
-        },
-      ],
-      totalCount: 1,
-    });
+    (persistenceModule.retrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([
+      {
+        reportId: 'report001',
+        reporterId: 'reporter-001',
+        reporterName: '太郎',
+        submissionDateTime: '2024-01-15T14:30:00Z',
+        reportContent: '営業先A訪問、契約成立',
+        reportDate: '2024-01-15',
+      },
+    ]);
 
-    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      detectionLogs: [
-        {
-          detectionLogId: 'DL-001',
-          targetDate: '2024-01-15',
-          detectionDateTime: '2024-01-15T18:00:00Z',
-          nonSubmittedReporters: [
-            { userId: 'U002', name: '花子', team: '営業部' },
-          ],
-          reminderSent: false,
-        },
-      ],
-      totalCount: 1,
-    });
-
-    (mockedRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      emailHistory: [],
-      totalCount: 0,
-    });
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([
+      {
+        detectionLogId: 'DL-001',
+        targetDate: '2024-01-15',
+        detectionTimestamp: 1705329900000,
+        nonSubmittedCount: 2,
+        logType: 'warn',
+      },
+    ]);
   });
 
-  it('emailSendingHistory が空の配列を返す', async () => {
-    const result = await retrieveLeaderDashboardData({
+  it('メール送信履歴が0件のとき、emailSendingHistoryフィールドが空配列である', async () => {
+    const input: RetrieveLeaderDashboardDataInput = {
       leaderId: 'leader001',
       targetDate: '2024-01-15',
-    });
+    };
 
-    expect(result.emailSendingHistory).toEqual([]);
-    expect(result.emailSendingHistory.length).toBe(0);
-  });
+    const result: RetrieveLeaderDashboardDataOutput = await retrieveLeaderDashboardData(input);
 
-  it('他のフィールドは各スタブの戻り値に従う', async () => {
-    const result = await retrieveLeaderDashboardData({
-      leaderId: 'leader001',
-      targetDate: '2024-01-15',
-    });
-
-    expect(result.submittedReports).toBeDefined();
-    expect(result.nonSubmittedReporters).toBeDefined();
-    expect(result.detectionLogs).toBeDefined();
-    expect(result.submissionStatusSummary).toBeDefined();
-  });
-
-  it('エラーは発生しない', async () => {
-    const result = await retrieveLeaderDashboardData({
-      leaderId: 'leader001',
-      targetDate: '2024-01-15',
-    });
-
-    expect(result).toBeDefined();
+    expect(result.emailSendingHistory).toHaveLength(0);
+    expect(Array.isArray(result.emailSendingHistory)).toBe(true);
+    expect(result.submittedReports).toHaveLength(1);
   });
 });

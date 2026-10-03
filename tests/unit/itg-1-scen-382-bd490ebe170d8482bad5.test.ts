@@ -4,6 +4,7 @@ import {
   DeactivateReporterInput,
   UnauthorizedLeaderError,
 } from '../../src/logic/reporter-master-management';
+import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
 import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
 import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
@@ -15,7 +16,7 @@ describe('SCEN-382: 実行者がチームリーダーではない場合、権限
     jest.clearAllMocks();
   });
 
-  it('should throw UnauthorizedLeaderError when leader has no authorization', async () => {
+  it('should throw UnauthorizedLeaderError when executor is not the team leader of the target reporter', async () => {
     const input: DeactivateReporterInput = {
       reporterId: 'R001',
       teamLeaderId: 'TL999',
@@ -23,63 +24,10 @@ describe('SCEN-382: 実行者がチームリーダーではない場合、権限
       executionTimestamp: new Date(),
     };
 
-    try {
-      await deactivateReporter(input);
-      fail('Expected UnauthorizedLeaderError to be thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(UnauthorizedLeaderError);
-      expect((error as Error).message).toContain('この操作を実行する権限がありません。');
-    }
-  });
-
-  it('should not call archivePastDailyReports on authorization failure', async () => {
-    const input: DeactivateReporterInput = {
-      reporterId: 'R001',
-      teamLeaderId: 'TL999',
-      deactivationReason: '配置変更',
-      executionTimestamp: new Date(),
-    };
-
-    try {
-      await deactivateReporter(input);
-    } catch (error) {
-      // expected
-    }
+    await expect(deactivateReporter(input)).rejects.toThrow(UnauthorizedLeaderError);
+    await expect(deactivateReporter(input)).rejects.toThrow('この操作を実行する権限がありません。');
 
     expect(dailyReportPersistence.archivePastDailyReports).not.toHaveBeenCalled();
-  });
-
-  it('should not call deactivateReporterInMaster on authorization failure', async () => {
-    const input: DeactivateReporterInput = {
-      reporterId: 'R001',
-      teamLeaderId: 'TL999',
-      deactivationReason: '配置変更',
-      executionTimestamp: new Date(),
-    };
-
-    try {
-      await deactivateReporter(input);
-    } catch (error) {
-      // expected
-    }
-
     expect(userMasterPersistence.deactivateReporterInMaster).not.toHaveBeenCalled();
-  });
-
-  it('should not call recordReporterMasterChangeHistory on authorization failure', async () => {
-    const input: DeactivateReporterInput = {
-      reporterId: 'R001',
-      teamLeaderId: 'TL999',
-      deactivationReason: '配置変更',
-      executionTimestamp: new Date(),
-    };
-
-    try {
-      await deactivateReporter(input);
-    } catch (error) {
-      // expected
-    }
-
-    expect(userMasterPersistence.persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

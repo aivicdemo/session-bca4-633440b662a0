@@ -1,36 +1,23 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { jest } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import {
   authenticateAndAuthorizeReporterAccess,
   UserAccountInactiveException,
 } from '../../src/logic/user-authentication-authorization';
 
 describe('SCEN-090: 無効アカウントのときアクセスが拒否される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should deny access when account is inactive', async () => {
-    jest.spyOn(require('../../src/logic/user-authentication-authorization'), 'validateUserAccountActiveStatus').mockResolvedValue({
-      isActive: false,
-      userId: 'reporter-001',
-      inactiveReason: 'account_inactive',
-    });
-
+  it('should throw UserAccountInactiveException when account is inactive', async () => {
+    // 前提：無効アカウントのユーザーID 'reporter-001' でログイン状態
     const input = {
       userId: 'reporter-001',
       isAuthenticated: true,
     };
 
-    try {
-      await authenticateAndAuthorizeReporterAccess(input);
-      throw new Error('Expected UserAccountInactiveException to be thrown');
-    } catch (error) {
-      if (error instanceof UserAccountInactiveException) {
-        expect(error.message).toBe('このアカウントは無効化されています。管理者に問い合わせてください。');
-      } else {
-        throw error;
-      }
-    }
+    // 期待結果：UserAccountInactiveException がスロー
+    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(UserAccountInactiveException);
+
+    // 期待結果：エラーメッセージが正確
+    await expect(authenticateAndAuthorizeReporterAccess(input)).rejects.toThrow(
+      'このアカウントは無効化されています。管理者に問い合わせてください。'
+    );
   });
 });

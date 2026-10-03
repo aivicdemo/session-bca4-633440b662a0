@@ -1,39 +1,12 @@
-jest.mock('../../src/logic/input-validation-formatting', () => {
-  const actual = jest.requireActual('../../src/logic/input-validation-formatting');
-  return {
-    ...actual,
-    validateEmailAddress: jest.fn(),
-  };
-});
-
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  validateUserInformationRequired,
-  validateEmailAddress,
-  ValidateUserInformationRequiredInput,
-  ValidateUserInformationRequiredOutput,
-} from '../../src/logic/input-validation-formatting';
-
-const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
+import { validateUserInformationRequired } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-152: 報告者が名前フィールドを空のまま送信しようとした場合、名前は必ず入力してくださいという指定文言でエラーになる', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockedValidateEmailAddress.mockReturnValue({
-      isValid: true,
-      validatedEmailAddress: 'user@example.com',
-      errorCode: null,
-    });
-  });
-
   it('should return UserNameEmptyError when userName is empty string', async () => {
-    const input: ValidateUserInformationRequiredInput = {
+    const result = await validateUserInformationRequired({
       userName: '',
       emailAddress: 'user@example.com',
-      department: '営業部',
-    };
-
-    const result: ValidateUserInformationRequiredOutput = await validateUserInformationRequired(input);
+      department: '営業部'
+    });
 
     expect(result.isValid).toBe(false);
     expect(result.validatedUserName).toBeNull();
@@ -42,7 +15,7 @@ describe('SCEN-152: 報告者が名前フィールドを空のまま送信しよ
     expect(result.errorCode).toBe('UserNameEmptyError');
     expect(result.errorDetails).toContainEqual({
       field: 'userName',
-      errorCode: 'UserNameEmptyError',
+      errorCode: 'UserNameEmptyError'
     });
   });
 });

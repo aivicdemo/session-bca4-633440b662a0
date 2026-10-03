@@ -1,25 +1,42 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
   submitUserInformationForConfirmation,
-  SubmitUserInformationForConfirmationInput,
+  type SubmitUserInformationForConfirmationInput,
   InvalidUserInformationFormatError,
 } from '../../src/logic/user-information-input-confirmation';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { validateUserInformationRequired, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { saveDailyReportRecord } from '../../src/logic/user-master-persistence';
-import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
-
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/daily-report-reminder-notification');
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as inputValidationModule from '../../src/logic/input-validation-formatting';
+import * as userMasterModule from '../../src/logic/user-master-persistence';
+import * as notificationModule from '../../src/logic/daily-report-reminder-notification';
 
 describe('SCEN-405: 承認期限が0営業日以下で設定された場合、エラーが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('承認期限が0営業日で設定された場合、エラーが発生して処理が中断される', async () => {
+  test('error should be thrown when approval deadline is 0 business days or less', async () => {
+    jest.spyOn(userAuthModule, 'authenticateAndAuthorizeReporterAccess').mockResolvedValue({
+      isAuthenticated: true,
+      reporterId: 'reporter-001',
+    } as any);
+
+    jest.spyOn(inputValidationModule, 'validateUserInformationRequired').mockResolvedValue({
+      isValid: true,
+    } as any);
+
+    jest.spyOn(inputValidationModule, 'detectDuplicateEmailAddress').mockResolvedValue({
+      isDuplicate: false,
+    } as any);
+
+    jest.spyOn(userMasterModule, 'saveDailyReportRecord').mockResolvedValue({
+      userInformationId: 'user-info-001',
+      confirmationStatus: 'pending_approval',
+      approvalDeadline: new Date(),
+    } as any);
+
+    jest.spyOn(notificationModule, 'sendLeaderSubmissionNotification').mockResolvedValue({
+      leaderNotificationSent: true,
+    } as any);
+
     const input: SubmitUserInformationForConfirmationInput = {
       reporterId: 'reporter-001',
       userName: 'user_name',
@@ -29,36 +46,21 @@ describe('SCEN-405: 承認期限が0営業日以下で設定された場合、�
       submissionTimestamp: new Date(),
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
-      isAuthenticated: true,
-    });
-
-    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue({
-      isValid: true,
-    });
-
-    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue({
-      isDuplicate: false,
-    });
-
-    (saveDailyReportRecord as jest.MockedFunction<any>).mockResolvedValue({
-      userInformationId: 'user-info-001',
-      confirmationStatus: 'pending_approval',
-      approvalDeadline: new Date(),
-    });
-
-    (sendLeaderSubmissionNotification as jest.MockedFunction<any>).mockResolvedValue({
-      leaderNotificationSent: true,
-    });
-
+    // 承認期限が0営業日で設定された場合
     try {
       const result = await submitUserInformationForConfirmation(input);
-      if (!result.success) {
-        expect(result.userInformationId).toBeNull();
-        expect(result.confirmationStatus).not.toBe('pending_approval');
-      }
+      // 処理は中断され、エラー状態で返される
+      // success フィールドが false
+      expect(result.success).toBe(false);
+      // userInformationId が null
+      expect(result.userInformationId).toBeNull();
+      // confirmationStatus が承認保留状態ではない状態
+      expect(result.confirmationStatus).not.toMatch(/pending|approval/i);
     } catch (err) {
+      // または、設計済みエラー InvalidUserInformationFormatError が発生
       expect(err).toBeInstanceOf(InvalidUserInformationFormatError);
+      const errorMessage = (err as Error).message;
+      expect(errorMessage).toContain('ユーザー情報の入力形式が不正です');
     }
   });
 });

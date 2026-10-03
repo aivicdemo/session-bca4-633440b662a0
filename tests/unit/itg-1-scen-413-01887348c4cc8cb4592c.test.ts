@@ -1,12 +1,17 @@
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   authenticateAndAuthorizeLeaderAccess: jest.fn(),
 }));
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
   judgeBusinessDayAndDeadline: jest.fn(),
 }));
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   detectDuplicateEmailAddress: jest.fn(),
 }));
+jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/email-notification-management');
 
 import {
   confirmAndApproveUserInformation,
@@ -26,58 +31,31 @@ describe('SCEN-413: InvalidApprovalDecisionError when approvalDecision is invali
   });
 
   it('should throw InvalidApprovalDecisionError with correct message when approvalDecision is invalid', async () => {
-    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
-      authorized: true,
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'leader001',
     });
-    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      withinDeadline: true,
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+      isAcceptable: true,
+      isWithinDeadline: true,
     });
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({
       isDuplicate: false,
+      duplicateReporterUserId: null,
+      duplicateReporterName: null,
     });
 
     const input = {
       leaderUserId: 'leader001',
       userInformationId: 'info001',
-      approvalDecision: 'invalid_value' as any,
+      approvalDecision: 'invalid_value',
       rejectionReason: null,
       approvalTimestamp: new Date(),
-    };
+    } as any;
 
-    try {
-      await confirmAndApproveUserInformation(input);
-      fail('Should have thrown InvalidApprovalDecisionError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(InvalidApprovalDecisionError);
-      expect((error as Error).message).toBe('承認判定は\'approve\'または\'reject\'である必要があります。');
-    }
-  });
-
-  it('should throw InvalidApprovalDecisionError for empty string', async () => {
-    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
-      authorized: true,
-    });
-    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      withinDeadline: true,
-    });
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
-      isDuplicate: false,
-    });
-
-    const input = {
-      leaderUserId: 'leader001',
-      userInformationId: 'info001',
-      approvalDecision: '' as any,
-      rejectionReason: null,
-      approvalTimestamp: new Date(),
-    };
-
-    try {
-      await confirmAndApproveUserInformation(input);
-      fail('Should have thrown InvalidApprovalDecisionError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(InvalidApprovalDecisionError);
-      expect((error as Error).message).toBe('承認判定は\'approve\'または\'reject\'である必要があります。');
-    }
+    await expect(confirmAndApproveUserInformation(input)).rejects.toThrow(InvalidApprovalDecisionError);
+    await expect(confirmAndApproveUserInformation(input)).rejects.toThrow(
+      '承認判定は\'approve\'または\'reject\'である必要があります。'
+    );
   });
 });

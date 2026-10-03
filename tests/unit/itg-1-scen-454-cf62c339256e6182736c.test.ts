@@ -1,37 +1,36 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>(
+    '../../src/logic/input-validation-formatting'
+  ),
+  validateUserInformationRequired: jest.fn(),
+  validateEmailAddress: jest.fn(),
+  detectDuplicateEmailAddress: jest.fn(),
+}));
+
 import {
   registerReporterToMaster,
+  type RegisterReporterToMasterInput,
+  type RegisterReporterToMasterOutput,
   InvalidReporterInformationError,
 } from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/input-validation-formatting');
 
 import {
   validateUserInformationRequired,
   validateEmailAddress,
-  detectDuplicateEmailAddress,
 } from '../../src/logic/input-validation-formatting';
 
-interface RegisterReporterToMasterInput {
-  reporterName: string;
-  emailAddress: string;
-  department: string;
-  leaderUserId: string;
-  registrationTimestamp: Date;
-}
-
-interface RegisterReporterToMasterOutput {
-  success: boolean;
-  reporterId: string | null;
-  message: string;
-}
+const mockedValidateUserInformationRequired = validateUserInformationRequired as jest.MockedFunction<any>;
+const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
 
 describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメールアドレス形式が不正な場合、登録失敗を返す', () => {
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('should fail when reporterName is empty string', async () => {
+  it('テストケース1: reporterName が空文字列の場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '',
       emailAddress: 'reporter@example.com',
@@ -40,7 +39,13 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: false,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: 'EmptyReporterNameError',
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -49,7 +54,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
     expect(result.message).toBe('報告者情報が不完全または形式が不正です。必須項目を確認してください。');
   });
 
-  it('should fail when emailAddress is null', async () => {
+  it('テストケース2: emailAddress が null/undefined の場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '山田太郎',
       emailAddress: null as any,
@@ -58,7 +63,13 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: false,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: 'EmptyEmailAddressError',
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -67,7 +78,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
     expect(result.message).toBe('報告者情報が不完全または形式が不正です。必須項目を確認してください。');
   });
 
-  it('should fail when department is empty string', async () => {
+  it('テストケース3: department が空文字列の場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '山田太郎',
       emailAddress: 'reporter@example.com',
@@ -76,7 +87,13 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: false,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: 'EmptyDepartmentError',
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -85,7 +102,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
     expect(result.message).toBe('報告者情報が不完全または形式が不正です。必須項目を確認してください。');
   });
 
-  it('should fail when email format is invalid (no @ symbol)', async () => {
+  it('テストケース4: メールアドレス形式が不正（@ 記号がない）の場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '山田太郎',
       emailAddress: 'reporterexample.com',
@@ -94,8 +111,19 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
-    (validateEmailAddress as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: true,
+      validatedUserName: '山田太郎',
+      validatedEmailAddress: 'reporterexample.com',
+      validatedDepartment: '営業部',
+      errorCode: null,
+    });
+
+    mockedValidateEmailAddress.mockResolvedValue({
+      isValid: false,
+      validatedEmailAddress: null,
+      errorCode: 'InvalidEmailFormatError',
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -104,7 +132,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
     expect(result.message).toBe('報告者情報が不完全または形式が不正です。必須項目を確認してください。');
   });
 
-  it('should fail when email format is invalid (no domain part)', async () => {
+  it('テストケース5: メールアドレス形式が不正（ドメイン部がない）の場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '山田太郎',
       emailAddress: 'reporter@',
@@ -113,8 +141,19 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
-    (validateEmailAddress as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: true,
+      validatedUserName: '山田太郎',
+      validatedEmailAddress: 'reporter@',
+      validatedDepartment: '営業部',
+      errorCode: null,
+    });
+
+    mockedValidateEmailAddress.mockResolvedValue({
+      isValid: false,
+      validatedEmailAddress: null,
+      errorCode: 'InvalidEmailFormatError',
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 
@@ -123,7 +162,7 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
     expect(result.message).toBe('報告者情報が不完全または形式が不正です。必須項目を確認してください。');
   });
 
-  it('should fail when multiple required fields are missing', async () => {
+  it('テストケース6: 複数の必須項目が不足している場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '',
       emailAddress: '',
@@ -132,7 +171,18 @@ describe('SCEN-454: 報告者情報が必須項目を満たさないまたはメ
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue(false);
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: false,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: 'MultipleRequiredFieldsError',
+      errorDetails: [
+        { field: 'reporterName', errorCode: 'EmptyReporterNameError' },
+        { field: 'emailAddress', errorCode: 'EmptyEmailAddressError' },
+        { field: 'department', errorCode: 'EmptyDepartmentError' },
+      ],
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

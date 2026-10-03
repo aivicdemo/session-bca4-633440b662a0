@@ -2,17 +2,13 @@ import {
   detectNonSubmittedReportersAtDeadline,
 } from '../../src/logic/daily-report-non-submission-detection';
 
+import * as reporterModule from '../../src/logic/reporter-master-management';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+
 jest.mock('../../src/logic/reporter-master-management');
 jest.mock('../../src/logic/daily-report-persistence');
 jest.mock('../../src/logic/business-day-deadline-judgment');
-
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import {
-  checkDailyReportExistsForDate,
-  retrieveNonSubmissionDetectionLogsByDate,
-  updateNonSubmissionDetectionLogWithReminderStatus,
-} from '../../src/logic/daily-report-persistence';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-232: detectNonSubmittedReportersAtDeadline - Multiple Reporters Distinction', () => {
   beforeEach(() => {
@@ -54,23 +50,29 @@ describe('SCEN-232: detectNonSubmittedReportersAtDeadline - Multiple Reporters D
     ];
 
     // Mock judgeSchedulerExecutionTiming to return true
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+    (businessDayModule.judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
 
     // Mock getActiveReportersForSubmissionCheck to return 5 reporters
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue(activeReporters);
-
-    // Mock checkDailyReportExistsForDate: reporter-001, 003, 005 submitted; 002, 004 not submitted
-    (checkDailyReportExistsForDate as jest.Mock).mockImplementation((userId: string) => {
-      const submittedIds = ['reporter-001', 'reporter-003', 'reporter-005'];
-      return submittedIds.includes(userId);
+    (reporterModule.getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue({
+      reporters: activeReporters,
     });
 
+    // Mock checkDailyReportExistsForDate: reporter-001, 003, 005 submitted; 002, 004 not submitted
+    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockImplementation(
+      async (input: { userId: string; reportDate: string }) => {
+        const submittedIds = ['reporter-001', 'reporter-003', 'reporter-005'];
+        return submittedIds.includes(input.userId);
+      }
+    );
+
     // Mock retrieveNonSubmissionDetectionLogsByDate to return empty array
-    (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue([]);
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue({
+      detectionLogs: [],
+    });
 
     // Mock updateNonSubmissionDetectionLogWithReminderStatus to succeed
-    (updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock).mockResolvedValue({
-      success: true,
+    (persistenceModule.updateNonSubmissionDetectionLogWithReminderStatus as jest.Mock).mockResolvedValue({
+      isSuccessful: true,
     });
 
     const input = {

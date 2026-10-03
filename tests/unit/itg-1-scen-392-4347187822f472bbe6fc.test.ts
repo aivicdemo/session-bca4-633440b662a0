@@ -1,12 +1,8 @@
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management', () => {
-  const actual = jest.requireActual('../../src/logic/reporter-master-management');
-  return {
-    ...actual,
-    isReporterActiveAndValid: jest.fn(),
-  };
-});
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+}));
 
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   getActiveReportersForSubmissionCheck,
   TargetDateInvalidError,
@@ -19,7 +15,7 @@ describe('SCEN-392: 指定日付が将来日である場合、TargetDateInvalidE
     jest.clearAllMocks();
   });
 
-  it('targetDate が将来日の場合、TargetDateInvalidError をスロー、またはエラー情報を返す', async () => {
+  it('success が false を返し、TargetDateInvalidError が発生する、または reporters は空配列、totalCount は 0、message にはエラー文言が格納される', async () => {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 1);
     const teamLeaderId = 'TL001';
@@ -29,27 +25,18 @@ describe('SCEN-392: 指定日付が将来日である場合、TargetDateInvalidE
       teamLeaderId,
     };
 
-    let error: unknown;
-    let result: GetActiveReportersForSubmissionCheckOutput | undefined;
-
     try {
-      result = await getActiveReportersForSubmissionCheck(input);
-    } catch (e) {
-      error = e;
-    }
+      const result = await getActiveReportersForSubmissionCheck(input);
 
-    // 仕様上の期待: TargetDateInvalidError をスロー、またはsuccess=false でエラーを返す
-    // 実装がまだスタブのため、戻り値の構造は暫定
-    if (error) {
-      // エラーが発生した場合、TargetDateInvalidError であることを期待
-      expect(error).toBeInstanceOf(TargetDateInvalidError);
-    } else if (result) {
-      // エラーを返した場合、result が定義されている
-      expect(result).toBeDefined();
-      expect(result.reporters).toBeDefined();
-      expect(typeof result.totalCount).toBe('number');
-    } else {
-      fail('Expected either error or result');
+      // 実装がエラーを返した場合（TargetDateInvalidError をスロー可能）
+      expect(result.success).toBe(false);
+      expect(result.reporters.length).toBe(0);
+      expect(result.totalCount).toBe(0);
+      expect(result.message).toBe('提出対象日付は営業日かつ本日以前である必要があります。');
+    } catch (err: any) {
+      // 実装がエラーをスロー場合（TargetDateInvalidError の場合）
+      expect(err).toBeInstanceOf(TargetDateInvalidError);
+      expect(err.message).toBe('提出対象日付は営業日かつ本日以前である必要があります。');
     }
   });
 });

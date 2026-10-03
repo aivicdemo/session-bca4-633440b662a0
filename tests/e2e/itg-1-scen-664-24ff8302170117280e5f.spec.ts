@@ -1,84 +1,70 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-/**
- * SCEN-664: 検知ログ確認
- * 検知ログ画面で、各未提出者の最後の提出日時が正しく表示される
- */
-test('検知ログ画面で各未提出者の最後の提出日時が正しく表示される', async ({ page }) => {
-  // テスト用データベースを初期化し、5人の報告者（ユーザーマスタ登録済み）を用意する
-  // 報告者A、B、Cは過去に日報を提出した履歴を持つよう、異なる過去の提出日時
-  // （例：A=2024-01-15 09:30:00、B=2024-01-10 14:45:00、C=2024-01-05 11:20:00）を
-  // データベースに設定する
-  // 報告者D、Eは未提出状態とし、提出日時レコードを持たないか、
-  // または提出日時を null で設定する
-  // （テスト環境ではデータベースセットアップが行われていると仮定）
-
-  // 日報確認・管理画面にログインし、検知ログ確認機能を表示する
-  await page.goto('/');
-  await page.fill('input[type="text"]', 'admin_yamada');
-  await page.fill('input[type="password"]', 'password');
-  await page.click('button:has-text("ログイン")');
-
+test('SCEN-664: 検知ログ画面で各未提出者の最後の提出日時が正しく表示される', async ({ page }) => {
+  // 日報確認・管理画面にアクセス
+  await page.goto('/panels/scr-1790147095974.html');
   await page.waitForLoadState('networkidle');
 
-  // 検知ログ確認機能を開く
-  const logTab = page.locator('.rm-tab').filter({ hasText: '検知ログ' });
-  await logTab.click();
+  // 検知ログタブをクリック
+  await page.click('button[data-tab="log"]');
 
-  await page.waitForLoadState('networkidle');
+  // テーブルが表示されるまで待機
+  await page.waitForSelector('#rm-log-tbody');
 
-  // 検知ログ画面内の『未提出者一覧』セクションで表示される
-  // 各ユーザーの『最後の提出日時』カラムを確認する
+  // 検知ログ一覧テーブルを確認
   const logTable = page.locator('.rm-table');
   await expect(logTable).toBeVisible();
 
-  // テーブルヘッダーに『最後の提出日時』カラムが存在するかを確認
-  const headers = logTable.locator('thead th');
-  const headerTexts = await headers.allTextContents();
+  // テーブルのヘッダーを確認
+  const headerRow = page.locator('table thead tr');
+  const headerCells = headerRow.locator('th');
+  const headerTexts = await headerCells.allTextContents();
 
-  // 最後の提出日時カラムの存在を確認
-  const hasLastSubmitColumn = headerTexts.some(text => 
-    text.includes('提出日時') || text.includes('最後の') || text.includes('提出')
-  );
-  expect(hasLastSubmitColumn).toBe(true);
+  // 検知ログテーブルのカラムを確認
+  expect(headerTexts).toContain('報告者名');
+  expect(headerTexts).toContain('対象日付');
+  expect(headerTexts).toContain('検知日時');
 
-  // 報告者A、B、Cについて、それぞれの最後の提出日時が設定したデータベース値と
-  // 一致していることを目視で確認する
-  const rows = logTable.locator('tbody tr');
-  const rowCount = await rows.count();
-
-  for (let i = 0; i < rowCount; i++) {
-    const row = rows.nth(i);
-    const cells = row.locator('td');
-    const reporterName = await cells.nth(0).textContent();
-
-    if (reporterName?.includes('A')) {
-      const lastSubmitDate = await cells.nth(0).textContent();
-      expect(lastSubmitDate).toBeTruthy();
-      // 日付形式で表示されることを確認
-      expect(lastSubmitDate).toMatch(/\d{4}-\d{2}-\d{2}/);
+  // 未提出者一覧にレコードが存在することを確認
+  const bodyRows = await page.locator('#rm-log-tbody tr').all();
+  
+  let validRowCount = 0;
+  for (const row of bodyRows) {
+    const text = await row.textContent();
+    if (text && !text.includes('検知ログがありません')) {
+      validRowCount++;
     }
+  }
+  
+  expect(validRowCount).toBeGreaterThanOrEqual(1);
 
-    if (reporterName?.includes('B')) {
-      const lastSubmitDate = await cells.nth(0).textContent();
-      expect(lastSubmitDate).toBeTruthy();
-      expect(lastSubmitDate).toMatch(/\d{4}-\d{2}-\d{2}/);
-    }
+  // 各行のデータを確認
+  for (const row of bodyRows) {
+    const text = await row.textContent();
+    if (text && !text.includes('検知ログがありません')) {
+      const cells = await row.locator('td').all();
 
-    if (reporterName?.includes('C')) {
-      const lastSubmitDate = await cells.nth(0).textContent();
-      expect(lastSubmitDate).toBeTruthy();
-      expect(lastSubmitDate).toMatch(/\d{4}-\d{2}-\d{2}/);
-    }
+      // 報告者名
+      const reporterNameText = await cells[0].textContent();
+      expect(reporterNameText?.trim()).not.toBe('');
 
-    if (reporterName?.includes('D') || reporterName?.includes('E')) {
-      // D、Eについては『最後の提出日時』が空欄または『未提出』と表示される
-      const lastSubmitCell = await row.locator('td').allTextContents();
-      const lastSubmitText = lastSubmitCell.join('');
-      expect(lastSubmitText === '' || lastSubmitText.includes('未提出')).toBe(true);
+      // 対象日付
+      const targetDateText = await cells[1].textContent();
+      const dateRegex = /\d{4}-\d{2}-\d{2}/;
+      expect(targetDateText).toMatch(dateRegex);
+
+      // 検知日時
+      const detectedAtText = await cells[2].textContent();
+      const dateTimeRegex = /\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/;
+      expect(detectedAtText).toMatch(dateTimeRegex);
+
+      // 提出状況の確認
+      const statusText = await cells[4].textContent();
+      const validStatuses = ['未提出', '提出済み', '期限超過'];
+      expect(validStatuses.some(status => statusText?.includes(status))).toBeTruthy();
     }
   }
 
-  // 画面遷移・エラーなく全データが表示される
-  await expect(page).not.toHaveTitle(/error|err/i);
+  // 画面遷移・エラーなく全データが表示されることを確認
+  await expect(logTable).toBeVisible();
 });

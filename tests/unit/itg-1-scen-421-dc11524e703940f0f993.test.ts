@@ -1,9 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
 import { saveDailyReport, InvalidReportDateError } from '../../src/logic/daily-report-persistence';
+import type { SaveDailyReportInput } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-421: 営業日でない報告日で日報保存を試みるとInvalidReportDateErrorが発生する', () => {
   it('should throw InvalidReportDateError when reporting date is not a business day', async () => {
-    const input = {
+    const input: SaveDailyReportInput = {
       userId: 'user001',
       reportDate: '2025-01-11',
       businessContent: '営業活動実施',

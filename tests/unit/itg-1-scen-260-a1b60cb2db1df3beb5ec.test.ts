@@ -1,15 +1,19 @@
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
   judgeSchedulerExecutionTiming: jest.fn(),
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
   getActiveReportersForSubmissionCheck: jest.fn(),
 }));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
+}));
 
-import {
-  detectNonSubmittedReportersAtDeadline,
-  DetectNonSubmittedReportersAtDeadlineInput,
-  NoActiveReportersError,
-} from '../../src/logic/daily-report-non-submission-detection';
+import { detectNonSubmittedReportersAtDeadline, NoActiveReportersError } from '../../src/logic/daily-report-non-submission-detection';
 import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
 
@@ -18,35 +22,34 @@ const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissi
 
 describe('SCEN-260: チームメンバーが空の場合の detectUnsubmittedMembers 処理を拒否する', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('チームメンバーが登録されていない場合、NoActiveReportersError が例外として送出される', async () => {
+  it('チームメンバーが存在しない場合、NoActiveReportersError が発生する', async () => {
     const targetDate = '2024-01-15';
     const currentDateTime = '2024-01-15T17:30:00Z';
     const submissionDeadlineTime = '17:00';
     const teamId = 'team-001';
 
-    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
-    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue([]);
+    mockedJudgeSchedulerExecutionTiming.mockResolvedValue(true);
+    mockedGetActiveReportersForSubmissionCheck.mockResolvedValue([]);
 
-    const input: DetectNonSubmittedReportersAtDeadlineInput = {
-      targetDate,
-      currentDateTime,
-      submissionDeadlineTime,
-      teamId,
-    };
+    await expect(
+      detectNonSubmittedReportersAtDeadline({
+        targetDate,
+        currentDateTime,
+        submissionDeadlineTime,
+        teamId,
+      })
+    ).rejects.toThrow(NoActiveReportersError);
 
-    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
-      NoActiveReportersError
-    );
-
-    try {
-      await detectNonSubmittedReportersAtDeadline(input);
-      fail('Should have thrown NoActiveReportersError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(NoActiveReportersError);
-      expect((error as NoActiveReportersError).message).toBe('検知対象の有効な報告者が存在しません。');
-    }
+    await expect(
+      detectNonSubmittedReportersAtDeadline({
+        targetDate,
+        currentDateTime,
+        submissionDeadlineTime,
+        teamId,
+      })
+    ).rejects.toThrow('検知対象の有効な報告者が存在しません。');
   });
 });

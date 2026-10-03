@@ -1,5 +1,7 @@
+import { describe, it, expect } from '@jest/globals';
 import {
   retrieveDailyReportsForLeaderReview,
+  saveDailyReport,
   RetrieveDailyReportsForLeaderReviewInput,
   RetrieveDailyReportsForLeaderReviewOutput,
   DailyReportForLeaderReview,
@@ -7,6 +9,21 @@ import {
 
 describe('SCEN-431: リーダーが指定期間内の提出済み日報を検索し、日報ID・ユーザーID・報告日・業務内容・提出時刻を含むレコードセットが返される', () => {
   it('指定期間内の提出済み日報が返却される', async () => {
+    // テスト用に何件か日報を事前に保存
+    await saveDailyReport({
+      userId: 'test-user-001',
+      reportDate: '2024-01-15',
+      businessContent: 'テスト業務内容1',
+      submittedAt: '2024-01-15T09:00:00Z',
+    });
+
+    await saveDailyReport({
+      userId: 'test-user-002',
+      reportDate: '2024-01-20',
+      businessContent: 'テスト業務内容2',
+      submittedAt: '2024-01-20T10:00:00Z',
+    });
+
     // RetrieveDailyReportsForLeaderReviewInput を組み立てる
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: 'leader-001',

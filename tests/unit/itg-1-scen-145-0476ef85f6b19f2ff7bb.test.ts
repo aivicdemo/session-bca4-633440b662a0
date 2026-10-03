@@ -1,7 +1,7 @@
-import { validateUserInformationRequired, ValidateUserInformationRequiredOutput } from '../../src/logic/input-validation-formatting';
+import { validateUserInformationRequired } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-145: メールアドレスがRFC 5322準拠でない形式の場合、UserEmailAddressFormatInvalidErrorが発生してメールアドレスの確定値がnullになる', () => {
-  it('should return UserEmailAddressFormatInvalidError when emailAddress has invalid format', async () => {
+  test('should return UserEmailAddressFormatInvalidError when emailAddress has invalid format', async () => {
     const input = {
       userName: '田中太郎',
       emailAddress: 'invalid..email@example.com',

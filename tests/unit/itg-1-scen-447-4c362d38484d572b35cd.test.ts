@@ -1,28 +1,49 @@
-import { describe, it, expect, jest } from '@jest/globals';
-
-jest.mock('../../src/logic/daily-report-persistence');
+import { describe, it, expect, beforeEach } from '@jest/globals';
 
 import {
   archivePastDailyReports,
+  saveDailyReport,
   type ArchivePastDailyReportsInput,
   type ArchivePastDailyReportsOutput,
+  type SaveDailyReportInput,
 } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-447: 指定ユーザーの過去日報が複数件存在するとき、すべてアーカイブ状態に遷移', () => {
-  it('すべてアーカイブ状態に遷移し件数と完了日時を返す', async () => {
-    const mockOutput: ArchivePastDailyReportsOutput = {
+  beforeEach(async () => {
+    // Prepare test data: user-001 に3件の過去日報を挿入
+    const report1: SaveDailyReportInput = {
       userId: 'user-001',
-      archivedReportCount: 3,
-      archivedAt: '2024-01-15T10:30:00Z',
+      reportDate: '2023-12-28', // past business day
+      businessContent: '業務内容1',
+      submittedAt: '2023-12-28T18:00:00Z',
     };
-    (archivePastDailyReports as jest.MockedFunction<any>).mockResolvedValueOnce(mockOutput);
 
+    const report2: SaveDailyReportInput = {
+      userId: 'user-001',
+      reportDate: '2023-12-29', // past business day
+      businessContent: '業務内容2',
+      submittedAt: '2023-12-29T18:00:00Z',
+    };
+
+    const report3: SaveDailyReportInput = {
+      userId: 'user-001',
+      reportDate: '2024-01-10', // past business day
+      businessContent: '業務内容3',
+      submittedAt: '2024-01-10T18:00:00Z',
+    };
+
+    await saveDailyReport(report1);
+    await saveDailyReport(report2);
+    await saveDailyReport(report3);
+  });
+
+  it('すべてアーカイブ状態に遷移し件数と完了日時を返す', async () => {
     const input: ArchivePastDailyReportsInput = {
       userId: 'user-001',
       archivedAt: '2024-01-15T10:30:00Z',
     };
 
-    const result: ArchivePastDailyReportsOutput = await (archivePastDailyReports as any)(input);
+    const result: ArchivePastDailyReportsOutput = await archivePastDailyReports(input);
 
     expect(result.userId).toBe('user-001');
     expect(result.archivedReportCount).toBe(3);

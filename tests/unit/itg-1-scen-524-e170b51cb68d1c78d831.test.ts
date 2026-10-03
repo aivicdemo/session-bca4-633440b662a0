@@ -1,19 +1,8 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  sendDailyReportSubmissionNotification,
-  SendDailyReportSubmissionNotificationInput,
-  LeaderEmailAddressNotFoundError,
-} from '../../src/logic/email-notification-management';
-
-jest.mock('../../src/logic/email-notification-management');
+import { sendDailyReportSubmissionNotification, LeaderEmailAddressNotFoundError } from '../../src/logic/email-notification-management';
 
 describe('SCEN-524: リーダーメールアドレスが null の場合、送信を中止してエラーを返す', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('LeaderEmailAddressNotFoundError がスロー（throw）される', async () => {
-    const input: SendDailyReportSubmissionNotificationInput = {
+  it('should throw LeaderEmailAddressNotFoundError when leaderEmailAddress is null', async () => {
+    const input = {
       reporterId: 'reporter-1',
       dailyReportId: 'report-001',
       reportContent: '本日の業務内容',
@@ -24,14 +13,9 @@ describe('SCEN-524: リーダーメールアドレスが null の場合、送信
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    mockSend.mockRejectedValue(
-      new LeaderEmailAddressNotFoundError('チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。')
-    );
-
     await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(LeaderEmailAddressNotFoundError);
     await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
-      'チームリーダーのメールアドレスが登録されていないため、通知メールを送信できません。'
+      'リーダーのメールアドレスが設定されていません。管理者に連絡してください'
     );
   });
 });

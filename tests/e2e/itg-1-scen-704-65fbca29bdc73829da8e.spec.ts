@@ -11,55 +11,31 @@ test('SCEN-704: チームリーダーが権限なしの場合、報告者マス�
   await page.waitForNavigation();
 
   // 画面のメニューから「報告者マスタ管理」機能を開く
-  // 日報確認・管理画面の報告者マスタ管理メニューへナビゲート
-  await page.goto('/panels/scr-1790147095974.html');
-
-  // 報告者マスタ管理へのアクセス（サンプル実装の画面から検索）
-  const reporterMasterMenu = page.locator('a, button').filter({ hasText: /報告者マスタ/i }).first();
-  const isMenuVisible = await reporterMasterMenu.isVisible().catch(() => false);
-
-  if (isMenuVisible) {
-    await reporterMasterMenu.click();
-    await page.waitForLoadState('networkidle');
-  }
+  // 報告者マスタ管理に対応するパネルURLへナビゲート
+  // 注：仕様で「報告者マスタ管理」が参照されていますが、提供されたパネルには該当するURLが見つかりません
+  // テストは報告者マスタ管理画面が panels/*.html で提供されることを前提としています
+  await page.goto('/panels/reporter-master.html');
 
   // 報告者マスタ一覧画面で新規報告者追加フォームを開く
   const addButton = page.locator('button').filter({ hasText: /新規追加/ }).first();
-  const isAddButtonVisible = await addButton.isVisible().catch(() => false);
-
-  if (isAddButtonVisible) {
-    await addButton.click();
-    await page.waitForLoadState('networkidle');
-  }
+  await addButton.click();
 
   // 報告者情報（氏名、所属等）を入力する
-  const nameInput = page.locator('input[placeholder*="氏名"], input[id*="name"], input[type="text"]').first();
-  const emailInput = page.locator('input[placeholder*="メール"], input[type="email"], input[id*="email"]').first();
-
-  if (await nameInput.isVisible().catch(() => false)) {
-    await nameInput.fill('山田太郎');
-  }
-  if (await emailInput.isVisible().catch(() => false)) {
-    await emailInput.fill('yamada@example.com');
-  }
+  await page.fill('input[name="name"]', '山田太郎');
+  await page.fill('input[name="email"]', 'yamada@example.com');
+  await page.fill('input[name="department"]', '営業部');
 
   // 保存ボタンをクリックする
-  const saveButton = page.locator('button').filter({ hasText: /保存/ }).first();
-  if (await saveButton.isVisible().catch(() => false)) {
-    await saveButton.click();
-    await page.waitForTimeout(1000);
-  }
+  const saveButton = page.locator('button').filter({ hasText: /保存/ });
+  await saveButton.click();
 
   // 保存ボタンクリック後、画面に「権限がないため報告者マスタの保存はできません」というエラーメッセージが表示される
   const errorMessage = page.locator('text=/権限がないため報告者マスタの保存はできません/');
   await expect(errorMessage).toBeVisible();
 
   // 入力済みのフォーム内容は保持されたままであることを確認
-  if (await nameInput.isVisible().catch(() => false)) {
-    await expect(nameInput).toHaveValue('山田太郎');
-  }
+  await expect(page.locator('input[name="name"]')).toHaveValue('山田太郎');
 
   // 画面の遷移は発生しないことを確認（報告者マスタ管理画面に留まる）
-  const currentUrl = page.url();
-  expect(currentUrl).toContain('.html');
+  expect(page.url()).toContain('/panels/reporter-master.html');
 });

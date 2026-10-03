@@ -1,34 +1,8 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  updateReporterInMaster,
-  InvalidReporterStatusError,
-  persistReporterMasterChangeHistory,
-} from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-master-persistence');
-
-interface UpdateReporterInMasterInput {
-  reporterId: string;
-  reporterName?: string;
-  emailAddress?: string;
-  department?: string;
-  status?: string;
-  leaderUserId: string;
-  updateTimestamp: Date;
-}
-
-interface UpdateReporterInMasterOutput {
-  success: boolean;
-  reporterId: string | null;
-  message: string;
-}
+import { updateReporterInMaster, InvalidReporterStatusError } from '../../src/logic/user-master-persistence';
+import type { UpdateReporterInMasterInput, UpdateReporterInMasterOutput } from '../../src/logic/user-master-persistence';
 
 describe('SCEN-460: 無効なステータス値を指定して更新しようとすると、InvalidReporterStatusErrorが発生して失敗を返す', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should fail when invalid status is specified', async () => {
+  it('should throw InvalidReporterStatusError when invalid status value is provided', async () => {
     const input: UpdateReporterInMasterInput = {
       reporterId: 'reporter-001',
       status: 'invalid_status',
@@ -36,11 +10,25 @@ describe('SCEN-460: 無効なステータス値を指定して更新しようと
       updateTimestamp: new Date(),
     };
 
-    (updateReporterInMaster as any).mockRejectedValue(
-      new InvalidReporterStatusError('無効なステータス値です。')
-    );
+    await expect(updateReporterInMaster(input)).rejects.toThrow(InvalidReporterStatusError);
+  });
 
-    await expect((updateReporterInMaster as any)(input)).rejects.toThrow(InvalidReporterStatusError);
-    expect((persistReporterMasterChangeHistory as jest.Mock)).not.toHaveBeenCalled();
+  it('should return UpdateReporterInMasterOutput with success=false and correct error message', async () => {
+    const input: UpdateReporterInMasterInput = {
+      reporterId: 'reporter-001',
+      status: 'invalid_status',
+      leaderUserId: 'leader-001',
+      updateTimestamp: new Date(),
+    };
+
+    try {
+      const result = await updateReporterInMaster(input);
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.message).toBe('無効なステータス値です。');
+    } catch (error) {
+      expect(error).toBeInstanceOf(InvalidReporterStatusError);
+      expect((error as Error).message).toBe('無効なステータス値です。');
+    }
   });
 });

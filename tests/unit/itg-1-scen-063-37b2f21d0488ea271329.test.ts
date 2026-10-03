@@ -179,4 +179,24 @@ describe('SCEN-063: ユーザー情報の承認期限を超過した場合、処
     expect(detectNonSubmittedSpy).not.toHaveBeenCalled();
     expect(sendNonSubmissionSpy).not.toHaveBeenCalled();
   });
+
+  it('executionLog に承認期限超過による中断の旨が記録される', async () => {
+    const input: Tx6Imp1AgentInput = {
+      leaderUserId,
+      userInformationSubmissions,
+      executionTimestamp,
+      targetDate,
+    };
+
+    try {
+      await runTx6Imp1Agent(input, mockAiClient);
+      fail('UserInformationApprovalTimeoutError should have been thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(UserInformationApprovalTimeoutError);
+      if ((error as Error).message) {
+        const errorMessage = (error as Error).message;
+        expect(errorMessage).toContain('承認期限を超過');
+      }
+    }
+  });
 });

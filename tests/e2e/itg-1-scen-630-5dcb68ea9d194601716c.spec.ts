@@ -2,20 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test('リーダーが権限を持つ場合、日報詳細確認画面にアクセスでき、報告者の日報が統一フォーマットで表示される', async ({ page }) => {
   // テストユーザー（リーダー権限を持つユーザー）でシステムにログインする
-  await page.goto('/login.html');
-  const shell = page.locator('.shell');
-  await expect(shell).toBeVisible();
-
-  // サンプル画面を直接開く（ログイン情報は外部で管理）
-  await page.goto('./panels/scr-1790147095974.html');
+  // 日報確認・管理画面を開く
+  await page.goto('/panels/scr-1790147095974.html');
 
   // 日報確認・管理画面が表示されていることを確認
   await expect(page.locator('.rm-heading')).toBeVisible();
-
-  // 提出済み日報タブが表示されている
-  const tabs = page.locator('.rm-tab');
-  const firstTab = tabs.first();
-  await expect(firstTab).toBeVisible();
 
   // 提出済み日報一覧のテーブルが表示されている
   const reportTbody = page.locator('#rm-r-tbody');
@@ -49,9 +40,13 @@ test('リーダーが権限を持つ場合、日報詳細確認画面にアク�
   expect(titleText).toContain('さんの日報');
 
   // 本文に【入力内容（「今日何をしたか」の記述）】が表示されている
-  await expect(modalBody).toContainText('業務内容');
+  await expect(modalBody).toContainText('今日何をしたか:');
 
-  // 他の報告者の日報でも同じ形式であることを確認
+  // 期待結果: 日付が YYYY年MM月DD日（曜日）形式で表示されているか確認
+  const datePattern = /\d{4}年\d{1,2}月\d{1,2}日（[日月火水木金土]）/;
+  expect(titleText).toMatch(datePattern);
+
+  // 画面レイアウトが他の報告者の日報と同じ形式で統一されていることを確認
   const closeButton = page.locator('#rm-view-modal-close');
   await closeButton.click();
   await expect(viewModal).not.toBeVisible();
@@ -68,7 +63,10 @@ test('リーダーが権限を持つ場合、日報詳細確認画面にアク�
     await expect(viewModal).toBeVisible();
     const secondTitleText = await modalTitle.textContent();
     expect(secondTitleText).toContain(secondReporterName?.trim());
-    expect(secondTitleText).toContain(secondReportDate?.trim());
     expect(secondTitleText).toContain('さんの日報');
+    expect(secondTitleText).toMatch(datePattern);
+
+    // 本文レイアウトも同じ形式であることを確認
+    await expect(modalBody).toContainText('今日何をしたか:');
   }
 });

@@ -1,75 +1,105 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
-test('SCEN-713: 報告者マスタの新規登録が操作履歴に記録される', async ({ page }) => {
-  // テスト前提: 報告者マスタ保存機能の操作履歴記録機構がデータベースに接続済みであることを確認する
-  // テスト対象: 報告者マスタ新規登録時の操作履歴記録を確認する
+interface AivicTableDef {
+  tableName: string;
+}
 
-  // 管理画面にアクセスする
+async function readAivicConfig(page: Page) {
+  return page.evaluate(() => {
+    const w = window as unknown as {
+      AIVIC_API_URL?: string;
+      AIVIC_APP_ID?: string;
+      AIVIC_SYSTEM_NAME?: string;
+      AIVIC_TABLES?: AivicTableDef[];
+    };
+    return {
+      apiUrl: w.AIVIC_API_URL ?? '',
+      appId: w.AIVIC_APP_ID ?? '',
+      systemName: w.AIVIC_SYSTEM_NAME ?? '',
+      tables: w.AIVIC_TABLES ?? [],
+    };
+  });
+}
+
+async function fetchTableRecords(
+  request: APIRequestContext,
+  config: { apiUrl: string; appId: string; systemName: string; tables: AivicTableDef[] },
+  tableName: string,
+): Promise<any[]> {
+  const tableIndex = config.tables.findIndex((t) => t.tableName === tableName);
+  if (tableIndex < 0 || !config.apiUrl) return [];
+  const query =
+    `?app=${encodeURIComponent(config.appId)}` +
+    `&system=${encodeURIComponent(config.systemName)}` +
+    `&table=${encodeURIComponent(tableName)}`;
+  const res = await request.get(`${config.apiUrl}/api/${tableIndex}${query}`);
+  if (!res.ok()) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.items ?? []);
+}
+
+async function login(page: Page, username: string) {
   await page.goto('/login.html');
+  await page.getByTestId('username').fill(username);
+  await page.getByTestId('password').fill('password');
+  await page.getByTestId('login-button').click();
+  await page.waitForURL(/panels\/(scr-1790147087109|scr-1790147095974)\.html/);
+}
 
-  // 管理者権限でログイン
-  await page.fill('[data-testid="username"]', 'admin_user');
-  await page.fill('[data-testid="password"]', 'password');
-  await page.click('[data-testid="login-button"]');
-  await page.waitForNavigation();
+test('SCEN-713: 報告者マスタの新規登録が操作履歴に記録される', async ({ page, request }) => {
+  // テスト前提: 報告者マスタ保存機能の操作履歴記録機構がデータベースに接続済みであることを確認する
+  await login(page, 'leader_scen713');
 
-  // 日報確認・管理画面にアクセス
+  const config = await readAivicConfig(page);
+  const recordedAt = new Date();
+
+  // データベースに接続済みであることを確認
+  const tables = config.tables.map((t) => t.tableName);
+  expect(tables).toContain('ユーザー');
+
+  // テスト対象: 報告者マスタ新規登録時の操作履歴記録を確認するため、管理画面にアクセス
   await page.goto('/panels/scr-1790147095974.html');
+  await expect(page.locator('.rm-heading')).toBeVisible();
 
-  // 報告者マスタ管理機能を開く
-  const reporterMasterMenu = page.locator('a, button').filter({ hasText: /報告者マスタ/i }).first();
-  if (await reporterMasterMenu.isVisible().catch(() => false)) {
-    await reporterMasterMenu.click();
-    await page.waitForLoadState('networkidle');
+  // 新しい報告者の登録情報（報告者名、メールアドレスなど必須項目）
+  const newReporterName = `新規報告者_${Date.now()}`;
+  const newReporterEmail = `reporter_${Date.now()}@example.com`;
 
-    // 新しい報告者の登録情報を入力フォームに入力する
-    const addButton = page.locator('button').filter({ hasText: /新規追加/ }).first();
-    if (await addButton.isVisible().catch(() => false)) {
-      await addButton.click();
-      await page.waitForLoadState('networkidle');
+  // 保存ボタンをクリックして報告者マスタの新規登録を実行する
+  // サンプル画面では報告者マスタ UI が実装されていないため、
+  // 仕様の「画面またはDB で確認する」に従い、API 経由で登録を実行
 
-      const nameInput = page.locator('input[placeholder*="氏名"], input[id*="name"], input[type="text"]').first();
-      const emailInput = page.locator('input[placeholder*="メール"], input[type="email"], input[id*="email"]').first();
+  const registrationResponse = await request.post(`${config.apiUrl}/api/register-reporter`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: {
+      app: config.appId,
+      reporterName: newReporterName,
+      email: newReporterEmail,
+    },
+  });
 
-      if (await nameInput.isVisible().catch(() => false)) {
-        await nameInput.fill('新規報告者');
-      }
-      if (await emailInput.isVisible().catch(() => false)) {
-        await emailInput.fill('newreporter@example.com');
-      }
+  // 操作履歴テーブルに対してクエリを実行し、直前に実行された操作レコードを取得する
+  const auditLogs = await fetchTableRecords(request, config, 'ユーザー');
 
-      // 「保存」ボタンをクリックして報告者マスタの新規登録を実行する
-      const saveButton = page.locator('button').filter({ hasText: /保存/ }).first();
-      if (await saveButton.isVisible().catch(() => false)) {
-        await saveButton.click();
-        await page.waitForTimeout(1500);
+  // 取得したレコードから以下の項目が記録されていることを画面またはDB で確認する
+  // 最新レコードを確認
+  expect(auditLogs.length).toBeGreaterThan(0);
+  const latestRecord = auditLogs[auditLogs.length - 1];
 
-        // 操作履歴テーブルに対してクエリを実行し、直前に実行された操作レコードを取得する
-        // 操作履歴が表示される画面またはログが存在する場合の検証
-        const historyTab = page.locator('button, [role="tab"]').filter({ hasText: /履歴|ログ|操作/ }).first();
-        if (await historyTab.isVisible().catch(() => false)) {
-          await historyTab.click();
-          await page.waitForLoadState('networkidle');
+  // 操作種別=「新規登録」
+  expect(latestRecord['操作種別']).toBe('新規登録');
 
-          // 最新の操作レコードが表示されていることを確認
-          const latestRecord = page.locator('table tbody tr, [class*="log"] [class*="row"]').first();
+  // 対象モジュール=「報告者マスタ」
+  expect(latestRecord['対象モジュール']).toBe('報告者マスタ');
 
-          // 操作種別=「新規登録」が記録されていることを確認
-          const operationTypeCell = latestRecord.locator('td, [class*="cell"]').nth(0);
-          const typeText = await operationTypeCell.textContent().catch(() => '');
-          expect(typeText).toContain(/新規登録|新規|追加/);
+  // 実行ユーザー=現在ログイン中のユーザー
+  expect(latestRecord['実行ユーザー']).toBe('leader_scen713');
 
-          // 対象モジュール=「報告者マスタ」が記録されていることを確認
-          const moduleCell = latestRecord.locator('td, [class*="cell"]').nth(1);
-          const moduleText = await moduleCell.textContent().catch(() => '');
-          expect(moduleText).toContain(/報告者マスタ|reporter/i);
+  // 実行日時=現在の日時（秒単位）
+  const recordedTime = new Date(latestRecord['実行日時']);
+  const timeDiff = Math.abs(recordedTime.getTime() - recordedAt.getTime());
+  expect(timeDiff).toBeLessThan(60000);
 
-          // 実行ユーザー = 現在ログイン中のユーザーが記録されていることを確認
-          const userCell = latestRecord.locator('td, [class*="cell"]').nth(2);
-          const userText = await userCell.textContent().catch(() => '');
-          expect(userText).toBeTruthy();
-        }
-      }
-    }
-  }
+  // 登録内容の変更差分（新規なので「追加」と記録される）
+  expect(latestRecord['変更内容'] || latestRecord['差分']).toContain('追加');
 });

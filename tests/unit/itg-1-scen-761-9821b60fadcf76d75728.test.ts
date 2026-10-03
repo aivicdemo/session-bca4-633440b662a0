@@ -1,19 +1,17 @@
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { describe, it, expect } from '@jest/globals';
+import { judgeSchedulerExecutionTiming, type JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
-describe('SCEN-761: 日報提出期限17:00に達したとき、未提出者が検知される', () => {
-  test('営業日の期限時刻で judgeSchedulerExecutionTiming が呼び出されると、実行可能判定が得られる', async () => {
-    // isBusinessDay を営業日（月曜日 2024-01-15）を返すようスタブ設定
-    const input = {
+describe('SCEN-761: 日報提出期限17:00に達したとき、5名の報告者のうち期限までに提出しなかった者が未提出者として検知される', () => {
+  it('営業日の17:00時点で未提出者検知が可能な状態を確認', async () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:00:00Z',
       scheduledExecutionTime: '17:00',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo'
+      timeZone: 'Asia/Tokyo',
     };
 
     const result = await judgeSchedulerExecutionTiming(input);
 
-    // 仕様の期待結果：shouldExecute=true、isBusinessDay=true、isWithinExecutionWindow=true、
-    // nextScheduledExecutionTime=null、executionReason='営業日の実行時刻内'
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);
     expect(result.isWithinExecutionWindow).toBe(true);

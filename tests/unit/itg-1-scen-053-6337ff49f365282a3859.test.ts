@@ -1,29 +1,45 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { runTx5Imp1Agent, SubmissionStatusCheckFailure } from '../../src/agents/tx-5-imp-1/orchestrator';
-import type { Tx5Imp1AiClient, Tx5Imp1AgentInput } from '../../src/agents/tx-5-imp-1/orchestrator';
+import { runTx5Imp1Agent, Tx5Imp1AiClient, SubmissionStatusCheckFailure } from '../../src/agents/tx-5-imp-1/orchestrator';
+import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
+import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
+import * as dailyReportNonSubmissionDetection from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-053: 日報提出状況の確認処理が失敗して未提出・遅延判定に進めない', () => {
-  let mockAiClient: Tx5Imp1AiClient;
-
   beforeEach(() => {
-    mockAiClient = {} as Tx5Imp1AiClient;
+    jest.clearAllMocks();
   });
 
-  it('detectNonSubmittedReportersAtDeadlineが例外を発生させた場合、executionStatusが failureになり、errorDetailsにSubmissionStatusCheckFailureが記録される', async () => {
-    const input: Tx5Imp1AgentInput = {
+  it('should fail with SubmissionStatusCheckFailure when detection fails', async () => {
+    const mockAiClient: Tx5Imp1AiClient = {};
+
+    jest.spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming' as any).mockResolvedValue(true);
+    jest.spyOn(reporterMasterManagement, 'getActiveReportersForSubmissionCheck' as any).mockResolvedValue([
+      { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
+      { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
+      { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
+      { userId: 'U004', userName: 'Reporter D', reporterName: 'Report D' },
+      { userId: 'U005', userName: 'Reporter E', reporterName: 'Report E' },
+    ]);
+    jest.spyOn(dailyReportNonSubmissionDetection, 'detectNonSubmittedReportersAtDeadline' as any).mockRejectedValue(
+      new SubmissionStatusCheckFailure('日報提出状況の確認に失敗しました。システムログを確認してください。')
+    );
+
+    const input = {
       targetDate: '2024-01-15',
-      executionContext: { scheduledAt: '09:00:00', executedBy: 'scheduler-system' },
+      executionContext: {
+        scheduledAt: '09:00:00',
+        executedBy: 'scheduler-system',
+      },
     };
 
     const result = await runTx5Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe('failure');
     expect(result.errorDetails).toBeDefined();
-    const detectionError = result.errorDetails!.find((e) => e.step === 'detectNonSubmittedReportersAtDeadline');
-    expect(detectionError).toBeDefined();
-    expect(detectionError!.errorCode).toBe('SubmissionStatusCheckFailure');
-    expect(detectionError!.errorMessage).toBe('日報提出状況の確認に失敗しました。システムログを確認してください。');
-
+    expect(result.errorDetails?.[0]).toMatchObject({
+      step: 'detectNonSubmittedReportersAtDeadline',
+      errorCode: 'SubmissionStatusCheckFailure',
+      errorMessage: '日報提出状況の確認に失敗しました。システムログを確認してください。',
+    });
     expect(result.nonSubmittedReporters).toEqual([]);
     expect(result.delayedReporters).toEqual([]);
     expect(result.promptNotificationsSent).toEqual([]);

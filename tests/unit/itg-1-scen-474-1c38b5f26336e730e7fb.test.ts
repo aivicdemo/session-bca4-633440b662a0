@@ -1,25 +1,12 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { saveReminderNotificationSettings, retrieveReporterByUserId } from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveReporterByUserId: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+import { saveReminderNotificationSettings, UserNotFoundError } from '../../src/logic/user-master-persistence';
+import type { SaveReminderNotificationSettingsInput, SaveReminderNotificationSettingsOutput } from '../../src/logic/user-master-persistence';
 
 describe('SCEN-474: 指定されたユーザーIDが存在しない場合、UserNotFoundErrorが発生し失敗応答が返される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  it('should return error output when user is not found', async () => {
+    const nonExistentUserId = 'non-existent-user-id';
 
-  it('should return error response when user is not found', async () => {
-    const mockRetrieveReporter = retrieveReporterByUserId as jest.Mock<any>;
-    mockRetrieveReporter.mockResolvedValueOnce({
-      success: false,
-      reporter: null,
-    });
-
-    const input = {
-      userId: 'non-existent-user-id',
+    const input: SaveReminderNotificationSettingsInput = {
+      userId: nonExistentUserId,
       enabledFlag: true,
       sendingTime: '09:00',
       sendingDaysOfWeek: ['月', '火', '水', '木', '金'],
@@ -28,10 +15,6 @@ describe('SCEN-474: 指定されたユーザーIDが存在しない場合、User
       updateTimestamp: new Date(),
     };
 
-    const result = await saveReminderNotificationSettings(input);
-
-    expect((result as any).success).toBe(false);
-    expect((result as any).reminderSettingId).toBe(null);
-    expect((result as any).message).toBe('ユーザーが見つかりません。');
+    await expect(saveReminderNotificationSettings(input)).rejects.toThrow(UserNotFoundError);
   });
 });

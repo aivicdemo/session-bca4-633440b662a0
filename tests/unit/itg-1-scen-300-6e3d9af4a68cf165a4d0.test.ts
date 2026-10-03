@@ -1,49 +1,16 @@
 import { sendReporterReminderNotification } from '../../src/logic/daily-report-reminder-notification';
-import { determineReminderNotificationEligibility } from '../../src/logic/daily-report-reminder-notification';
-import { buildReminderNotificationContent } from '../../src/logic/daily-report-reminder-notification';
-import { selectNotificationDeliveryMethod } from '../../src/logic/daily-report-reminder-notification';
-import { recordReminderNotificationSendingResult } from '../../src/logic/daily-report-reminder-notification';
-import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
+import * as emailNotification from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/daily-report-reminder-notification');
-jest.mock('../../src/logic/email-notification-management');
-
-const mockedDetermineReminderNotificationEligibility =
-  determineReminderNotificationEligibility as jest.MockedFunction<typeof determineReminderNotificationEligibility>;
-const mockedBuildReminderNotificationContent =
-  buildReminderNotificationContent as jest.MockedFunction<typeof buildReminderNotificationContent>;
-const mockedSelectNotificationDeliveryMethod =
-  selectNotificationDeliveryMethod as jest.MockedFunction<typeof selectNotificationDeliveryMethod>;
-const mockedSendDailyReportSubmissionNotification =
-  sendDailyReportSubmissionNotification as jest.MockedFunction<typeof sendDailyReportSubmissionNotification>;
-const mockedRecordReminderNotificationSendingResult =
-  recordReminderNotificationSendingResult as jest.MockedFunction<typeof recordReminderNotificationSendingResult>;
+jest.mock('../../src/logic/email-notification-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
+  sendDailyReportSubmissionNotification: jest.fn(),
+}));
 
 describe('SCEN-300: メール送信処理に失敗した場合、リマインダー通知の送信を中止する', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedDetermineReminderNotificationEligibility as jest.Mock<any>).mockResolvedValue({
-      isEligible: true,
-      notificationType: 'reporter_reminder',
-      reporterId: 'reporter-001',
-      evaluatedAt: new Date('2024-01-15T14:30:00Z'),
-    });
-
-    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
-      subject: '日報提出のお願い',
-      body: '本日の日報入力をお願いします',
-      notificationType: 'reporter_reminder',
-      generatedAt: new Date('2024-01-15T14:30:00Z'),
-    });
-
-    (mockedSelectNotificationDeliveryMethod as jest.Mock<any>).mockResolvedValue({
-      deliveryMethod: 'email',
-      isDeliveryEnabled: true,
-      selectedAt: new Date('2024-01-15T14:30:00Z'),
-    });
-
-    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
+    (emailNotification.sendDailyReportSubmissionNotification as jest.Mock).mockRejectedValue(
       new Error('リマインダー通知の送信に失敗しました。')
     );
   });
@@ -56,14 +23,14 @@ describe('SCEN-300: メール送信処理に失敗した場合、リマインダ
       executionTimestamp: new Date('2024-01-15T14:30:00Z'),
     };
 
-    await expect(sendReporterReminderNotification(input)).rejects.toThrow(
-      'リマインダー通知の送信に失敗しました。'
-    );
+    const result = await sendReporterReminderNotification(input);
 
-    expect(mockedDetermineReminderNotificationEligibility).toHaveBeenCalledTimes(1);
-    expect(mockedBuildReminderNotificationContent).toHaveBeenCalledTimes(1);
-    expect(mockedSelectNotificationDeliveryMethod).toHaveBeenCalledTimes(1);
-    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
-    expect(mockedRecordReminderNotificationSendingResult).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.notificationId).toBeNull();
+    expect(result.sentAt).toBeNull();
+    expect(result.deliveryMethod).toBeNull();
+    expect(result.errorDetails).toBe('リマインダー通知の送信に失敗しました。');
+
+    expect(emailNotification.sendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,13 +1,24 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<any>('../../src/logic/business-day-deadline-judgment'),
+  isWithinSubmissionDeadline: jest.fn().mockImplementation(async () => ({
+    isWithinDeadline: true,
+    submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+    minutesUntilDeadline: 0,
+  })),
+}));
+
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<any>('../../src/logic/daily-report-persistence'),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn().mockImplementation(async () => ({ detectionLogs: [], totalCount: 0, retrievedAt: '2024-01-15T17:35:00Z' })),
+}));
+
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   InvalidNonSubmitterInput,
 } from '../../src/logic/non-submission-prompt-decision';
-
-jest.mock('../../src/logic/business-day-deadline-judgment.ts', () => ({
-  isWithinSubmissionDeadline: jest.fn(),
-}));
 
 describe('SCEN-290: メンバーIDが空またはシステムに存在しない場合、エラーが発生する', () => {
   beforeEach(() => {
@@ -24,17 +35,9 @@ describe('SCEN-290: メンバーIDが空またはシステムに存在しない�
       previousReminderSentDateTime: null,
     };
 
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
-
-    try {
-      await judgePromptNecessityAndMethod(input);
-    } catch (error) {
-      if (error instanceof InvalidNonSubmitterInput) {
-        expect(error.message).toBe('未提出者情報の必須項目が不足しているか形式が不正です。');
-      } else {
-        throw error;
-      }
-    }
+    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
+      new InvalidNonSubmitterInput('未提出者情報の必須項目が不足しているか形式が不正です。')
+    );
   });
 
   it('メンバーIDがシステムに存在しない場合、InvalidNonSubmitterInputエラーが発生し、エラー文言が正しい', async () => {
@@ -47,16 +50,8 @@ describe('SCEN-290: メンバーIDが空またはシステムに存在しない�
       previousReminderSentDateTime: null,
     };
 
-    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(InvalidNonSubmitterInput);
-
-    try {
-      await judgePromptNecessityAndMethod(input);
-    } catch (error) {
-      if (error instanceof InvalidNonSubmitterInput) {
-        expect(error.message).toBe('未提出者情報の必須項目が不足しているか形式が不正です。');
-      } else {
-        throw error;
-      }
-    }
+    await expect(judgePromptNecessityAndMethod(input)).rejects.toThrow(
+      new InvalidNonSubmitterInput('未提出者情報の必須項目が不足しているか形式が不正です。')
+    );
   });
 });

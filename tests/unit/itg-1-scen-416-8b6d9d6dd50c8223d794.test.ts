@@ -1,4 +1,5 @@
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   authenticateAndAuthorizeLeaderAccess: jest.fn(),
 }));
 

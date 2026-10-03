@@ -1,38 +1,50 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
+import { registerReporter, RegisterReporterInput } from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+
 jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/user-master-persistence');
 
-import { registerReporter } from '../../src/logic/reporter-master-management';
-import { validateReporterNameFormat, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
-import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
-
-const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
+const mockedValidateReporterNameFormat = jest.mocked(inputValidation.validateReporterNameFormat);
+const mockedValidateEmailAddress = jest.mocked(inputValidation.validateEmailAddress);
+const mockedDetectDuplicateEmailAddress = jest.mocked(inputValidation.detectDuplicateEmailAddress);
+const mockedRegisterReporterToMaster = jest.mocked(userMasterPersistence.registerReporterToMaster);
+const mockedPersistReporterMasterChangeHistory = jest.mocked(userMasterPersistence.persistReporterMasterChangeHistory);
 
 describe('SCEN-345: 既に登録されているメンバーIDが重複して登録されようとする場合、br-tx_7-002の制約2により「このメンバーは既に登録されています」エラーで処理が中断される', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
+  const now = new Date('2025-01-15T10:00:00Z');
 
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: 'テスト太郎', errorCode: null });
-    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: true, validatedEmailAddress: 'member1.new@company.com', errorCode: null });
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue(true);
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockedValidateReporterNameFormat.mockResolvedValue({
+      isValid: true,
+      validatedReporterName: 'テスト太郎',
+      errorCode: null
+    });
+
+    mockedValidateEmailAddress.mockResolvedValue({
+      isValid: true,
+      validatedEmailAddress: 'member1.new@company.com',
+      errorCode: null
+    });
   });
 
-  it('既に登録されているメンバーIDが重複した場合、エラーメッセージ「このメンバーは既に登録されています」が返される', async () => {
-    const input = {
+  it('should return error when memberEmail is already registered', async () => {
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+      isDuplicate: true,
+      validatedEmailAddress: 'member1.new@company.com',
+      errorCode: 'DUPLICATE_EMAIL'
+    });
+
+    const input: RegisterReporterInput = {
       userId: 'user-001',
       reporterName: 'テスト太郎',
       emailAddress: 'member1.new@company.com',
       teamLeaderId: 'leader-001',
-      executionTimestamp: new Date(),
+      executionTimestamp: now
     };
 
     const result = await registerReporter(input);

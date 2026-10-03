@@ -1,15 +1,13 @@
-import { judgeSchedulerExecutionTiming, JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-716: 毎日17:00に営業日の定時スケジューラが起動し、営業日かつ有効な日報提出期限であることを確認して以降の処理が実行される', () => {
-  it('営業日の定時（17:00）に、スケジューラ実行判定が肯定的（shouldExecute=true）であること', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
+  it('営業日の定時実行時刻内にスケジューラが実行される', async () => {
+    const result = await judgeSchedulerExecutionTiming({
       currentTimestamp: '2024-01-15T17:00:00Z',
       scheduledExecutionTime: '17:00',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo'
-    };
-
-    const result = await judgeSchedulerExecutionTiming(input);
+    });
 
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);

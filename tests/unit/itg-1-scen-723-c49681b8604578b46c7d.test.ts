@@ -1,15 +1,13 @@
-import { judgeSchedulerExecutionTiming, JudgeSchedulerExecutionTimingInput, JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-723: 検知した未提出者に対して催促の必要性と方法（メール送信の優先度・内容）が判定される', () => {
-  it('営業日かつ実行時刻の許容範囲内の場合、スケジューラ実行判定が肯定的（shouldExecute=true）であること', async () => {
-    const input: JudgeSchedulerExecutionTimingInput = {
+  it('営業日かつ実行時刻の許容範囲内で催促メール送信処理の呼び出しが実行可能である', async () => {
+    const result = await judgeSchedulerExecutionTiming({
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo'
-    };
-
-    const result = await judgeSchedulerExecutionTiming(input);
+    });
 
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);

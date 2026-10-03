@@ -1,16 +1,17 @@
-import { validateDailyReportContent, type ValidateDailyReportContentInput, type ValidateDailyReportContentOutput } from '../../src/logic/input-validation-formatting';
+import { describe, it, expect } from '@jest/globals';
+import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-113: エラー：空白文字のみで構成されたテキストが入力されたとき、WhitespaceOnlyContentErrorを返す', () => {
-  it('should return WhitespaceOnlyContentError when whitespace-only string is provided', async () => {
-    const input: ValidateDailyReportContentInput = {
+  it('should return errorCode=WhitespaceOnlyContentError when whitespace-only string is provided', async () => {
+    const input = {
       content: '     ',
       minimumCharacterLength: 10,
     };
 
-    const result: ValidateDailyReportContentOutput = await validateDailyReportContent(input);
+    const output = await validateDailyReportContent(input);
 
-    expect(result.isValid).toBe(false);
-    expect(result.validatedContent).toBeNull();
-    expect(result.errorCode).toBe('WhitespaceOnlyContentError');
+    expect(output.isValid).toBe(false);
+    expect(output.validatedContent).toBeNull();
+    expect(output.errorCode).toBe('WhitespaceOnlyContentError');
   });
 });

@@ -2,10 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('リーダーが権限を持たない場合、日報詳細確認画面へのアクセスが拒否される', async ({ page }) => {
   // テストユーザーを『リーダー権限なし』の状態でシステムにログインする
-  await page.goto('/login.html');
-
   // 日報確認・管理画面へアクセスする（権限なしユーザーで直接アクセス）
-  await page.goto('./panels/scr-1790147095974.html');
+  await page.goto('/panels/scr-1790147095974.html');
 
   // 画面が表示されている
   await expect(page).toHaveURL(/.*scr-1790147095974\.html/);

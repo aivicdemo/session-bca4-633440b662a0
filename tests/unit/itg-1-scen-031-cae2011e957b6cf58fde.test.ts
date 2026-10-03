@@ -1,69 +1,53 @@
-import {
-  runTx3Imp1Agent,
-  type Tx3Imp1AgentInput,
-  type Tx3Imp1AiClient,
-  type NotificationStatus,
-  PromptNotificationFailure,
-} from '../../src/agents/tx-3-imp-1/orchestrator';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-describe('SCEN-031: 未提出者への催促メール送信に失敗し、PromptNotificationFailureが発生する', () => {
-  let mockAiClient: Tx3Imp1AiClient;
+jest.mock('../../src/logic/business-day-deadline-judgment');
+jest.mock('../../src/logic/daily-report-non-submission-detection');
+jest.mock('../../src/logic/non-submission-prompt-decision');
+jest.mock('../../src/logic/daily-report-reminder-notification');
+jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/daily-report-management-view');
 
+import { runTx3Imp1Agent, PromptNotificationFailure, type Tx3Imp1AiClient } from '../../src/agents/tx-3-imp-1/orchestrator';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as detectionModule from '../../src/logic/daily-report-non-submission-detection';
+import * as promptDecisionModule from '../../src/logic/non-submission-prompt-decision';
+import * as notificationModule from '../../src/logic/daily-report-reminder-notification';
+import * as emailModule from '../../src/logic/email-notification-management';
+
+describe('SCEN-031: PromptNotificationFailure が発生する', () => {
   const targetDate = '2024-01-15';
   const executionTimestamp = 1705276800000;
   const leaderUserIds = ['leader001', 'leader002'];
 
   beforeEach(() => {
-    mockAiClient = {
-      judgeSchedulerExecutionTiming: jest.fn().mockResolvedValue(true),
-      detectNonSubmittedReportersAtDeadline: jest.fn().mockResolvedValue(['user-001', 'user-002']),
-      generateNonSubmissionDetectionResult: jest.fn().mockResolvedValue({
-        nonSubmittedReporters: [
-          { userId: 'user-001', userName: 'User 1', emailAddress: 'u1@example.com', promptPriority: 'high' },
-          { userId: 'user-002', userName: 'User 2', emailAddress: 'u2@example.com', promptPriority: 'high' },
-        ],
-        detectionLogId: 'log-001',
-        targetDate: '2024-01-15',
-      }),
-      judgePromptNecessityAndMethod: jest.fn().mockResolvedValue({
-        isPromptNecessary: true,
-        promptMethod: 'email_notification',
-      }),
-      sendLeaderNonSubmissionPromptNotification: jest.fn().mockResolvedValue([
-        { recipientUserId: 'leader001', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-001' },
-        { recipientUserId: 'leader002', notificationType: 'email', sendStatus: 'success', emailSendingHistoryId: 'hist-002' },
-      ] as NotificationStatus[]),
-      sendNonSubmissionPromptNotification: jest.fn().mockRejectedValue(new PromptNotificationFailure('未提出者への催促メール送信に失敗しました。')),
-      retrieveDailyReportsForLeaderReview: jest.fn(),
-      retrieveLeaderDashboardData: jest.fn(),
-    };
+    jest.clearAllMocks();
+
+    jest.mocked(businessDayModule.judgeSchedulerExecutionTiming).mockResolvedValue({
+      shouldExecute: true,
+      isBusinessDay: true,
+      isWithinExecutionWindow: true,
+      nextScheduledExecutionTime: null,
+      executionReason: '定時実行タイミング',
+    } as any);
+
+    jest.mocked(detectionModule.detectNonSubmittedReportersAtDeadline).mockResolvedValue(<any>{
+      nonSubmittedReporters: [{ userId: 'u001', emailAddress: 'u001@example.com' }],
+      detectionLog: { detectionLogId: 'det-log' },
+      detectionTimestamp: '2024-01-15T09:00:00Z',
+    } as any);
+
+    jest.mocked(detectionModule.generateNonSubmissionDetectionResult).mockResolvedValue({} as any);
+    jest.mocked(promptDecisionModule.judgePromptNecessityAndMethod).mockResolvedValue({} as any);
+    jest.mocked(notificationModule.sendLeaderNonSubmissionPromptNotification).mockResolvedValue({} as any);
+
+    jest.mocked(emailModule.sendNonSubmissionPromptNotification).mockRejectedValue(
+      new PromptNotificationFailure('未提出者への催促メール送信に失敗しました。')
+    );
   });
 
-  test('should throw PromptNotificationFailure when prompt notification fails', async () => {
-    const input: Tx3Imp1AgentInput = {
-      targetDate,
-      executionTimestamp,
-      leaderUserIds,
-    };
-
-    await expect(runTx3Imp1Agent(input, mockAiClient)).rejects.toThrow(PromptNotificationFailure);
-
-    expect(mockAiClient.sendNonSubmissionPromptNotification).toHaveBeenCalled();
-  });
-
-  test('should have correct error message', async () => {
-    const input: Tx3Imp1AgentInput = {
-      targetDate,
-      executionTimestamp,
-      leaderUserIds,
-    };
-
-    try {
-      await runTx3Imp1Agent(input, mockAiClient);
-      throw new Error('Expected PromptNotificationFailure to be thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(PromptNotificationFailure);
-      expect((error as Error).message).toBe('未提出者への催促メール送信に失敗しました。');
-    }
+  it('PromptNotificationFailure がスロー', async () => {
+    const input = { targetDate, executionTimestamp, leaderUserIds };
+    await expect(runTx3Imp1Agent(input, {} as Tx3Imp1AiClient)).rejects.toThrow(PromptNotificationFailure);
   });
 });

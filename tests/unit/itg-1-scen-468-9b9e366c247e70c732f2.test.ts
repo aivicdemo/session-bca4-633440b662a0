@@ -1,16 +1,7 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { deactivateReporterInMaster, persistReporterMasterChangeHistory, InvalidLeaderUserIdError } from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+import { deactivateReporterInMaster, InvalidLeaderUserIdError } from '../../src/logic/user-master-persistence';
 
 describe('SCEN-468: チームリーダーのユーザーIDが空文字列のため操作が拒否される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should reject when leaderUserId is empty string', async () => {
+  it('should throw InvalidLeaderUserIdError when leaderUserId is empty string', async () => {
     const input = {
       reporterId: 'valid-reporter-id',
       leaderUserId: '',
@@ -19,9 +10,8 @@ describe('SCEN-468: チームリーダーのユーザーIDが空文字列のた�
     };
 
     await expect(deactivateReporterInMaster(input)).rejects.toThrow(InvalidLeaderUserIdError);
-    await expect(deactivateReporterInMaster(input)).rejects.toThrow('チームリーダーのユーザーIDが指定されていません。');
-
-    const mockPersist = persistReporterMasterChangeHistory as jest.Mock;
-    expect(mockPersist).not.toHaveBeenCalled();
+    await expect(deactivateReporterInMaster(input)).rejects.toThrow(
+      'チームリーダーのユーザーIDが指定されていません。'
+    );
   });
 });

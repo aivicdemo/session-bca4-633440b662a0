@@ -1,9 +1,25 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<any>('../../src/logic/business-day-deadline-judgment'),
+  isWithinSubmissionDeadline: jest.fn().mockImplementation(async () => ({
+    isWithinDeadline: false,
+    submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+    minutesUntilDeadline: -90,
+  })),
+}));
+
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<any>('../../src/logic/daily-report-persistence'),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn().mockImplementation(async () => ({ detectionLogs: [], totalCount: 0, retrievedAt: '2024-01-15T18:30:00Z' })),
+}));
+
 import {
   judgePromptNecessityAndMethod,
   JudgePromptNecessityAndMethodInput,
   JudgePromptNecessityAndMethodOutput,
 } from '../../src/logic/non-submission-prompt-decision';
+import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-295: 複数回のリマインダー送信と期限超過時間の組み合わせで、適切な催促メッセージが生成される', () => {
   beforeEach(() => {
@@ -11,6 +27,13 @@ describe('SCEN-295: 複数回のリマインダー送信と期限超過時間の
   });
 
   it('複数回のリマインダー送信（2回）と90分の期限超過で、high優先度とescalate_to_leaderの催促が生成され、suggestedPromptMessageが業務上妥当な催促メッセージとして生成される', async () => {
+    const mockIsWithinSubmissionDeadline = businessDayDeadlineJudgment.isWithinSubmissionDeadline as jest.MockedFunction<any>;
+    mockIsWithinSubmissionDeadline.mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -90,
+    });
+
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',
@@ -50,6 +73,13 @@ describe('SCEN-295: 複数回のリマインダー送信と期限超過時間の
   });
 
   it('複数回のリマインダー送信（2回）と90分の期限超過の条件で、関数は正常に完了しエラーが発生しない', async () => {
+    const mockIsWithinSubmissionDeadline = businessDayDeadlineJudgment.isWithinSubmissionDeadline as jest.MockedFunction<any>;
+    mockIsWithinSubmissionDeadline.mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -90,
+    });
+
     const input: JudgePromptNecessityAndMethodInput = {
       userId: 'user-001',
       targetDate: '2024-01-15',

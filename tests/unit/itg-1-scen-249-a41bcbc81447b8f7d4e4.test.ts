@@ -1,10 +1,13 @@
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
   judgeSchedulerExecutionTiming: jest.fn(),
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
   getActiveReportersForSubmissionCheck: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
   checkDailyReportExistsForDate: jest.fn(),
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
   updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
@@ -34,19 +37,22 @@ describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレ�
     (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
 
     const activeReporters = [
-      { userId: 'U001', userName: 'Reporter 1', emailAddress: 'u001@example.com', promptPriority: 'high' },
-      { userId: 'U002', userName: 'Reporter 2', emailAddress: 'u002@example.com', promptPriority: 'high' },
-      { userId: 'U003', userName: 'Reporter 3', emailAddress: 'u003@example.com', promptPriority: 'high' },
-      { userId: 'U004', userName: 'Reporter 4', emailAddress: 'u004@example.com', promptPriority: 'high' },
-      { userId: 'U005', userName: 'Reporter 5', emailAddress: 'u005@example.com', promptPriority: 'high' },
+      { userId: 'U001', userName: 'Reporter 1', emailAddress: 'u001@example.com', department: 'Engineering', promptPriority: 'high' },
+      { userId: 'U002', userName: 'Reporter 2', emailAddress: 'u002@example.com', department: 'Sales', promptPriority: 'high' },
+      { userId: 'U003', userName: 'Reporter 3', emailAddress: 'u003@example.com', department: 'Marketing', promptPriority: 'high' },
+      { userId: 'U004', userName: 'Reporter 4', emailAddress: 'u004@example.com', department: 'HR', promptPriority: 'high' },
+      { userId: 'U005', userName: 'Reporter 5', emailAddress: 'u005@example.com', department: 'Finance', promptPriority: 'high' },
     ];
 
-    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(activeReporters);
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
+      reporters: activeReporters,
+    });
 
-    mockedCheckDailyReportExistsForDate.mockImplementation((userId: string) => {
-      return Promise.resolve({
-        exists: ['U001', 'U003', 'U005'].includes(userId),
-      });
+    mockedCheckDailyReportExistsForDate.mockImplementation((input: any) => {
+      if (['U001', 'U003', 'U005'].includes(input.userId)) {
+        return Promise.resolve(true);
+      }
+      return Promise.resolve(false);
     });
 
     (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
@@ -62,17 +68,20 @@ describe('SCEN-249: 未提出者のユーザーID、氏名、メールアドレ�
 
     const u002 = result.nonSubmittedReporters.find(r => r.userId === 'U002');
     expect(u002).toBeDefined();
+    expect(u002?.userId).toBe('U002');
     expect(u002?.userName).toBe('Reporter 2');
     expect(u002?.emailAddress).toBe('u002@example.com');
-    expect(u002?.userId).toBe('U002');
+    expect(u002?.department).toBe('Sales');
 
     const u004 = result.nonSubmittedReporters.find(r => r.userId === 'U004');
     expect(u004).toBeDefined();
+    expect(u004?.userId).toBe('U004');
     expect(u004?.userName).toBe('Reporter 4');
     expect(u004?.emailAddress).toBe('u004@example.com');
-    expect(u004?.userId).toBe('U004');
+    expect(u004?.department).toBe('HR');
 
     expect(result.detectionLog.targetDate).toBe('2024-01-15');
+    expect(result.detectionLog.detectionDateTime).toBe('2024-01-15T17:00:00Z');
     expect(result.detectionLog.totalReportersCount).toBe(5);
     expect(result.detectionLog.nonSubmittedCount).toBe(2);
 

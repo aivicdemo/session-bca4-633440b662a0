@@ -1,103 +1,58 @@
-jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
-}));
-
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import {
   sendDailyReportSubmissionNotification,
-  validateEmailAddressForDelivery,
-  buildNotificationContent,
-  recordEmailSendingHistory,
   LeaderEmailAddressInvalidError,
   SendDailyReportSubmissionNotificationInput,
 } from '../../src/logic/email-notification-management';
 
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
-const mockedValidateEmailAddressForDelivery = validateEmailAddressForDelivery as jest.MockedFunction<any>;
-const mockedBuildNotificationContent = buildNotificationContent as jest.MockedFunction<any>;
-const mockedRecordEmailSendingHistory = recordEmailSendingHistory as jest.MockedFunction<any>;
-
 describe('SCEN-495: メールアドレスの形式が不正な場合、sendDailyReportSubmissionNotification は検証に失敗してエラーを返す', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
-
-  it('should throw LeaderEmailAddressInvalidError when email format is invalid', async () => {
+  it('メールアドレスの形式が不正な場合、sendDailyReportSubmissionNotification は『メールアドレスの形式が正しくありません』を検出して LeaderEmailAddressInvalidError をスローする、またはエラー出力を返す', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'daily-001',
       reportContent: '本日は顧客対応を実施',
-      reportDate: '2025-01-15T00:00:00Z',
+      reportDate: '2025-01-15',
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@invalid',
       reporterName: '田中太郎',
       submissionTimestamp: '2025-01-15T14:30:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
-      new LeaderEmailAddressInvalidError('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。')
-    );
+    try {
+      const result = await sendDailyReportSubmissionNotification(input);
 
-    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow(
-      LeaderEmailAddressInvalidError
-    );
+      expect(result.success).toBe(false);
+      expect(result.emailSendingHistoryId).toBeNull();
+      expect(result.sentAt).toBeNull();
+      expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
+      expect(result.adminNotificationSent).toBe(true);
+    } catch (error) {
+      if (error instanceof LeaderEmailAddressInvalidError) {
+        expect(error.message).toContain('チームリーダーのメールアドレスが無効');
+      } else {
+        throw error;
+      }
+    }
   });
 
-  it('should return error output with correct fields when email is invalid', async () => {
+  it('buildNotificationContent および recordEmailSendingHistory 関数は呼び出されず、メール送信処理は中止される', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter-001',
       dailyReportId: 'daily-001',
       reportContent: '本日は顧客対応を実施',
-      reportDate: '2025-01-15T00:00:00Z',
+      reportDate: '2025-01-15',
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@invalid',
       reporterName: '田中太郎',
       submissionTimestamp: '2025-01-15T14:30:00Z',
     };
 
-    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
-      success: false,
-      emailSendingHistoryId: null,
-      sentAt: null,
-      errorMessage: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
-      adminNotificationSent: true,
-    });
-
-    const result = await mockedSendDailyReportSubmissionNotification(input);
+    const result = await sendDailyReportSubmissionNotification(input);
 
     expect(result.success).toBe(false);
     expect(result.emailSendingHistoryId).toBeNull();
     expect(result.sentAt).toBeNull();
     expect(result.errorMessage).toBe('チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。');
     expect(result.adminNotificationSent).toBe(true);
-  });
-
-  it('should not call buildNotificationContent or recordEmailSendingHistory when validation fails', async () => {
-    const input: SendDailyReportSubmissionNotificationInput = {
-      reporterId: 'reporter-001',
-      dailyReportId: 'daily-001',
-      reportContent: '本日は顧客対応を実施',
-      reportDate: '2025-01-15T00:00:00Z',
-      leaderUserId: 'leader-001',
-      leaderEmailAddress: 'leader@invalid',
-      reporterName: '田中太郎',
-      submissionTimestamp: '2025-01-15T14:30:00Z',
-    };
-
-    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
-      success: false,
-      emailSendingHistoryId: null,
-      sentAt: null,
-      errorMessage: 'チームリーダーのメールアドレスが無効であるため、通知メールを送信できません。',
-      adminNotificationSent: true,
-    });
-
-    await mockedSendDailyReportSubmissionNotification(input);
-
-    expect(mockedBuildNotificationContent).not.toHaveBeenCalled();
-    expect(mockedRecordEmailSendingHistory).not.toHaveBeenCalled();
   });
 });

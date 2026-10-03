@@ -1,35 +1,13 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { registerReporter, RegisterReporterInput, UserNotFoundInUserMaster } from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as userAuth from '../../src/logic/user-authentication-authorization';
 
-jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateReporterNameFormat: jest.fn(),
-  validateEmailAddress: jest.fn(),
-  detectDuplicateEmailAddress: jest.fn(),
-}));
+jest.mock('../../src/logic/input-validation-formatting');
+jest.mock('../../src/logic/user-authentication-authorization');
 
-jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  validateUserAccountActiveStatus: jest.fn(),
-}));
-
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  registerReporterToMaster: jest.fn(),
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
-
-import { registerReporter, UserNotFoundInUserMaster } from '../../src/logic/reporter-master-management';
-import { validateReporterNameFormat, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
-import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
-
-const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
-
-describe('SCEN-335: UserNotFoundInUserMasterエラーが返される', () => {
+describe('SCEN-335: 指定されたユーザーIDのステータスが無効な場合、UserNotFoundInUserMasterエラーを返す', () => {
   const now = new Date('2024-01-15T10:00:00Z');
-  const input = {
+  const input: RegisterReporterInput = {
     userId: 'USER-999',
     reporterName: '山田太郎',
     emailAddress: 'yamada@example.com',
@@ -39,44 +17,37 @@ describe('SCEN-335: UserNotFoundInUserMasterエラーが返される', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
-  it('指定されたユーザーIDのステータスが無効な場合、UserNotFoundInUserMasterエラーを返す', async () => {
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
+    (inputValidation.validateReporterNameFormat as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (inputValidation.validateEmailAddress as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (inputValidation.detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
+  });
 
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
-      isActive: false,
-      userId: 'USER-999',
-      inactiveReason: 'ユーザーがユーザーマスタに存在しないか、ステータスが無効である',
-    });
+  it('ユーザーのステータスが無効な場合、success=false、reporterId=null、適切なmessageとchangeHistoryId=nullを返す', async () => {
+    (userAuth.validateUserAccountActiveStatus as jest.Mock).mockRejectedValue(
+      new UserNotFoundInUserMaster('指定されたユーザーはシステムに登録されていません。ユーザーマスタを確認してください。')
+    );
 
-    let errorThrown: any = null;
-    try {
-      await registerReporter(input);
-    } catch (error: any) {
-      errorThrown = error;
-    }
+    const result = await registerReporter(input);
 
-    expect(errorThrown).toBeInstanceOf(UserNotFoundInUserMaster);
-    expect(errorThrown?.message).toBe('指定されたユーザーはシステムに登録されていません。ユーザーマスタを確認してください。');
+    expect(result.success).toBe(false);
+    expect(result.reporterId).toBeNull();
+    expect(result.message).toBe('指定されたユーザーはシステムに登録されていません。ユーザーマスタを確認してください。');
+    expect(result.changeHistoryId).toBeNull();
 
-    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

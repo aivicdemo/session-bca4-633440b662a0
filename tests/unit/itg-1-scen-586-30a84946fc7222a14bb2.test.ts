@@ -1,28 +1,45 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 import {
   retrieveNonSubmissionDetectionDetails,
+  RetrieveNonSubmissionDetectionDetailsInput,
   DetectionLogNotFound,
 } from '../../src/logic/daily-report-management-view';
-import * as reportPersistenceModule from '../../src/logic/daily-report-persistence';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
 
-describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionLogNotFoundエラーが発生する', () => {
+
+describe('SCEN-586: 存在しない検知ログIDを指定すると、DetectionLogNotFound エラーが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('存在しない検知ログIDを指定するとDetectionLogNotFoundエラーが発生し、エラー文言が「検知ログが見つかりません。」である', async () => {
+  it('存在しない検知ログIDを指定するとDetectionLogNotFoundエラーが発生する', async () => {
     const detectionLogId = 'nonexistent-log-id-999';
     const leaderId = 'leader-001';
 
-    // モック: 存在しない検知ログIDに対して空結果を返す
-    jest.spyOn(reportPersistenceModule, 'retrieveNonSubmissionDetectionLogsByDate' as any).mockResolvedValue([] as any);
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
 
-    // DetectionLogNotFoundエラーが発生することを確認
+    const input: RetrieveNonSubmissionDetectionDetailsInput = {
+      detectionLogId,
+      leaderId,
+    };
+
+    await expect(retrieveNonSubmissionDetectionDetails(input)).rejects.toThrow(DetectionLogNotFound);
+  });
+
+  it('エラーメッセージが「検知ログが見つかりません。」である', async () => {
+    const detectionLogId = 'nonexistent-log-id-999';
+    const leaderId = 'leader-001';
+
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
+
+    const input: RetrieveNonSubmissionDetectionDetailsInput = {
+      detectionLogId,
+      leaderId,
+    };
+
     try {
-      await retrieveNonSubmissionDetectionDetails({
-        detectionLogId,
-        leaderId,
-      });
+      await retrieveNonSubmissionDetectionDetails(input);
       fail('Expected DetectionLogNotFound to be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(DetectionLogNotFound);

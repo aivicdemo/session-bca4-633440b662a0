@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   validateReporterNameFormat: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
 }));
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserAccountActiveStatus: jest.fn(),
 }));
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   registerReporterToMaster: jest.fn(),
   persistReporterMasterChangeHistory: jest.fn(),
 }));
@@ -94,5 +97,9 @@ describe('SCEN-366: UPDATE操作で変更前後の値が異なる場合、br-tx_
     // メールアドレスは変わっていないため比較対象外
     expect(updateCallArgs.beforeValues?.emailAddress).toBe('newuser@example.com');
     expect(updateCallArgs.afterValues?.emailAddress).toBe('newuser@example.com');
+
+    // changedFieldsには'reporterName'のみ含まれることを確認
+    expect(updateCallArgs.changedFields).toContain('reporterName');
+    expect(updateCallArgs.changedFields).not.toContain('emailAddress');
   });
 });

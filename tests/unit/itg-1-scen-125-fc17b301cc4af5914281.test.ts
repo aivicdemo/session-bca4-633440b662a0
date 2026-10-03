@@ -1,33 +1,27 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   validateEmailAddress,
-  ValidateEmailAddressInput,
-  ValidateEmailAddressOutput,
   EmailAddressNotProvidedError,
+  ValidateEmailAddressInput,
+  ValidateEmailAddressOutput
 } from '../../src/logic/input-validation-formatting';
 
-describe('SCEN-125: メールアドレスがnull の場合、EMAIL_NOT_PROVIDED エラーが返される', () => {
-  it('validateEmailAddress関数を呼び出す際、入力型ValidateEmailAddressInputのemailAddressフィールドにnullを設定し、関数の戻り値である出力型ValidateEmailAddressOutputを確認する', async () => {
+describe('SCEN-125: validateEmailAddress - null input', () => {
+  it('should return EMAIL_NOT_PROVIDED error when emailAddress is null', async () => {
     const input: ValidateEmailAddressInput = {
-      emailAddress: null,
+      emailAddress: null
     };
 
     const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedEmailAddress).toBeNull();
-    expect(result.errorCode).toBe('EmailAddressEmptyError');
+    expect(result.errorCode).toBe('EMAIL_NOT_PROVIDED');
   });
 
-  it('出力型ValidateEmailAddressOutputのフィールドが以下の値を返す：isValid=false、validatedEmailAddress=null、errorCodeが返される', async () => {
-    const input: ValidateEmailAddressInput = {
-      emailAddress: null,
-    };
-
-    const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
-
-    expect(result.isValid).toBe(false);
-    expect(result.validatedEmailAddress).toBeNull();
-    expect(result.errorCode).toBeTruthy();
+  it('should have EmailAddressNotProvidedError with message', () => {
+    const error = new EmailAddressNotProvidedError('メールアドレスを入力してください。');
+    expect(error.message).toBe('メールアドレスを入力してください。');
+    expect(error).toBeInstanceOf(EmailAddressNotProvidedError);
   });
 });

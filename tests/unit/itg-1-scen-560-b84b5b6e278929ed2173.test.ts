@@ -4,16 +4,20 @@ import { retrieveLeaderDashboardData, LeaderAuthorizationFailedError } from '../
 const authenticateAndAuthorizeLeaderAccessMock = jest.fn() as jest.Mock<any>;
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   authenticateAndAuthorizeLeaderAccess: authenticateAndAuthorizeLeaderAccessMock,
 }));
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
   judgeBusinessDayAndDeadline: jest.fn(),
 }));
 jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
   retrieveDailyReportsForLeaderReview: jest.fn(),
   retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
 }));
-jest.mock('../../src/logic/email-notification-management', () => ({
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
 

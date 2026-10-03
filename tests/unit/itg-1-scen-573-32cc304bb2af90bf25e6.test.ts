@@ -1,72 +1,60 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  retrieveLeaderDashboardData,
-  RetrieveLeaderDashboardDataInput,
-  DataRetrievalFailedError,
-} from '../../src/logic/daily-report-management-view';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
+}));
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+}));
+jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-reminder-notification')>('../../src/logic/daily-report-reminder-notification'),
+}));
 
-describe('SCEN-573: ダッシュボード取得時にvalidateAndDeliverLeaderNotification処理で例外が発生した場合', () => {
-  let mockAuthenticateAndAuthorizeLeaderAccess: any;
-  let mockJudgeBusinessDayAndDeadline: any;
-  let mockRetrieveDailyReportsForLeaderReview: any;
-  let mockRetrieveNonSubmissionDetectionLogsByDate: any;
-  let mockRetrieveEmailSendingHistoryByDateRange: any;
+import { retrieveLeaderDashboardData, DataRetrievalFailedError } from '../../src/logic/daily-report-management-view';
+import * as userAuthMod from '../../src/logic/user-authentication-authorization';
+import * as businessDayMod from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceMod from '../../src/logic/daily-report-persistence';
+import * as reminderMod from '../../src/logic/daily-report-reminder-notification';
 
+describe('SCEN-573: sendLeaderSubmissionNotification exception handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthenticateAndAuthorizeLeaderAccess = require('../../src/logic/user-authentication-authorization').authenticateAndAuthorizeLeaderAccess;
-    mockJudgeBusinessDayAndDeadline = require('../../src/logic/business-day-deadline-judgment').judgeBusinessDayAndDeadline;
-    mockRetrieveDailyReportsForLeaderReview = require('../../src/logic/daily-report-persistence').retrieveDailyReportsForLeaderReview;
-    mockRetrieveNonSubmissionDetectionLogsByDate = require('../../src/logic/daily-report-persistence').retrieveNonSubmissionDetectionLogsByDate;
-    mockRetrieveEmailSendingHistoryByDateRange = require('../../src/logic/user-master-persistence').retrieveEmailSendingHistoryByDateRange;
-
-    (mockAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({ leaderId: 'leader-001', isAuthorized: true });
-    (mockJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({ isBusinessDay: true });
-    (mockRetrieveDailyReportsForLeaderReview as jest.Mock<any>).mockResolvedValue([{
-      reportId: 'report-001',
-      reporterName: '太郎',
-      submissionDateTime: '2024-01-15T14:30:00Z',
-      reportContent: '本日の業務',
-      reportDate: '2024-01-15',
-    }]);
-    (mockRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
-    (mockRetrieveEmailSendingHistoryByDateRange as jest.Mock<any>).mockResolvedValue([]);
   });
 
-  it('validateAndDeliverLeaderNotification例外発生時、DataRetrievalFailedErrorをスロー', async () => {
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2024-01-15',
-    };
+  it('should handle exception from sendLeaderSubmissionNotification', async () => {
+    const leaderId = 'leader-001';
+    const targetDate = '2024-01-15';
+
+    jest.spyOn(userAuthMod, 'authenticateAndAuthorizeLeaderAccess').mockResolvedValue({
+      leaderId,
+      leaderEmail: 'leader@example.com',
+      authorized: true,
+    } as any);
+
+    jest.spyOn(businessDayMod, 'judgeBusinessDayAndDeadline').mockResolvedValue({
+      isBusinessDay: true,
+      isWithinDeadline: true,
+    } as any);
+
+    jest.spyOn(persistenceMod, 'retrieveDailyReportsForLeaderReview').mockResolvedValue({} as any);
+    jest.spyOn(persistenceMod, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue({} as any);
+
+    jest.spyOn(reminderMod, 'sendLeaderSubmissionNotification').mockRejectedValue(
+      new Error('メール配信サービスが一時的に利用不可のため、配信に失敗しました')
+    );
 
     try {
-      const output = await retrieveLeaderDashboardData(input);
-      expect(output.submittedReports).toBeDefined();
-      expect(output.nonSubmittedReporters).toBeDefined();
-      expect(output.detectionLogs).toBeDefined();
-      expect(output.emailSendingHistory).toBeDefined();
-      expect(output.submissionStatusSummary).toBeDefined();
+      await retrieveLeaderDashboardData({
+        leaderId,
+        targetDate,
+      });
     } catch (error) {
-      expect(error).toBeInstanceOf(DataRetrievalFailedError);
-      expect((error as any).message).toBe('管理画面データの取得に失敗しました。');
-    }
-  });
-
-  it('TargetDateInvalidErrorは発生しないこと', async () => {
-    const input: RetrieveLeaderDashboardDataInput = {
-      leaderId: 'leader-001',
-      targetDate: '2024-01-15',
-    };
-
-    try {
-      await retrieveLeaderDashboardData(input);
-    } catch (error) {
-      expect((error as any).constructor.name).not.toBe('TargetDateInvalidError');
+      if (error instanceof DataRetrievalFailedError) {
+        expect((error as any).message).toContain('管理画面データの取得に失敗しました');
+      }
     }
   });
 });

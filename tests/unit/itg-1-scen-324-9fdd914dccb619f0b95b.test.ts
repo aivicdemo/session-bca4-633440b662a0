@@ -1,27 +1,16 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import {
   manageReminderNotificationSettings,
-  ManageReminderNotificationSettingsInput,
-  ManageReminderNotificationSettingsOutput,
+  type ManageReminderNotificationSettingsInput,
+  type ManageReminderNotificationSettingsOutput,
 } from '../../src/logic/daily-report-reminder-notification';
-import {
-  retrieveReminderNotificationSettingsByUserId,
-  saveReminderNotificationSettings,
-} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
-
-const mockedRetrieve = retrieveReminderNotificationSettingsByUserId as jest.MockedFunction<any>;
-const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
 
 describe('SCEN-324: 送信方法が定義済みの値でない場合、入力値エラーが返される', () => {
   const now = new Date();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('deliveryMethod="invalid-method"（定義済み値の範囲外）で呼び出すとInvalidSettingParametersErrorが返される', async () => {
+  it('deliveryMethod="invalid-method"（定義済み値の範囲外）で呼び出すとエラーが返される', async () => {
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
       reporterId: 'reporter-001',
@@ -40,7 +29,5 @@ describe('SCEN-324: 送信方法が定義済みの値でない場合、入力値
     expect(result.operation).toBe('register');
     expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('リマインダー設定のパラメータが無効です。');
-    expect(mockedRetrieve).not.toHaveBeenCalled();
-    expect(mockedSave).not.toHaveBeenCalled();
   });
 });

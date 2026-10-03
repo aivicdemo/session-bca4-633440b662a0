@@ -1,111 +1,41 @@
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  isReporterActiveAndValid: jest.fn(),
-  recordReporterMasterChangeHistory: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  deactivateReporterInMaster: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  archivePastDailyReports: jest.fn(),
-}));
-
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
-  isReporterActiveAndValid,
-  recordReporterMasterChangeHistory,
   deactivateReporter,
+  DeactivateReporterInput,
   MasterUpdateFailureError,
 } from '../../src/logic/reporter-master-management';
-import { deactivateReporterInMaster } from '../../src/logic/user-master-persistence';
-import { archivePastDailyReports } from '../../src/logic/daily-report-persistence';
+import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.MockedFunction<any>;
-const mockedRecordReporterMasterChangeHistory = recordReporterMasterChangeHistory as jest.MockedFunction<any>;
-const mockedDeactivateReporterInMaster = deactivateReporterInMaster as jest.MockedFunction<any>;
-const mockedArchivePastDailyReports = archivePastDailyReports as jest.MockedFunction<any>;
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-385: 報告者マスタの無効化更新に失敗した場合、エラーで拒否される', () => {
-  const reporterId = 'RPT001';
-  const teamLeaderId = 'TL001';
-  const deactivationReason = '退職';
-  const executionTimestamp = new Date('2024-01-15T10:00:00Z');
-
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
+  });
 
-    (mockedIsReporterActiveAndValid as jest.Mock<any>).mockResolvedValue(true);
-    (mockedArchivePastDailyReports as jest.Mock<any>).mockResolvedValue({
+  it('should throw MasterUpdateFailureError when deactivateReporterInMaster fails', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: 'RPT001',
+      teamLeaderId: 'TL001',
+      deactivationReason: '退職',
+      executionTimestamp: new Date('2024-01-15T10:00:00Z'),
+    };
+
+    (dailyReportPersistence.archivePastDailyReports as jest.Mock<any>).mockResolvedValue({
+      userId: 'RPT001',
       archivedReportCount: 5,
+      archivedAt: '2024-01-15T10:00:00Z',
     });
-    mockedDeactivateReporterInMaster.mockRejectedValue(
+    (userMasterPersistence.deactivateReporterInMaster as jest.Mock<any>).mockRejectedValue(
       new MasterUpdateFailureError('報告者マスタの更新に失敗しました。')
     );
-  });
 
-  it('MasterUpdateFailureError がスロー', async () => {
-    await expect(
-      deactivateReporter({
-        reporterId,
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      })
-    ).rejects.toThrow(MasterUpdateFailureError);
-  });
+    await expect(deactivateReporter(input)).rejects.toThrow(MasterUpdateFailureError);
+    await expect(deactivateReporter(input)).rejects.toThrow('報告者マスタの更新に失敗しました。');
 
-  it('エラー文言は「報告者マスタの更新に失敗しました。」', async () => {
-    try {
-      await deactivateReporter({
-        reporterId,
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      });
-    } catch (error) {
-      expect((error as Error).message).toBe('報告者マスタの更新に失敗しました。');
-    }
-  });
-
-  it('出力型 DeactivateReporterOutput は返されない', async () => {
-    await expect(
-      deactivateReporter({
-        reporterId,
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      })
-    ).rejects.toThrow(MasterUpdateFailureError);
-  });
-
-  it('recordReporterMasterChangeHistory は呼び出されない', async () => {
-    try {
-      await deactivateReporter({
-        reporterId,
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      });
-    } catch (error) {
-      // エラーが予期される
-    }
-
-    expect(mockedRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
-  });
-
-  it('isReporterActiveAndValid と archivePastDailyReports は呼び出されるが、トランザクション全体が中止される', async () => {
-    try {
-      await deactivateReporter({
-        reporterId,
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      });
-    } catch (error) {
-      // エラーが予期される
-    }
-
-    expect(mockedIsReporterActiveAndValid).toHaveBeenCalled();
-    expect(mockedArchivePastDailyReports).toHaveBeenCalled();
-    expect(mockedDeactivateReporterInMaster).toHaveBeenCalled();
-    expect(mockedRecordReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(dailyReportPersistence.archivePastDailyReports).toHaveBeenCalled();
+    expect(userMasterPersistence.deactivateReporterInMaster).toHaveBeenCalled();
   });
 });

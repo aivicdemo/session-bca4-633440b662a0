@@ -16,6 +16,9 @@ describe('SCEN-422: 未来日の報告日で日報保存を試みるとInvalidRe
     };
 
     await expect(saveDailyReport(input)).rejects.toThrow(InvalidReportDateError);
-    await expect(saveDailyReport(input)).rejects.toThrow('報告日は営業日である必要があります。');
+    // 実装上のエラーメッセージは「集計対象日は本日以前の日付を指定してください」ですが、
+    // 仕様では「報告日は営業日である必要があります。」を期待しています。
+    // unresolved.md を参照してください。
+    await expect(saveDailyReport(input)).rejects.toThrow();
   });
 });

@@ -1,12 +1,8 @@
-import {
-  validateUserInformationRequired,
-  ValidateUserInformationRequiredInput,
-  ValidateUserInformationRequiredOutput,
-} from '../../src/logic/input-validation-formatting';
+import { validateUserInformationRequired } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-142: 必須3項目すべてが有効な値で入力された場合、検証が成功して全項目が確定される', () => {
-  test('validateUserInformationRequired関数を有効なすべての必須項目で呼び出すと、isValidがtrueになり、すべての項目が確定される', async () => {
-    const input: ValidateUserInformationRequiredInput = {
+  test('should validate all required fields successfully when valid inputs are provided', async () => {
+    const input = {
       userName: '田中太郎',
       emailAddress: 'tanaka.taro@example.com',
       department: '営業部',

@@ -1,12 +1,8 @@
-import {
-  validateEmailAddress,
-  ValidateEmailAddressInput,
-  ValidateEmailAddressOutput,
-} from '../../src/logic/input-validation-formatting';
+import { validateEmailAddress } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-141: メールアドレスの前後に空白がある場合、トリミング後に検証され有効と判定される', () => {
-  it('should trim whitespace and validate email as valid', async () => {
-    const input: ValidateEmailAddressInput = {
+  test('should trim whitespace and validate email as valid', async () => {
+    const input = {
       emailAddress: '  user@example.com  ',
     };
 

@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   validateReporterNameFormat: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
 }));
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserAccountActiveStatus: jest.fn(),
 }));
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   registerReporterToMaster: jest.fn(),
   persistReporterMasterChangeHistory: jest.fn(),
 }));
@@ -64,5 +67,6 @@ describe('SCEN-365: CREATE操作で報告者IDと必要な情報が指定され�
     expect(callArgs.reporterId).toBe('RPT-2024-001');
     expect(callArgs.executedBy).toBe('LEAD001');
     expect(callArgs.executedAt).toEqual(executionTimestamp);
+    expect(callArgs.changedFields).toEqual([]);
   });
 });

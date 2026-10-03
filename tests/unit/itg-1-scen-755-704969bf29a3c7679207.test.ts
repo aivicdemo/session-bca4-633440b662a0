@@ -1,16 +1,16 @@
 import { describe, it, expect } from '@jest/globals';
-import { judgeSchedulerExecutionTiming, type JudgeSchedulerExecutionTimingInput, type JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, type JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-755: 5名全員が前日に日報を提出した場合、未提出者リストが空になる', () => {
-  it('営業日の定時実行時刻（17:30±5分）で全員提出済みの場合に未提出者リストが空で確定されることを判定', async () => {
+  it('営業日の定時実行時刻に到達し、未提出者リストが空になる条件が成立', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z', // 営業日の定時スケジューラ実行タイミング
-      scheduledExecutionTime: '17:30', // HH:mm形式
-      executionTimeToleranceMinutes: 5, // デフォルト値
+      currentTimestamp: '2024-01-15T17:30:00Z',
+      scheduledExecutionTime: '17:30',
+      executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',
     };
 
-    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
+    const result = await judgeSchedulerExecutionTiming(input);
 
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);

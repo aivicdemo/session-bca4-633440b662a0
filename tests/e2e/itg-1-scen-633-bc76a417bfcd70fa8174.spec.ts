@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('報告者のアカウントが無効である場合、日報詳細確認画面でアクセス拒否と表示される', async ({ page }) => {
   // 日報確認・管理画面を開く
-  await page.goto('./panels/scr-1790147095974.html');
+  await page.goto('/panels/scr-1790147095974.html');
 
   // 提出済み日報一覧が表示されている
   await expect(page.locator('#rm-r-tbody')).toBeVisible();

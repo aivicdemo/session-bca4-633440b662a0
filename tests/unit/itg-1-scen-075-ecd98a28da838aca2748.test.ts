@@ -1,12 +1,23 @@
-import { runTx7Imp1Agent, Tx7Imp1AgentInput, Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
-import {
-  validateUserInformationRequired,
-  detectDuplicateEmailAddress,
-} from '../../src/logic/input-validation-formatting';
-import { registerReporterToMaster } from '../../src/logic/user-master-persistence';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
+}));
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
+}));
+jest.mock('../../src/logic/email-notification-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
+}));
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
+}));
+
+import { runTx7Imp1Agent, type Tx7Imp1AiClient } from '../../src/agents/tx-7-imp-1/orchestrator';
+import * as reporterMasterModule from '../../src/logic/reporter-master-management';
+import * as userMasterModule from '../../src/logic/user-master-persistence';
+import * as emailNotifModule from '../../src/logic/email-notification-management';
+import * as validationModule from '../../src/logic/input-validation-formatting';
 
 const RECORD_1 = {
   movementType: 'new_hire' as const,
@@ -31,33 +42,81 @@ const RECORD_2 = {
 };
 
 describe('SCEN-075: 同一ユーザーIDまたはメールアドレスで既に報告者が登録されている場合、DuplicateReporterRegistrationエラーが発生する', () => {
+  const executionTimestamp = new Date('2024-04-01T09:00:00+09:00');
+  const mockAiClient: Tx7Imp1AiClient = {};
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
-    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue(true);
+    jest.spyOn(validationModule, 'validateUserInformationRequired').mockResolvedValue({
+      isValid: true,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: null,
+      
+    });
 
-    (detectDuplicateEmailAddress as jest.MockedFunction<any>)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true);
+    jest.spyOn(validationModule, 'detectDuplicateEmailAddress')
+      .mockResolvedValueOnce({
+        isDuplicate: false,
+        validatedEmailAddress: null,
+        errorCode: null,
+      })
+      .mockResolvedValueOnce({
+        isDuplicate: true,
+        validatedEmailAddress: null,
+        errorCode: null,
+      });
+
+    jest.spyOn(reporterMasterModule, 'registerReporter').mockResolvedValue({
+      reporterId: RECORD_1.userId,
+      success: true,
+      message: '登録成功',
+      changeHistoryId: null,
+    });
 
     const error = new Error('既に登録されている報告者です。');
-    error.name = 'DuplicateReporterRegistration';
+    (error as any).name = 'DuplicateReporterRegistration';
 
-    (registerReporterToMaster as jest.MockedFunction<any>)
-      .mockResolvedValueOnce({ success: true, userId: RECORD_1.userId })
+    jest.spyOn(userMasterModule, 'registerReporterToMaster')
+      .mockResolvedValueOnce({ success: true, reporterId: null, message: 'マスタ登録成功' })
       .mockRejectedValueOnce(error);
+
+    jest.spyOn(userMasterModule, 'updateReporterInMaster').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'マスタ更新成功',
+    });
+
+    jest.spyOn(userMasterModule, 'deactivateReporterInMaster').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'マスタ削除成功',
+    });
+
+    jest.spyOn(userMasterModule, 'persistReporterMasterChangeHistory').mockResolvedValue({
+      success: true,
+      changeHistoryId: null,
+      message: '変更履歴記録成功',
+    });
+
+    jest.spyOn(emailNotifModule, 'sendUserInformationApprovalNotification').mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: null,
+      sentAt: null,
+      errorMessage: null,
+      adminNotificationSent: false,
+    });
   });
 
   it('2件目の登録でDuplicateReporterRegistrationエラーが発生する', async () => {
-    const executionTimestamp = new Date('2024-04-01T09:00:00+09:00');
-    const aiClient: Tx7Imp1AiClient = {} as any;
-
     const resultPromise = runTx7Imp1Agent(
       {
         personnelMovementData: [RECORD_1, RECORD_2],
         executionTimestamp,
-      } as Tx7Imp1AgentInput,
-      aiClient
+      },
+      mockAiClient
     );
 
     await expect(resultPromise).rejects.toThrow(

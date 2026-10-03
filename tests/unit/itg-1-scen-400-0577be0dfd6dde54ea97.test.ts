@@ -3,22 +3,26 @@ import {
   SubmitUserInformationForConfirmationInput,
   UserInformationSubmissionFailedError,
 } from '../../src/logic/user-information-input-confirmation';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { validateUserInformationRequired, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { saveDailyReportRecord } from '../../src/logic/user-master-persistence';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as inputValidationModule from '../../src/logic/input-validation-formatting';
+import * as userMasterModule from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-authentication-authorization');
 jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-master-persistence');
-jest.mock('../../src/logic/daily-report-reminder-notification');
 
 describe('SCEN-400: ユーザー情報の保存に失敗した場合、送信失敗エラーが発生する', () => {
+  const mockAuthenticateAndAuthorizeReporterAccess = userAuthModule.authenticateAndAuthorizeReporterAccess as jest.Mock;
+  const mockValidateUserInformationRequired = inputValidationModule.validateUserInformationRequired as jest.Mock;
+  const mockDetectDuplicateEmailAddress = inputValidationModule.detectDuplicateEmailAddress as jest.Mock;
+  const mockSaveDailyReportRecord = userMasterModule.saveDailyReportRecord as jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   test('Failed saveDailyReportRecord throws UserInformationSubmissionFailedError', async () => {
-    const now = new Date();
+    const submissionTimestamp = new Date('2024-01-05T09:00:00Z');
 
     const input: SubmitUserInformationForConfirmationInput = {
       reporterId: 'reporter-001',
@@ -26,27 +30,29 @@ describe('SCEN-400: ユーザー情報の保存に失敗した場合、送信失
       emailAddress: 'test@example.com',
       fullName: '田中太郎',
       department: '営業部',
-      submissionTimestamp: now,
+      submissionTimestamp,
     };
 
-    (authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>).mockResolvedValue({
-      isAuthenticated: true,
-      reporterId: 'reporter-001',
+    mockAuthenticateAndAuthorizeReporterAccess.mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'reporter-001',
     });
 
-    (validateUserInformationRequired as jest.MockedFunction<any>).mockResolvedValue({
+    mockValidateUserInformationRequired.mockResolvedValue({
       isValid: true,
       validatedUserName: 'tanaka',
       validatedEmailAddress: 'test@example.com',
-      validatedFullName: '田中太郎',
       validatedDepartment: '営業部',
+      errorCode: null,
     });
 
-    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue({
+    mockDetectDuplicateEmailAddress.mockResolvedValue({
       isDuplicate: false,
+      validatedEmailAddress: 'test@example.com',
+      errorCode: null,
     });
 
-    (saveDailyReportRecord as jest.MockedFunction<any>).mockRejectedValue(
+    mockSaveDailyReportRecord.mockRejectedValue(
       new UserInformationSubmissionFailedError(
         'ユーザー情報の送信に失敗しました。システム管理者に連絡してください。'
       )

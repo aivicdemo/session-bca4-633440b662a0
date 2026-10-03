@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
-import { judgeSchedulerExecutionTiming, type JudgeSchedulerExecutionTimingInput, type JudgeSchedulerExecutionTimingOutput } from '../../src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, type JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-754: 前日に日報を提出しなかった報告者が未提出者として正しく特定され、リセット結果に記録される', () => {
-  it('営業日の定時実行時刻で未提出者検知処理が実行対象となることを判定', async () => {
+  it('営業日の定時実行時刻に未提出者が検知可能な条件が成立', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
-      currentTimestamp: '2024-01-15T17:30:00Z', // 営業日の定時実行時刻
+      currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
       timeZone: 'Asia/Tokyo',

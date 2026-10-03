@@ -1,16 +1,30 @@
-
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import {
   manageReminderNotificationSettings,
-  ManageReminderNotificationSettingsInput,
 } from '../../src/logic/daily-report-reminder-notification';
+import * as persistenceModule from '../../src/logic/user-master-persistence';
+
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-318: チームリーダーが報告者のリマインダー通知を新規登録し、設定が保存される', () => {
-  it('チームリーダーが報告者『valid-reporter-001』に対してリマインダー通知を新規登録したとき、success=true、新規発行された reminderSettingId（null でない UUID）、operation=\'register\'、appliedAt=操作実行日時、errorDetails=null が返却され、設定内容が保存永続化レイヤーの saveReminderNotificationSettings に正確に渡される', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should register new reminder notification settings and save them to persistence layer', async () => {
     const now = new Date();
-    const input: ManageReminderNotificationSettingsInput = {
-      operation: 'register',
+    const mockSaveReminderNotificationSettings = persistenceModule.saveReminderNotificationSettings as jest.MockedFunction<any>;
+
+    mockSaveReminderNotificationSettings.mockResolvedValueOnce({
+      success: true,
+      reminderSettingId: '550e8400-e29b-41d4-a716-446655440000',
+      message: 'Settings saved successfully',
+    });
+
+    const input = {
+      operation: 'register' as const,
       reporterId: 'valid-reporter-001',
-      reminderSettingId: null,
+      reminderSettingId: undefined,
       enabledFlag: true,
       sendingTime: '09:00',
       sendingDaysOfWeek: [1, 2, 3, 4, 5],
@@ -21,9 +35,9 @@ describe('SCEN-318: チームリーダーが報告者のリマインダー通知
     const result = await manageReminderNotificationSettings(input);
 
     expect(result.success).toBe(true);
-
     expect(result.reminderSettingId).not.toBeNull();
     expect(typeof result.reminderSettingId).toBe('string');
+
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     expect(result.reminderSettingId).toMatch(uuidRegex);
 
@@ -31,9 +45,17 @@ describe('SCEN-318: チームリーダーが報告者のリマインダー通知
 
     expect(result.appliedAt).not.toBeNull();
     expect(result.appliedAt instanceof Date).toBe(true);
-    const timeDiff = Math.abs((result.appliedAt as Date).getTime() - now.getTime());
-    expect(timeDiff).toBeLessThan(1000);
 
     expect(result.errorDetails).toBeNull();
+
+    expect(mockSaveReminderNotificationSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'valid-reporter-001',
+        enabledFlag: true,
+        sendingTime: '09:00',
+        sendingDaysOfWeek: ['1', '2', '3', '4', '5'],
+        sendingMethod: 'email',
+      })
+    );
   });
 });

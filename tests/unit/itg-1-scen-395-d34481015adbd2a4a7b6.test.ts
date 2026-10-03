@@ -1,30 +1,21 @@
 jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management', () => {
-  const actual = jest.requireActual('../../src/logic/reporter-master-management');
-  return {
-    ...actual,
-    isReporterActiveAndValid: jest.fn(),
-  };
-});
 
 import {
   getActiveReportersForSubmissionCheck,
-  isReporterActiveAndValid,
   ActiveReporterInfo,
   GetActiveReportersForSubmissionCheckInput,
   GetActiveReportersForSubmissionCheckOutput,
 } from '../../src/logic/reporter-master-management';
-
-const mockedIsReporterActiveAndValid = isReporterActiveAndValid as jest.MockedFunction<typeof isReporterActiveAndValid>;
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-395: 指定日付で有効な報告者が1件だけ存在する場合、その1件の報告者情報と総件数1を正常に返す', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('targetDate が営業日かつ本日以前で、1件の有効な報告者が存在する場合、success=true、reporters配列要素数=1、totalCount=1を返す', async () => {
+  it('should return success=true with exactly 1 active reporter and totalCount=1', async () => {
+    // Setup: targetDate is a business day and prior to today
     const targetDate = new Date('2024-01-15T00:00:00Z');
-    targetDate.setDate(targetDate.getDate() - 10);
     const teamLeaderId = 'TL001';
 
     const input: GetActiveReportersForSubmissionCheckInput = {
@@ -32,22 +23,21 @@ describe('SCEN-395: 指定日付で有効な報告者が1件だけ存在する�
       teamLeaderId,
     };
 
+    // Mock isBusinessDay to return true
+    (businessDayModule.isBusinessDay as jest.Mock).mockResolvedValue(true);
+
+    // Execute
     const result = await getActiveReportersForSubmissionCheck(input);
 
-    if (result.success === true && result.reporters.length === 1) {
-      expect(result.success).toBe(true);
-      expect(result.reporters).toHaveLength(1);
-      expect(result.totalCount).toBe(1);
-    } else {
-      // 実装がスタブのため、結果が異なる場合でもテストを通す
-      expect(result.reporters).toBeDefined();
-      expect(typeof result.totalCount).toBe('number');
-    }
+    // Verify: success=true, reporters array has 1 element, totalCount=1
+    expect(result.success).toBe(true);
+    expect(result.reporters).toHaveLength(1);
+    expect(result.totalCount).toBe(1);
   });
 
-  it('reporters[0] が有効な場合、reporterId、userId、reporterName、emailAddress、department、status フィールドを保持する', async () => {
+  it('should return reporter with all required fields: reporterId, userId, reporterName, emailAddress, department, status', async () => {
+    // Setup
     const targetDate = new Date('2024-01-15T00:00:00Z');
-    targetDate.setDate(targetDate.getDate() - 10);
     const teamLeaderId = 'TL001';
 
     const input: GetActiveReportersForSubmissionCheckInput = {
@@ -55,22 +45,35 @@ describe('SCEN-395: 指定日付で有効な報告者が1件だけ存在する�
       teamLeaderId,
     };
 
+    // Mock isBusinessDay to return true
+    (businessDayModule.isBusinessDay as jest.Mock).mockResolvedValue(true);
+
+    // Execute
     const result = await getActiveReportersForSubmissionCheck(input);
 
-    if (result.reporters && result.reporters.length > 0) {
-      const reporter = result.reporters[0];
-      expect(reporter).toHaveProperty('reporterId');
-      expect(reporter).toHaveProperty('userId');
-      expect(reporter).toHaveProperty('reporterName');
-      expect(reporter).toHaveProperty('emailAddress');
-      expect(reporter).toHaveProperty('department');
-      expect(reporter).toHaveProperty('status');
-    }
+    // Verify: reporters[0] has all required fields as ActiveReporterInfo
+    expect(result.reporters).toHaveLength(1);
+    const reporter: ActiveReporterInfo = result.reporters[0];
+
+    expect(reporter).toHaveProperty('reporterId');
+    expect(reporter).toHaveProperty('userId');
+    expect(reporter).toHaveProperty('reporterName');
+    expect(reporter).toHaveProperty('emailAddress');
+    expect(reporter).toHaveProperty('department');
+    expect(reporter).toHaveProperty('status');
+
+    // Verify field types
+    expect(typeof reporter.reporterId).toBe('string');
+    expect(typeof reporter.userId).toBe('string');
+    expect(typeof reporter.reporterName).toBe('string');
+    expect(typeof reporter.emailAddress).toBe('string');
+    expect(typeof reporter.department).toBe('string');
+    expect(typeof reporter.status).toBe('string');
   });
 
-  it('結果が定義されている場合、reporters と totalCount フィールドが存在する', async () => {
+  it('should return complete GetActiveReportersForSubmissionCheckOutput structure', async () => {
+    // Setup
     const targetDate = new Date('2024-01-15T00:00:00Z');
-    targetDate.setDate(targetDate.getDate() - 10);
     const teamLeaderId = 'TL001';
 
     const input: GetActiveReportersForSubmissionCheckInput = {
@@ -78,10 +81,19 @@ describe('SCEN-395: 指定日付で有効な報告者が1件だけ存在する�
       teamLeaderId,
     };
 
+    // Mock isBusinessDay to return true
+    (businessDayModule.isBusinessDay as jest.Mock).mockResolvedValue(true);
+
+    // Execute
     const result = await getActiveReportersForSubmissionCheck(input);
 
+    // Verify: complete output structure with success message
     expect(result).toBeDefined();
+    expect(result.success).toBe(true);
     expect(result.reporters).toBeDefined();
-    expect(result.totalCount).toBeDefined();
+    expect(Array.isArray(result.reporters)).toBe(true);
+    expect(result.totalCount).toBe(1);
+    expect(result.message).toBeDefined();
+    expect(typeof result.message).toBe('string');
   });
 });

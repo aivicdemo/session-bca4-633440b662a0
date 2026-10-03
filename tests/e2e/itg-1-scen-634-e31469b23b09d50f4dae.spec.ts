@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('報告者がリーダーの管理チームに所属していない場合、日報詳細確認画面でアクセス拒否と表示される', async ({ page }) => {
   // ユーザーBで日報確認・管理画面にログインする
-  await page.goto('./panels/scr-1790147095974.html');
+  await page.goto('/panels/scr-1790147095974.html');
 
   // 日報確認・管理画面が表示されている
   await expect(page.locator('.rm-heading')).toBeVisible();

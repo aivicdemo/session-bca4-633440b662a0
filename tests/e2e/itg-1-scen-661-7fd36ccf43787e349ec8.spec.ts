@@ -1,60 +1,68 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-/**
- * SCEN-661: 検知ログ確認
- * 検知ログ画面を開くと、未提出者の検知詳細情報
- * （検知日時、対象者、検知ステータス、リマインダー送信状況）が表示される
- */
-test('検知ログ画面を開くと未提出者の検知詳細情報が表示される', async ({ page }) => {
-  // 日報確認・管理画面にログインする
-  await page.goto('/');
-  await page.fill('input[type="text"]', 'admin_yamada');
-  await page.fill('input[type="password"]', 'password');
-  await page.click('button:has-text("ログイン")');
-
-  // ログイン後、管理画面が表示されるまで待機
+test('SCEN-661: 検知ログ画面に未提出者の検知詳細情報が表示される', async ({ page }) => {
+  // 日報確認・管理画面にアクセス
+  await page.goto('/panels/scr-1790147095974.html');
   await page.waitForLoadState('networkidle');
 
-  // 画面左側メニューまたはナビゲーションから「検知ログ」項目をクリックする
-  const logTab = page.locator('.rm-tab').filter({ hasText: '検知ログ' });
-  await logTab.click();
+  // 検知ログタブをクリック
+  await page.click('button[data-tab="log"]');
 
-  // 検知ログ画面が表示されるまで待機する
-  await page.waitForLoadState('networkidle');
+  // テーブルが表示されるまで待機
+  await page.waitForSelector('#rm-log-tbody');
 
-  // 画面に表示される未提出者の検知ログ一覧テーブルを確認する
+  // 未提出者検知ログ一覧テーブルが表示されることを確認
   const logTable = page.locator('.rm-table');
   await expect(logTable).toBeVisible();
 
-  // テーブルヘッダーに必須列が存在することを確認
-  const headers = logTable.locator('thead th');
-  const headerTexts = await headers.allTextContents();
+  // テーブルのヘッダー行を確認
+  const headerCells = await page.locator('table thead th').allTextContents();
+  expect(headerCells).toContain('検知日時');
+  expect(headerCells).toContain('報告者名');
 
-  expect(headerTexts).toContain('検知日時');
-  expect(headerTexts).toContain('対象者');
-  expect(headerTexts).toContain('検知ステータス');
-  expect(headerTexts).toContain('リマインダー送信状況');
+  // テーブルボディ内の行を確認
+  const bodyRows = await page.locator('#rm-log-tbody tr').all();
+  
+  // 「検知ログがありません」という空行を除外したレコード数を確認
+  let validRowCount = 0;
+  for (const row of bodyRows) {
+    const text = await row.textContent();
+    if (text && !text.includes('検知ログがありません')) {
+      validRowCount++;
+    }
+  }
+  
+  expect(validRowCount).toBeGreaterThanOrEqual(1);
 
-  // 少なくとも 1 件以上の未提出者検知ログレコードが表示されていることを確認
-  const rows = logTable.locator('tbody tr');
-  const rowCount = await rows.count();
+  // 最初の有効な行の内容を確認
+  for (const row of bodyRows) {
+    const text = await row.textContent();
+    if (text && !text.includes('検知ログがありません')) {
+      const cells = await row.locator('td').all();
+      
+      // 最低5列あることを確認
+      expect(cells.length).toBeGreaterThanOrEqual(5);
 
-  expect(rowCount).toBeGreaterThan(0);
+      // (1) 検知日時が年月日時分秒形式で表示されることを確認
+      const detectedAtText = await cells[2].textContent();
+      const dateTimeRegex = /\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/;
+      expect(detectedAtText).toMatch(dateTimeRegex);
 
-  // 最初の行のデータを確認
-  const firstRow = rows.first();
-  const cells = firstRow.locator('td');
+      // (2) 対象者（社内ユーザー名）が表示されることを確認
+      const reporterNameText = await cells[0].textContent();
+      expect(reporterNameText?.trim()).not.toBe('');
 
-  // 検知日時が時分秒を含む形式で表示されているか確認
-  const detectedAtText = await cells.nth(2).textContent();
-  expect(detectedAtText).toMatch(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
+      // (3) 検知ステータス（提出状況）が表示されることを確認
+      const statusText = await cells[4].textContent();
+      const validStatuses = ['未提出', '提出済み', '期限超過'];
+      expect(validStatuses.some(status => statusText?.includes(status))).toBeTruthy();
 
-  // 対象者（社内ユーザー名）が表示されているか確認
-  const reporterName = await cells.nth(0).textContent();
-  expect(reporterName).toBeTruthy();
+      // (4) リマインダー送信状況が表示されることを確認
+      const reminderText = await cells[3].textContent();
+      const validReminderStatuses = ['送信済み', '送信失敗', '未送信'];
+      expect(validReminderStatuses.some(status => reminderText?.includes(status))).toBeTruthy();
 
-  // 検知ステータスが表示されているか確認
-  const status = await cells.nth(3).textContent();
-  expect(status).toBeTruthy();
-  expect(['未提出', '期限超過', '提出済み']).toContain(status?.trim() || '');
+      break; // 最初の有効な行のみ確認
+    }
+  }
 });

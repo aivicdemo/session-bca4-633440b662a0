@@ -1,22 +1,23 @@
-import {
-  generateNonSubmissionDetectionResult,
-  EmptyReporterListError,
-} from '../../src/logic/daily-report-non-submission-detection';
+import { generateNonSubmissionDetectionResult, EmptyReporterListError } from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-266: 未提出者リストが空配列で検知ログの未提出数が0より大きいとき、件数不一致エラーが発生する', () => {
-  it('EmptyReporterListErrorがスローされ、エラー文言が「未提出者検知ログと未提出者リストの件数が不一致です。」である', () => {
+  it('nonSubmittedReporters が空配列で nonSubmittedCount > 0 の場合、EmptyReporterListError がスローされる', () => {
     const input = {
       nonSubmittedReporters: [],
-      detectionLog: { nonSubmittedCount: 1, detectionTimestamp: '2024-01-01T09:00:00Z' },
-      detectionTimestamp: '2024-01-01T09:00:00Z',
-    } as any;
+      detectionLog: {
+        detectionLogId: 'log-001',
+        targetDate: '2024-01-15',
+        detectionDateTime: '2024-01-15T09:00:00Z',
+        totalReportersCount: 5,
+        nonSubmittedCount: 1,
+        submittedCount: 4,
+      },
+      detectionTimestamp: '2024-01-15T09:00:00Z',
+    };
 
-    try {
-      generateNonSubmissionDetectionResult(input);
-      fail('Should have thrown EmptyReporterListError');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(EmptyReporterListError);
-      expect(error.message).toBe('未提出者検知ログと未提出者リストの件数が不一致です。');
-    }
+    expect(() => generateNonSubmissionDetectionResult(input)).toThrow(EmptyReporterListError);
+    expect(() => generateNonSubmissionDetectionResult(input)).toThrow(
+      '未提出者検知ログと未提出者リストの件数が不一致です。'
+    );
   });
 });

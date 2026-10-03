@@ -1,4 +1,5 @@
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
 

@@ -1,45 +1,47 @@
-import { describe, it, expect } from '@jest/globals';
 import {
   judgeSchedulerExecutionTiming,
+} from '../../src/logic/business-day-deadline-judgment';
+import type {
   JudgeSchedulerExecutionTimingInput,
-  JudgeSchedulerExecutionTimingOutput
+  JudgeSchedulerExecutionTimingOutput,
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-195: 指定されたタイムゾーンで正しく判定される', () => {
-  it('should judge correctly with Asia/Tokyo timezone', () => {
+  it('Asia/Tokyoで2024-01-15T17:30:00Z（日本時間2024-01-16 02:30）を入力したとき、isBusinessDay=true、isWithinExecutionWindow=false、shouldExecute=false、executionReason=実行時刻外が返される', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo'
+      timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as any;
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
 
-    expect(result).toBeDefined();
     expect(result.isBusinessDay).toBe(true);
-    expect(result.isWithinExecutionWindow).toBe(true);
-    expect(result.shouldExecute).toBe(true);
-    expect(result.nextScheduledExecutionTime).toBeNull();
-    expect(result.executionReason).toBe('営業日の実行時刻内');
+    expect(result.isWithinExecutionWindow).toBe(false);
+    expect(result.shouldExecute).toBe(false);
+    expect(result.executionReason).toBe('実行時刻外');
+    expect(result.nextScheduledExecutionTime).toEqual(expect.any(String));
   });
 
-  it('should judge execution window as false when local time is outside window with different timezone', () => {
+  it('America/New_YorkでUTC時刻2024-01-15T17:30:00Z（NY時間2024-01-15 12:30）を入力したとき、isBusinessDay=true、isWithinExecutionWindow=false、shouldExecute=false、executionReason=実行時刻外が返される', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'America/New_York'
+      timeZone: 'America/New_York',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as any;
+    const result: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(input);
 
-    expect(result).toBeDefined();
+    expect(result.isBusinessDay).toBe(true);
+    expect(result.isWithinExecutionWindow).toBe(false);
     expect(result.shouldExecute).toBe(false);
-    expect(result.executionReason).toMatch(/実行時刻外|営業日ではない/);
+    expect(result.executionReason).toBe('実行時刻外');
+    expect(result.nextScheduledExecutionTime).toEqual(expect.any(String));
   });
 
-  it('should return different results for different timezones with same UTC timestamp', () => {
+  it('複数のタイムゾーンで同一のISO 8601タイムスタンプを入力したとき、各タイムゾーン独立で判定される', async () => {
     const utcTimestamp = '2024-01-15T17:30:00Z';
     const scheduledTime = '17:30';
     const tolerance = 5;
@@ -48,20 +50,22 @@ describe('SCEN-195: 指定されたタイムゾーンで正しく判定される
       currentTimestamp: utcTimestamp,
       scheduledExecutionTime: scheduledTime,
       executionTimeToleranceMinutes: tolerance,
-      timeZone: 'Asia/Tokyo'
+      timeZone: 'Asia/Tokyo',
     };
 
-    const nyInput: JudgeSchedulerExecutionTimingInput = {
+    const laInput: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: utcTimestamp,
       scheduledExecutionTime: scheduledTime,
       executionTimeToleranceMinutes: tolerance,
-      timeZone: 'America/New_York'
+      timeZone: 'America/Los_Angeles',
     };
 
-    const tokyoResult = judgeSchedulerExecutionTiming(tokyoInput) as any;
-    const nyResult = judgeSchedulerExecutionTiming(nyInput) as any;
+    const tokyoResult: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(tokyoInput);
+    const laResult: JudgeSchedulerExecutionTimingOutput = await judgeSchedulerExecutionTiming(laInput);
 
-    expect(tokyoResult).toBeDefined();
-    expect(nyResult).toBeDefined();
+    expect(tokyoResult.isBusinessDay).toBe(true);
+    expect(laResult.isBusinessDay).toBe(true);
+    expect(tokyoResult.isWithinExecutionWindow).toBe(false);
+    expect(laResult.isWithinExecutionWindow).toBe(false);
   });
 });

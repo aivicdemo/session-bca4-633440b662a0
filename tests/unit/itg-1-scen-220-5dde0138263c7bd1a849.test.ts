@@ -1,52 +1,63 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { submitDailyReport, SubmitDailyReportInput, DailyReportContentExceedsMaxLengthException } from '../../src/logic/daily-report-submission';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
 }));
+
 jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateDailyReportContent: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
 }));
+
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
 }));
+
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  checkDailyReportExistsForDate: jest.fn(),
-  saveDailyReport: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
 }));
+
 jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
 }));
 
-import { submitDailyReport, SubmitDailyReportInput, DailyReportContentExceedsMaxLengthException } from '../../src/logic/daily-report-submission';
-import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
-
-const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
-
-describe('SCEN-220: 報告内容が500文字を超える場合に制限される', () => {
+describe('SCEN-220: validateAndRecordDailyReportSubmission throws error when business content exceeds 500 characters', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
-  it('501文字のビジネスコンテンツでDailyReportContentExceedsMaxLengthExceptionがスロー', async () => {
-    // Arrange
-    const oversizeContent = 'a'.repeat(501);
+  it('should throw DailyReportContentExceedsMaxLengthException when businessContent exceeds 500 characters', async () => {
+    jest.spyOn(userAuthModule, 'authenticateAndAuthorizeReporterAccess').mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'user001',
+    });
+
+    const longContent = 'a'.repeat(501);
+    jest.spyOn(validationModule, 'validateDailyReportContent').mockRejectedValue(
+      new DailyReportContentExceedsMaxLengthException('日報内容が長すぎます。')
+    );
+
     const input: SubmitDailyReportInput = {
-      userId: 'reporter001',
-      reportDate: '2025-01-15',
-      businessContent: oversizeContent,
+      userId: 'user001',
+      reportDate: '2024-01-15',
+      businessContent: longContent,
       achievements: null,
       challenges: null,
       tomorrowPlan: null,
-      submissionTimestamp: '2025-01-15T14:30:00Z',
+      submissionTimestamp: '2024-01-15T14:30:00Z',
     };
 
-    // スタブ設定
-    const exceptionMessage = '日報内容が長すぎます。';
-    mockedValidateDailyReportContent.mockImplementation(() => {
-      throw new DailyReportContentExceedsMaxLengthException(exceptionMessage);
-    });
-
-    // Act & Assert
     await expect(submitDailyReport(input)).rejects.toThrow(DailyReportContentExceedsMaxLengthException);
+    await expect(submitDailyReport(input)).rejects.toThrow('日報内容が長すぎます。');
+
+    expect(validationModule.validateDailyReportContent).toHaveBeenCalledTimes(1);
+    expect(persistenceModule.saveDailyReport).not.toHaveBeenCalled();
+    expect(persistenceModule.checkDailyReportExistsForDate).not.toHaveBeenCalled();
+    expect(persistenceModule.updateDailyReportSubmissionTimestamp).not.toHaveBeenCalled();
+    expect(notificationModule.sendDailyReportSubmissionNotification).not.toHaveBeenCalled();
   });
 });

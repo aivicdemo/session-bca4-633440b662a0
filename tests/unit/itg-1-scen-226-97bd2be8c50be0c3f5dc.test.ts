@@ -3,12 +3,11 @@ import {
   NoActiveReportersError,
 } from '../../src/logic/daily-report-non-submission-detection';
 
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/business-day-deadline-judgment');
+import * as reporterModule from '../../src/logic/reporter-master-management';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-226: detectNonSubmittedReportersAtDeadline - No Active Reporters', () => {
   beforeEach(() => {
@@ -17,10 +16,12 @@ describe('SCEN-226: detectNonSubmittedReportersAtDeadline - No Active Reporters'
 
   it('should reject when no active reporters are available', async () => {
     // Mock judgeSchedulerExecutionTiming to return true (deadline reached)
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+    (businessDayModule.judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
 
-    // Mock getActiveReportersForSubmissionCheck to return empty array
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue([]);
+    // Mock getActiveReportersForSubmissionCheck to return empty list
+    (reporterModule.getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue({
+      reporters: [],
+    });
 
     const input = {
       targetDate: '2024-01-15',

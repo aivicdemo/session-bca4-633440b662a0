@@ -30,46 +30,66 @@ async function login(page: Page, username: string) {
 }
 
 test('SCEN-675: リーダーが管理画面にアクセス可能な場合、メール送信履歴一覧が表示される', async ({ page }) => {
-  // リーダーロールを持つユーザーでシステムにログインする
+  // ステップ1: リーダーロールを持つユーザーでシステムにログインする
   await login(page, 'reader_scen675');
 
-  // 日報確認・管理画面へ遷移する（ログイン後の遷移先が管理画面）
+  // ステップ2: 日報確認・管理画面へ遷移する（ログイン後の遷移先が管理画面）
   expect(page.url()).toContain('scr-1790147095974');
 
-  // 管理画面内の「メール送信履歴」セクション/タブを開く
-  const mailHistoryTab = page.locator('.rm-tab:nth-child(4)');
+  // ステップ3: 管理画面内の「メール送信履歴」セクション/タブを開く
+  const mailHistoryTab = page.locator('.rm-tab[data-tab="mail"]');
+  await expect(mailHistoryTab).toBeVisible();
   await mailHistoryTab.click();
 
-  // メール送信履歴一覧が表示されるまで待機
-  await page.waitForSelector('#rm-mail-tbody', { timeout: 5000 });
+  // ステップ4: メール送信履歴一覧が表示されるまで待機
+  const mailPanel = page.locator('.rm-panel[data-panel="mail"]');
+  await expect(mailPanel).toHaveClass(/is-active/);
 
-  // メール送信履歴一覧画面が表示される
+  // 期待結果: メール送信履歴一覧画面が表示される
   const mailHistoryTable = page.locator('#rm-mail-tbody');
   await expect(mailHistoryTable).toBeVisible();
 
-  // 以下の要素が確認できる：
-  // (1) 送信日時の列を持つデータテーブルが表示される
+  // テーブルヘッダーの確認
+  const tableHead = page.locator('.rm-table thead').nth(1);
+  await expect(tableHead).toBeVisible();
+
+  // (1) 送信日時の列を確認
+  const sentAtHeader = page.locator('.rm-table th', { hasText: '送信日時' });
+  await expect(sentAtHeader).toBeVisible();
+
+  // (2) 送信対象ユーザー名（送信先）の列を確認
+  const toHeader = page.locator('.rm-table th', { hasText: '送信先' });
+  await expect(toHeader).toBeVisible();
+
+  // (3) メール種別（リマインダーメール/アラートメール等）の列を確認
+  const typeHeader = page.locator('.rm-table th', { hasText: 'メールタイプ' });
+  await expect(typeHeader).toBeVisible();
+
+  // (4) 配信状態（成功/失敗/再試行中など）の列を確認
+  const statusHeader = page.locator('.rm-table th', { hasText: 'ステータス' });
+  await expect(statusHeader).toBeVisible();
+
+  // データテーブルが表示される
   const tableRows = page.locator('#rm-mail-tbody tr');
-  const firstRow = tableRows.first();
+  const rowCount = await tableRows.count();
+  expect(rowCount).toBeGreaterThan(0);
 
-  // テーブルの各セル（送信日時、送信先、メール種別、ステータス）を確認
-  const cells = firstRow.locator('td');
-  const cellCount = await cells.count();
-  expect(cellCount).toBeGreaterThanOrEqual(4);
+  // テーブル行に4つの列が存在することを確認
+  if (rowCount > 0) {
+    const firstRow = tableRows.first();
+    const cells = firstRow.locator('td');
+    const cellCount = await cells.count();
+    expect(cellCount).toBeGreaterThanOrEqual(4);
 
-  // (2) 送信対象ユーザー名（送信先メールアドレス）が表示されている
-  if (cellCount > 2) {
+    // (2) 送信対象ユーザー名（送信先）が表示されている
     const toCell = cells.nth(2);
     const toText = await toCell.textContent();
-    expect(toText).toBeTruthy();
-  }
+    expect(toText?.trim()).toBeTruthy();
 
-  // (3) メール種別（リマインダーメール/アラートメール等）が表示されている
-  if (cellCount > 1) {
+    // (3) メール種別が表示されている
     const typeCell = cells.nth(1);
     const typeText = await typeCell.textContent();
-    expect(typeText).toBeTruthy();
-    // メール種別の例: リマインダー、提出通知、未提出通知など
+    expect(typeText?.trim()).toBeTruthy();
     expect([
       'リマインダー',
       '提出通知',
@@ -81,34 +101,27 @@ test('SCEN-675: リーダーが管理画面にアクセス可能な場合、メ�
       '日報提出状況レポート',
       '日報テンプレート更新通知',
     ]).toContain(typeText?.trim());
-  }
 
-  // (4) 配信状態（成功/失敗/再試行中など）を含む列を持つデータテーブルが表示される
-  if (cellCount > 3) {
-    const statusCell = cells.nth(3);
+    // (4) 配信状態が表示されている
+    const statusCell = cells.nth(4);
     const statusText = await statusCell.textContent();
-    expect(statusText).toBeTruthy();
-    // 配信状態の例: 成功、失敗、保留中
+    expect(statusText?.trim()).toBeTruthy();
     expect(['成功', '失敗', '保留中']).toContain(statusText?.trim());
   }
 
   // 一覧は最新の送信記録から順に表示される
-  const rowCount = await tableRows.count();
   if (rowCount > 1) {
-    // 最初の行と2番目の行の送信日時を抽出
-    const firstRowFirstCell = firstRow.locator('td').first();
-    const secondRow = tableRows.nth(1);
-    const secondRowFirstCell = secondRow.locator('td').first();
+    const firstRowFirstCell = page.locator('#rm-mail-tbody tr').first().locator('td').first();
+    const secondRowFirstCell = page.locator('#rm-mail-tbody tr').nth(1).locator('td').first();
 
     const firstDate = await firstRowFirstCell.textContent();
     const secondDate = await secondRowFirstCell.textContent();
 
-    // 最初の行の日時が存在することを確認
     expect(firstDate).toBeTruthy();
     expect(secondDate).toBeTruthy();
   }
 
-  // スクロール可能な状態である（テーブルが表示可能）
-  const tableWrapper = page.locator('.table-wrapper, [class*="mail"]').first();
-  await expect(tableWrapper).toBeVisible();
+  // スクロール可能な状態である
+  const mailCard = page.locator('.rm-card').last();
+  await expect(mailCard).toBeVisible();
 });

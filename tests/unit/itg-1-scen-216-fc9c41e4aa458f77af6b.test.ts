@@ -1,61 +1,46 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { submitDailyReport, SubmitDailyReportInput, SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as validationModule from '../../src/logic/input-validation-formatting';
+import * as deadlineModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as notificationModule from '../../src/logic/email-notification-management';
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
 }));
+
 jest.mock('../../src/logic/input-validation-formatting', () => ({
-  validateDailyReportContent: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
 }));
+
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeBusinessDayAndDeadline: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
 }));
+
 jest.mock('../../src/logic/daily-report-persistence', () => ({
-  checkDailyReportExistsForDate: jest.fn(),
-  saveDailyReport: jest.fn(),
-  updateDailyReportSubmissionTimestamp: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
 }));
+
 jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
 }));
 
-import { submitDailyReport, type SubmitDailyReportOutput } from '../../src/logic/daily-report-submission';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
-import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
-import { checkDailyReportExistsForDate, saveDailyReport, updateDailyReportSubmissionTimestamp } from '../../src/logic/daily-report-persistence';
-import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
-
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
-const mockedValidateDailyReportContent = validateDailyReportContent as jest.MockedFunction<any>;
-const mockedJudgeBusinessDayAndDeadline = judgeBusinessDayAndDeadline as jest.MockedFunction<any>;
-const mockedCheckDailyReportExistsForDate = checkDailyReportExistsForDate as jest.MockedFunction<any>;
-const mockedSaveDailyReport = saveDailyReport as jest.MockedFunction<any>;
-const mockedUpdateDailyReportSubmissionTimestamp = updateDailyReportSubmissionTimestamp as jest.MockedFunction<any>;
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
-
-describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻記録・送信完了判定・リーダー通知トリガー発火を実行する', () => {
-  const userId = 'reporter-001';
-  const reportDate = '2024-01-15';
-  const businessContent = '本日は顧客A社との打ち合わせを実施し、Q1プロジェクト進捗を共有した。';
-  const submissionTimestamp = '2024-01-15T16:30:00Z';
-  const dailyReportId = 'DR-2024-01-15-001';
-
+describe('SCEN-216: submitDailyReport sends submission timestamp, completion status, and reader notification trigger', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
+  });
 
-    (mockedAuthenticateAndAuthorizeReporterAccess as jest.Mock<any>).mockResolvedValue({
+  it('should execute submission with authentication, validation, deadline judgment, duplicate check, save, timestamp recording, and notification', async () => {
+    jest.spyOn(userAuthModule, 'authenticateAndAuthorizeReporterAccess').mockResolvedValue({
       isAccessGranted: true,
-      userId: userId,
-      denialReason: null,
+      userId: 'reporter-001',
     });
-
-    (mockedValidateDailyReportContent as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(validationModule, 'validateDailyReportContent').mockResolvedValue({
       isValid: true,
-      validatedContent: businessContent,
+      validatedContent: '本日は顧客A社との打ち合わせを実施し、Q1プロジェクト進捗を共有した。',
       errorCode: null,
     });
-
-    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(deadlineModule, 'judgeBusinessDayAndDeadline').mockResolvedValue({
       isAcceptable: true,
       isBusinessDay: true,
       isWithinDeadline: true,
@@ -63,96 +48,87 @@ describe('SCEN-216: 業務ルール recordDailyReportSubmission が送信時刻�
       processingPolicy: 'accept',
       rejectionReason: null,
     });
-
-    (mockedCheckDailyReportExistsForDate as jest.Mock<any>).mockResolvedValue(false);
-
-    (mockedSaveDailyReport as jest.Mock<any>).mockResolvedValue({
-      dailyReportId: dailyReportId,
-      savedAt: submissionTimestamp,
-      userId: userId,
-      reportDate: reportDate,
+    jest.spyOn(persistenceModule, 'checkDailyReportExistsForDate').mockResolvedValue(false);
+    jest.spyOn(persistenceModule, 'saveDailyReport').mockResolvedValue({
+      dailyReportId: 'DR-2024-01-15-001',
+      savedAt: '2024-01-15T16:30:00Z',
+      userId: 'reporter-001',
+      reportDate: '2024-01-15',
     });
-
-    (mockedUpdateDailyReportSubmissionTimestamp as jest.Mock<any>).mockResolvedValue({
-      dailyReportId: dailyReportId,
-      previousSubmittedAt: null,
-      updatedSubmittedAt: submissionTimestamp,
-      updatedAt: submissionTimestamp,
+    jest.spyOn(persistenceModule, 'updateDailyReportSubmissionTimestamp').mockResolvedValue({
+      dailyReportId: 'DR-2024-01-15-001',
+      previousSubmittedAt: '',
+      updatedSubmittedAt: '2024-01-15T16:30:00Z',
+      updatedAt: '2024-01-15T16:30:00Z',
     });
-
-    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(notificationModule, 'sendDailyReportSubmissionNotification').mockResolvedValue({
       success: true,
-      emailSendingHistoryId: 'notif-001',
-      sentAt: submissionTimestamp,
+      emailSendingHistoryId: 'history-001',
+      sentAt: '2024-01-15T16:30:00Z',
       errorMessage: null,
       adminNotificationSent: false,
     });
-  });
 
-  it('submitDailyReport が送信時刻記録・送信完了判定・リーダー通知トリガー発火を実行する', async () => {
-    const result = await submitDailyReport({
-      userId,
-      reportDate,
-      businessContent,
+    const input: SubmitDailyReportInput = {
+      userId: 'reporter-001',
+      reportDate: '2024-01-15',
+      businessContent: '本日は顧客A社との打ち合わせを実施し、Q1プロジェクト進捗を共有した。',
       achievements: null,
       challenges: null,
       tomorrowPlan: null,
-      submissionTimestamp,
-    });
+      submissionTimestamp: '2024-01-15T16:30:00Z',
+    };
 
-    // 期待結果：戻り値の検証
-    expect(result.dailyReportId).toBe(dailyReportId);
-    expect(result.userId).toBe(userId);
-    expect(result.reportDate).toBe(reportDate);
-    expect(result.submissionTimestamp).toBe(submissionTimestamp);
+    const result: SubmitDailyReportOutput = await submitDailyReport(input);
+
+    expect(result.dailyReportId).toBe('DR-2024-01-15-001');
+    expect(result.userId).toBe('reporter-001');
+    expect(result.reportDate).toBe('2024-01-15');
+    expect(result.submissionTimestamp).toBe('2024-01-15T16:30:00Z');
     expect(result.submissionStatus).toBe('within_deadline');
     expect(result.notificationTriggered).toBe(true);
     expect(result.completionMessage).toBeDefined();
 
-    // 追加検証：各関数の呼び出しを確認
-    expect(mockedAuthenticateAndAuthorizeReporterAccess).toHaveBeenCalledTimes(1);
-    expect(mockedAuthenticateAndAuthorizeReporterAccess).toHaveBeenCalledWith(
-      expect.objectContaining({ userId })
+    expect(userAuthModule.authenticateAndAuthorizeReporterAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'reporter-001' })
     );
+    expect(userAuthModule.authenticateAndAuthorizeReporterAccess).toHaveBeenCalledTimes(1);
 
-    expect(mockedValidateDailyReportContent).toHaveBeenCalledTimes(1);
-    expect(mockedValidateDailyReportContent).toHaveBeenCalledWith(
-      expect.objectContaining({ businessContent })
+    expect(validationModule.validateDailyReportContent).toHaveBeenCalledWith(
+      expect.objectContaining({ businessContent: '本日は顧客A社との打ち合わせを実施し、Q1プロジェクト進捗を共有した。' })
     );
+    expect(validationModule.validateDailyReportContent).toHaveBeenCalledTimes(1);
 
-    expect(mockedJudgeBusinessDayAndDeadline).toHaveBeenCalledTimes(1);
-    expect(mockedJudgeBusinessDayAndDeadline).toHaveBeenCalledWith(
-      expect.objectContaining({ submissionTimestamp })
+    expect(deadlineModule.judgeBusinessDayAndDeadline).toHaveBeenCalledWith(
+      expect.objectContaining({ submissionTimestamp: '2024-01-15T16:30:00Z' })
     );
+    expect(deadlineModule.judgeBusinessDayAndDeadline).toHaveBeenCalledTimes(1);
 
-    expect(mockedCheckDailyReportExistsForDate).toHaveBeenCalledTimes(1);
-    expect(mockedCheckDailyReportExistsForDate).toHaveBeenCalledWith(
+    expect(persistenceModule.checkDailyReportExistsForDate).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'reporter-001', reportDate: '2024-01-15' })
+    );
+    expect(persistenceModule.checkDailyReportExistsForDate).toHaveBeenCalledTimes(1);
+
+    expect(persistenceModule.saveDailyReport).toHaveBeenCalledTimes(1);
+    expect(persistenceModule.saveDailyReport).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId,
-        reportDate,
+        userId: 'reporter-001',
+        reportDate: '2024-01-15',
+        businessContent: '本日は顧客A社との打ち合わせを実施し、Q1プロジェクト進捗を共有した。',
       })
     );
 
-    expect(mockedSaveDailyReport).toHaveBeenCalledTimes(1);
-    expect(mockedSaveDailyReport).toHaveBeenCalledWith(
+    expect(persistenceModule.updateDailyReportSubmissionTimestamp).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId,
-        reportDate,
-        businessContent,
+        dailyReportId: 'DR-2024-01-15-001',
+        submissionTimestamp: '2024-01-15T16:30:00Z',
       })
     );
+    expect(persistenceModule.updateDailyReportSubmissionTimestamp).toHaveBeenCalledTimes(1);
 
-    expect(mockedUpdateDailyReportSubmissionTimestamp).toHaveBeenCalledTimes(1);
-    expect(mockedUpdateDailyReportSubmissionTimestamp).toHaveBeenCalledWith(
-      expect.objectContaining({
-        dailyReportId,
-        submissionTimestamp,
-      })
+    expect(notificationModule.sendDailyReportSubmissionNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ dailyReportId: 'DR-2024-01-15-001' })
     );
-
-    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
-    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ dailyReportId })
-    );
+    expect(notificationModule.sendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
   });
 });

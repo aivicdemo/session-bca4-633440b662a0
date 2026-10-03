@@ -6,7 +6,7 @@ import {
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-179: 営業日かつ期限内で isAcceptable が true、processingPolicy が accept になる', () => {
-  it('営業日かつ期限内でisAcceptableがtrue、processingPolicyがacceptになる', async () => {
+  it('営業日かつ期限内の場合に受付可能と判定される', async () => {
     const input: JudgeBusinessDayAndDeadlineInput = {
       targetDate: '2024-01-15',
       teamLeaderId: 'leader-001',
@@ -14,7 +14,7 @@ describe('SCEN-179: 営業日かつ期限内で isAcceptable が true、processi
       submissionAttemptTimestamp: '2024-01-15T16:30:00Z',
     };
 
-    const result = await judgeBusinessDayAndDeadline(input);
+    const result: JudgeBusinessDayAndDeadlineOutput = await judgeBusinessDayAndDeadline(input);
 
     expect(result.isAcceptable).toBe(true);
     expect(result.isBusinessDay).toBe(true);

@@ -1,72 +1,32 @@
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  isReporterActiveAndValid: jest.fn(),
-  recordReporterMasterChangeHistory: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  deactivateReporterInMaster: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  archivePastDailyReports: jest.fn(),
-}));
-
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  isReporterActiveAndValid: jest.fn(),
-  recordReporterMasterChangeHistory: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  deactivateReporterInMaster: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  archivePastDailyReports: jest.fn(),
-}));
-
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   deactivateReporter,
+  DeactivateReporterInput,
   MasterUpdateFailureError,
 } from '../../src/logic/reporter-master-management';
+import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+
+jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/user-master-persistence');
 
 describe('SCEN-388: 報告者IDが空または不正な形式の場合、エラーで拒否される', () => {
-  const teamLeaderId = 'TL001';
-  const deactivationReason = '異動';
-  const executionTimestamp = new Date('2024-01-15T10:00:00Z');
-
-  it('reporterId が空文字列の場合、MasterUpdateFailureError をスロー', async () => {
-    await expect(
-      deactivateReporter({
-        reporterId: '',
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      })
-    ).rejects.toThrow(MasterUpdateFailureError);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('エラー名は MasterUpdateFailureError、エラー文言は「報告者マスタの更新に失敗しました。」', async () => {
-    try {
-      await deactivateReporter({
-        reporterId: '',
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      });
-      fail('Should have thrown MasterUpdateFailureError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(MasterUpdateFailureError);
-      expect((error as Error).message).toBe('報告者マスタの更新に失敗しました。');
-    }
-  });
+  it('should throw MasterUpdateFailureError when reporterId is empty string', async () => {
+    const input: DeactivateReporterInput = {
+      reporterId: '',
+      teamLeaderId: 'valid-leader-id',
+      deactivationReason: '異動',
+      executionTimestamp: new Date(),
+    };
 
-  it('出力の success は false（エラーであるため）', async () => {
-    try {
-      await deactivateReporter({
-        reporterId: '',
-        teamLeaderId,
-        deactivationReason,
-        executionTimestamp,
-      });
-      fail('Should have thrown MasterUpdateFailureError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(MasterUpdateFailureError);
-    }
+    await expect(deactivateReporter(input)).rejects.toThrow(MasterUpdateFailureError);
+    await expect(deactivateReporter(input)).rejects.toThrow('報告者マスタの更新に失敗しました。');
+
+    expect(dailyReportPersistence.archivePastDailyReports).not.toHaveBeenCalled();
+    expect(userMasterPersistence.deactivateReporterInMaster).not.toHaveBeenCalled();
   });
 });

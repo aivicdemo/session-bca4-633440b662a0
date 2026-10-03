@@ -1,10 +1,8 @@
-import { describe, it, expect } from '@jest/globals';
-import { sendNonSubmissionPromptNotification } from '../../src/logic/email-notification-management';
-import type { SendNonSubmissionPromptNotificationInput } from '../../src/logic/email-notification-management';
+import { sendNonSubmissionPromptNotification, InvalidPromptTargetListError } from '../../src/logic/email-notification-management';
 
 describe('SCEN-532: 催促対象者リストが空またはnullのとき、InvalidPromptTargetListErrorが発生する', () => {
-  it('nonSubmittedReporters に空配列 [] を渡したときエラーが発生すること', async () => {
-    const input: SendNonSubmissionPromptNotificationInput = {
+  it('should throw InvalidPromptTargetListError when nonSubmittedReporters is empty', async () => {
+    const input = {
       nonSubmittedReporters: [],
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'leader@example.com',
@@ -13,6 +11,7 @@ describe('SCEN-532: 催促対象者リストが空またはnullのとき、Inval
       targetDate: '2024-01-15',
     };
 
+    await expect(sendNonSubmissionPromptNotification(input)).rejects.toThrow(InvalidPromptTargetListError);
     await expect(sendNonSubmissionPromptNotification(input)).rejects.toThrow('催促対象者リストが空です。');
   });
 });

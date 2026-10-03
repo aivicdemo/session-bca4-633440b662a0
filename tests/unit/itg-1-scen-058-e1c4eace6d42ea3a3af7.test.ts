@@ -1,106 +1,39 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-
-jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
-}));
-jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
-}));
-jest.mock('../../src/logic/non-submission-prompt-decision', () => ({
-  judgePromptNecessityAndMethod: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
-}));
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
-}));
-
-import { runTx5Imp1Agent, type Tx5Imp1AiClient } from '../../src/agents/tx-5-imp-1/orchestrator';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
-import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-prompt-decision';
-import { sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
-import { retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
-
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
-const mockedJudgePromptNecessityAndMethod = judgePromptNecessityAndMethod as jest.MockedFunction<any>;
-const mockedSendLeaderNonSubmissionPromptNotification = sendLeaderNonSubmissionPromptNotification as jest.MockedFunction<any>;
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
+import { runTx5Imp1Agent, Tx5Imp1AiClient } from '../../src/agents/tx-5-imp-1/orchestrator';
+import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
+import * as reporterMasterManagement from '../../src/logic/reporter-master-management';
+import * as dailyReportNonSubmissionDetection from '../../src/logic/daily-report-non-submission-detection';
+import * as nonSubmissionPromptDecision from '../../src/logic/non-submission-prompt-decision';
+import * as dailyReportReminderNotification from '../../src/logic/daily-report-reminder-notification';
+import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列が記録されて正常完了する', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
-
-    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
-      shouldExecute: true,
-      isBusinessDay: true,
-      isWithinExecutionWindow: true,
-      nextScheduledExecutionTime: null,
-      executionReason: '営業日の実行時刻内',
-    });
-
-    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      reporters: [
-        { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
-        { reporterId: 'R002', userId: 'U002', reporterName: '報告者2', emailAddress: 'r002@example.com', department: '営業部', status: 'active' },
-        { reporterId: 'R003', userId: 'U003', reporterName: '報告者3', emailAddress: 'r003@example.com', department: '開発部', status: 'active' },
-        { reporterId: 'R004', userId: 'U004', reporterName: '報告者4', emailAddress: 'r004@example.com', department: '開発部', status: 'active' },
-        { reporterId: 'R005', userId: 'U005', reporterName: '報告者5', emailAddress: 'r005@example.com', department: '総務部', status: 'active' },
-      ],
-      totalCount: 5,
-      message: '対象報告者を取得しました。',
-    });
-
-    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
-      nonSubmittedReporters: [],
-      detectionLog: {
-        detectionLogId: 'detection-log-20240115-001',
-        targetDate: '2024-01-15',
-        detectionDateTime: '2024-01-15T18:00:00Z',
-        totalReportersCount: 5,
-        nonSubmittedCount: 0,
-        submittedCount: 5,
-      },
-      detectionTimestamp: '2024-01-15T18:00:00Z',
-    });
-
-    (mockedJudgePromptNecessityAndMethod as jest.Mock<any>).mockResolvedValue([]);
-
-    (mockedSendLeaderNonSubmissionPromptNotification as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      notificationId: 'notif-20240115-001',
-      sentAt: new Date('2024-01-15T18:00:00Z'),
-      deliveryMethod: 'email',
-      nonSubmittedReporterCount: 0,
-      errorDetails: null,
-    });
-
-    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
-      detectionLogs: [
-        {
-          detectionLogId: 'detection-log-20240115-001',
-          userId: '',
-          targetDate: '2024-01-15',
-          detectionDateTime: '2024-01-15T18:00:00Z',
-          reminderSent: false,
-          reminderSentDateTime: null,
-          submissionStatus: 'unknown',
-        },
-      ],
-      totalCount: 1,
-      retrievedAt: '2024-01-15T18:00:00Z',
-    });
+    jest.clearAllMocks();
   });
 
-  it('未提出者と遅延者がともに空配列で、検知ログが記録され、リーダーに通知が送信される', async () => {
+  it('should complete successfully with empty delayed reporters', async () => {
+    const mockAiClient: Tx5Imp1AiClient = {};
+
+    jest.spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming' as any).mockResolvedValue(true);
+    jest.spyOn(reporterMasterManagement, 'getActiveReportersForSubmissionCheck' as any).mockResolvedValue([
+      { userId: 'U001', userName: 'Reporter A', reporterName: 'Report A' },
+      { userId: 'U002', userName: 'Reporter B', reporterName: 'Report B' },
+      { userId: 'U003', userName: 'Reporter C', reporterName: 'Report C' },
+      { userId: 'U004', userName: 'Reporter D', reporterName: 'Report D' },
+      { userId: 'U005', userName: 'Reporter E', reporterName: 'Report E' },
+    ]);
+    jest.spyOn(dailyReportNonSubmissionDetection, 'detectNonSubmittedReportersAtDeadline' as any).mockResolvedValue({
+      nonSubmitted: [],
+      delayed: [],
+    });
+    jest.spyOn(nonSubmissionPromptDecision, 'judgePromptNecessityAndMethod' as any).mockResolvedValue([]);
+    jest.spyOn(dailyReportReminderNotification, 'sendLeaderNonSubmissionPromptNotification' as any).mockResolvedValue({
+      status: 'sent',
+    });
+    jest.spyOn(dailyReportPersistence, 'retrieveNonSubmissionDetectionLogsByDate' as any).mockResolvedValue({
+      detectionLogId: 'detection-log-20240115-001',
+    });
+
     const input = {
       targetDate: '2024-01-15',
       executionContext: {
@@ -109,7 +42,6 @@ describe('SCEN-058: 遅延提出者が存在しない場合、出力に空配列
       },
     };
 
-    const mockAiClient: Tx5Imp1AiClient = {};
     const result = await runTx5Imp1Agent(input, mockAiClient);
 
     expect(result.executionStatus).toBe('success');

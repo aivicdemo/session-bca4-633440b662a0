@@ -1,6 +1,7 @@
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
 
 import {
   detectNonSubmittedReportersAtDeadline,
@@ -25,12 +26,12 @@ describe('SCEN-255: 業務ルール br-tx_1-005 の制約 7 が設計どおり�
 
     (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(false);
 
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input as any)
-    ).rejects.toThrow(DeadlineNotReachedError);
-
-    await expect(
-      detectNonSubmittedReportersAtDeadline(input as any)
-    ).rejects.toThrow('日報提出期限に達していないため、未提出者検知を実行できません。');
+    try {
+      await detectNonSubmittedReportersAtDeadline(input);
+      fail('DeadlineNotReachedError should be thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DeadlineNotReachedError);
+      expect((error as Error).message).toBe('日報提出期限に達していないため、未提出者検知を実行できません。');
+    }
   });
 });

@@ -11,35 +11,42 @@ describe('SCEN-092: 報告者IDが空または不正な形式のときUserNotReg
       isAuthenticated: true,
     };
 
-    await expect(
-      authenticateAndAuthorizeReporterAccess(input)
-    ).rejects.toThrow(UserNotRegisteredAsReporterException);
-
     try {
       await authenticateAndAuthorizeReporterAccess(input);
+      throw new Error('Expected UserNotRegisteredAsReporterException to be thrown');
     } catch (error) {
-      if (error instanceof UserNotRegisteredAsReporterException) {
-        expect(error.message).toBe('このユーザーは日報提出対象として登録されていません。');
-      }
+      expect(error).toBeInstanceOf(UserNotRegisteredAsReporterException);
+      expect((error as UserNotRegisteredAsReporterException).message).toBe('このユーザーは日報提出対象として登録されていません。');
     }
   });
 
-  it('should throw UserNotRegisteredAsReporterException when userId is invalid format (special characters)', async () => {
+  it('should throw UserNotRegisteredAsReporterException when userId is invalid format (special characters only)', async () => {
     const input = {
       userId: '!@#$%',
       isAuthenticated: true,
     };
 
-    await expect(
-      authenticateAndAuthorizeReporterAccess(input)
-    ).rejects.toThrow(UserNotRegisteredAsReporterException);
+    try {
+      await authenticateAndAuthorizeReporterAccess(input);
+      throw new Error('Expected UserNotRegisteredAsReporterException to be thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(UserNotRegisteredAsReporterException);
+      expect((error as UserNotRegisteredAsReporterException).message).toBe('このユーザーは日報提出対象として登録されていません。');
+    }
+  });
+
+  it('should throw UserNotRegisteredAsReporterException when userId is invalid format (numbers and symbols)', async () => {
+    const input = {
+      userId: '12345!@#',
+      isAuthenticated: true,
+    };
 
     try {
       await authenticateAndAuthorizeReporterAccess(input);
+      throw new Error('Expected UserNotRegisteredAsReporterException to be thrown');
     } catch (error) {
-      if (error instanceof UserNotRegisteredAsReporterException) {
-        expect(error.message).toBe('このユーザーは日報提出対象として登録されていません。');
-      }
+      expect(error).toBeInstanceOf(UserNotRegisteredAsReporterException);
+      expect((error as UserNotRegisteredAsReporterException).message).toBe('このユーザーは日報提出対象として登録されていません。');
     }
   });
 });

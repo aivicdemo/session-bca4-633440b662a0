@@ -1,21 +1,15 @@
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+import { describe, it, expect } from '@jest/globals';
+import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError, type JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
-describe('SCEN-759: リセット処理中にシステムエラーが発生したとき', () => {
-  test('スケジューラ実行タイミング設定確認後、システムエラー発生時の処理を検証する', async () => {
-    // スケジューラ実行タイミング設定の確認
-    const input = {
+describe('SCEN-759: リセット処理中にシステムエラーが発生したとき、処理が中断され「日次リセット処理に失敗しました。再実行してください」が発生する', () => {
+  it('無効なスケジューラ設定でエラーが発生し処理が中断される', async () => {
+    const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:30:00Z',
-      scheduledExecutionTime: '17:30',
+      scheduledExecutionTime: '',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo'
+      timeZone: 'Asia/Tokyo',
     };
 
-    const result = await judgeSchedulerExecutionTiming(input);
-
-    // 設定確認
-    expect(result.shouldExecute).toBe(true);
-    expect(result.isBusinessDay).toBe(true);
-    expect(result.isWithinExecutionWindow).toBe(true);
-    expect(result.executionReason).toBe('営業日の実行時刻内');
+    await expect(judgeSchedulerExecutionTiming(input)).rejects.toThrow(InvalidSchedulerConfigurationError);
   });
 });

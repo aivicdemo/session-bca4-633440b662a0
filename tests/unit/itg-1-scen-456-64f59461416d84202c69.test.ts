@@ -1,11 +1,20 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>(
+    '../../src/logic/input-validation-formatting'
+  ),
+  validateUserInformationRequired: jest.fn(),
+  validateEmailAddress: jest.fn(),
+  detectDuplicateEmailAddress: jest.fn(),
+}));
+
 import {
   registerReporterToMaster,
+  type RegisterReporterToMasterInput,
+  type RegisterReporterToMasterOutput,
   ReporterRegistrationFailedError,
-  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/input-validation-formatting');
 
 import {
   validateUserInformationRequired,
@@ -13,26 +22,17 @@ import {
   detectDuplicateEmailAddress,
 } from '../../src/logic/input-validation-formatting';
 
-interface RegisterReporterToMasterInput {
-  reporterName: string;
-  emailAddress: string;
-  department: string;
-  leaderUserId: string;
-  registrationTimestamp: Date;
-}
-
-interface RegisterReporterToMasterOutput {
-  success: boolean;
-  reporterId: string | null;
-  message: string;
-}
+const mockedValidateUserInformationRequired = validateUserInformationRequired as jest.MockedFunction<any>;
+const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
+const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
 
 describe('SCEN-456: データベース障害により登録処理が失敗した場合、登録失敗を返す', () => {
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
-  it('should fail with database error when persistence operation throws', async () => {
+  it('persistReporterMasterChangeHistory がデータベース障害を投げた場合、登録失敗を返す', async () => {
     const input: RegisterReporterToMasterInput = {
       reporterName: '新規報告者',
       emailAddress: 'new.reporter@example.com',
@@ -41,12 +41,25 @@ describe('SCEN-456: データベース障害により登録処理が失敗した
       registrationTimestamp: new Date(),
     };
 
-    (validateUserInformationRequired as any).mockReturnValue({ isValid: true } as any);
-    (validateEmailAddress as any).mockReturnValue({ isValid: true } as any);
-    (detectDuplicateEmailAddress as any).mockReturnValue(false);
-    (persistReporterMasterChangeHistory as any).mockRejectedValue(
-      new ReporterRegistrationFailedError('Database error') as any
-    );
+    mockedValidateUserInformationRequired.mockResolvedValue({
+      isValid: true,
+      validatedUserName: '新規報告者',
+      validatedEmailAddress: 'new.reporter@example.com',
+      validatedDepartment: '営業部',
+      errorCode: null,
+    });
+
+    mockedValidateEmailAddress.mockResolvedValue({
+      isValid: true,
+      validatedEmailAddress: 'new.reporter@example.com',
+      errorCode: null,
+    });
+
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: 'new.reporter@example.com',
+      errorCode: null,
+    });
 
     const result: RegisterReporterToMasterOutput = await registerReporterToMaster(input);
 

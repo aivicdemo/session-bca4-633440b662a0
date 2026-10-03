@@ -1,21 +1,40 @@
-import { judgePromptNecessityAndMethod, JudgePromptNecessityAndMethodInput, JudgePromptNecessityAndMethodOutput } from '../../src/logic/non-submission-prompt-decision';
+import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-prompt-decision';
+import * as businessDayDeadline from '../../src/logic/business-day-deadline-judgment';
+
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+  isWithinSubmissionDeadline: jest.fn()
+}));
+
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn().mockResolvedValue({ detectionLogs: [] })
+}));
 
 describe('SCEN-274: 期限超過30分未満の場合、低優先度で催促が必要と判定される', () => {
-  it('should return low priority and email method when 0 < overdue < 30 minutes', async () => {
-    // Arrange
-    const input: JudgePromptNecessityAndMethodInput = {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return low priority with email only for 20 minutes overdue', async () => {
+    const mockIsWithinSubmissionDeadline = businessDayDeadline.isWithinSubmissionDeadline as jest.Mock;
+    mockIsWithinSubmissionDeadline.mockResolvedValue({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2025-01-15T17:00:00Z',
+      minutesUntilDeadline: -20
+    });
+
+    const input = {
       userId: 'user-001',
       targetDate: '2025-01-15',
       detectionDateTime: '2025-01-15T17:20:00Z',
       submissionDeadlineTime: '17:00',
       previousReminderSentCount: 0,
-      previousReminderSentDateTime: null,
+      previousReminderSentDateTime: null
     };
 
-    // Act
-    const result: JudgePromptNecessityAndMethodOutput = await judgePromptNecessityAndMethod(input);
+    const result = await judgePromptNecessityAndMethod(input);
 
-    // Assert
     expect(result.isPromptNecessary).toBe(true);
     expect(result.promptPriority).toBe('low');
     expect(result.promptMethod).toBe('email');

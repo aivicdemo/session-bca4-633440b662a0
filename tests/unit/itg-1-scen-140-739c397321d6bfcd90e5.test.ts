@@ -1,12 +1,8 @@
-import {
-  validateEmailAddress,
-  ValidateEmailAddressInput,
-  ValidateEmailAddressOutput,
-} from '../../src/logic/input-validation-formatting';
+import { validateEmailAddress } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-140: ドメイン部にハイフンが含まれた正当な形式のメールアドレスを入力した場合、有効と判定される', () => {
-  it('should validate email with hyphen in domain as valid', async () => {
-    const input: ValidateEmailAddressInput = {
+  test('should validate email with hyphen in domain as valid', async () => {
+    const input = {
       emailAddress: 'user-name@example-domain.co.jp',
     };
 

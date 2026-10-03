@@ -1,9 +1,28 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   registerReporter,
   RegisterReporterInput,
   RegisterReporterOutput,
 } from '../../src/logic/reporter-master-management';
+
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
+  validateReporterNameFormat: jest.fn(),
+  validateEmailAddress: jest.fn(),
+  detectDuplicateEmailAddress: jest.fn(),
+}));
+
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
+  validateUserAccountActiveStatus: jest.fn(),
+}));
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
+  registerReporterToMaster: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
+  retrieveReporterByUserId: jest.fn(),
+}));
+
 import {
   validateReporterNameFormat,
   validateEmailAddress,
@@ -16,23 +35,7 @@ import {
   retrieveReporterByUserId,
 } from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/user-master-persistence');
-
 describe('SCEN-356: 報告者ID重複エラー', () => {
-  const mockValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-  const mockValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-  const mockDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-  const mockValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-  const mockRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-  const mockPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
-  const mockRetrieveReporterByUserId = retrieveReporterByUserId as jest.MockedFunction<any>;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('同じ報告者IDが既に別のメールアドレスで登録されており、新規登録操作の場合、br-tx_7-004の制約4により「この報告者IDは既に登録されています」エラーメッセージが返される', async () => {
     const executionTimestamp = new Date('2026-09-25T10:00:00Z');
     const input: RegisterReporterInput = {
@@ -43,31 +46,31 @@ describe('SCEN-356: 報告者ID重複エラー', () => {
       executionTimestamp,
     };
 
-    (mockValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
+    (validateReporterNameFormat as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedReporterName: '重複ID報告者',
       errorCode: null,
     });
 
-    (mockValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (validateEmailAddress as jest.Mock).mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'duplicate-id@example.com',
       errorCode: null,
     });
 
-    (mockDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    (detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'duplicate-id@example.com',
       errorCode: null,
     });
 
-    (mockValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
+    (validateUserAccountActiveStatus as jest.Mock).mockResolvedValue({
       isActive: true,
       userId: 'USER-TL001',
       inactiveReason: null,
     });
 
-    (mockRetrieveReporterByUserId as jest.Mock<any>).mockResolvedValue({
+    (retrieveReporterByUserId as jest.Mock).mockResolvedValue({
       success: true,
       reporter: {
         reporterId: 'USER-NEW001',
@@ -89,7 +92,7 @@ describe('SCEN-356: 報告者ID重複エラー', () => {
     expect(result.message).toBe('この報告者IDは既に登録されています');
     expect(result.changeHistoryId).toBeNull();
 
-    expect(mockRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
+    expect(registerReporterToMaster).not.toHaveBeenCalled();
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

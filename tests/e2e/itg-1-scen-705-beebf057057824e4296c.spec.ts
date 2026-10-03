@@ -10,37 +10,21 @@ test('SCEN-705: 報告者の氏名が空のとき、保存をエラーで中断�
   await page.click('[data-testid="login-button"]');
   await page.waitForNavigation();
 
-  // 日報確認・管理画面にアクセス
-  await page.goto('/panels/scr-1790147095974.html');
-
   // 管理メニューから「報告者マスタ管理」を開く
-  const reporterMasterMenu = page.locator('a, button').filter({ hasText: /報告者マスタ/i }).first();
-  if (await reporterMasterMenu.isVisible().catch(() => false)) {
-    await reporterMasterMenu.click();
-    await page.waitForLoadState('networkidle');
-  }
+  // 注：仕様で「報告者マスタ管理」が参照されていますが、提供されたパネルには該当するURLが見つかりません
+  await page.goto('/panels/reporter-master.html');
 
   // 新規報告者追加フォームを表示する
-  const addButton = page.locator('button').filter({ hasText: /新規追加/ }).first();
-  if (await addButton.isVisible().catch(() => false)) {
-    await addButton.click();
-    await page.waitForLoadState('networkidle');
-  }
+  const addButton = page.locator('button').filter({ hasText: /新規追加/ });
+  await addButton.click();
 
   // 氏名フィールドを空のまま残し、その他の必須項目（メールアドレスなど）は入力する
-  const nameInput = page.locator('input[placeholder*="氏名"], input[id*="name"], input[type="text"]').first();
-  const emailInput = page.locator('input[placeholder*="メール"], input[type="email"], input[id*="email"]').first();
-
-  if (await emailInput.isVisible().catch(() => false)) {
-    await emailInput.fill('yamada@example.com');
-  }
+  await page.fill('input[name="email"]', 'yamada@example.com');
+  await page.fill('input[name="department"]', '営業部');
 
   // 保存ボタンをクリック
-  const saveButton = page.locator('button').filter({ hasText: /保存/ }).first();
-  if (await saveButton.isVisible().catch(() => false)) {
-    await saveButton.click();
-    await page.waitForTimeout(1000);
-  }
+  const saveButton = page.locator('button').filter({ hasText: /保存/ });
+  await saveButton.click();
 
   // 画面上に「氏名は必須項目です」というエラーメッセージが表示される
   const errorMessage = page.locator('text=/氏名は必須項目です/');
@@ -50,5 +34,7 @@ test('SCEN-705: 報告者の氏名が空のとき、保存をエラーで中断�
   const formContainer = page.locator('form, [data-testid="form"], .form-card');
   await expect(formContainer.first()).toBeVisible();
 
-  // データベースには新しいレコードが作成されていないことを確認（画面の状態で検証）
+  // データベースには新しいレコードが作成されていないことを確認（フォーム入力状態で検証）
+  const nameInput = page.locator('input[name="name"]');
+  await expect(nameInput).toHaveValue('');
 });

@@ -1,8 +1,20 @@
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   retrieveEmailSendingHistoryByDateRange: jest.fn(),
 }));
-jest.mock('../../src/logic/daily-report-management-view', () => ({
-  retrieveEmailSendingHistoryDetails: jest.fn((input: any) => {
+
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { retrieveEmailSendingHistoryDetails, type RetrieveEmailSendingHistoryDetailsInput } from '../../src/logic/daily-report-management-view';
+import * as userMasterPersistence from '../../src/logic/user-master-persistence';
+
+const mockRetrieveEmailSendingHistoryByDateRange = userMasterPersistence.retrieveEmailSendingHistoryByDateRange as jest.MockedFunction<any>;
+
+describe('SCEN-599: 送信先メールアドレスに部分一致検索を適用した場合、条件に部分的に合致するメール履歴が抽出される', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('recipientEmail=@example.com の部分一致検索により、@example.com を含むメール履歴3件が返され、@other-domain.org は除外される', async () => {
     const history1 = {
       historyId: 'hist-1',
       recipientId: 'user-a',
@@ -48,72 +60,49 @@ jest.mock('../../src/logic/daily-report-management-view', () => ({
       retryFlag: false,
     };
 
-    return {
-      emailHistoryList: [history1, history2, history4],
-      totalCount: 3,
-      pageNumber: input.pageNumber,
-      pageSize: input.pageSize,
-      hasNextPage: false,
-    };
-  }),
-}));
+    mockRetrieveEmailSendingHistoryByDateRange.mockResolvedValue([history1, history2, history4]);
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { retrieveEmailSendingHistoryDetails } from '../../src/logic/daily-report-management-view';
-
-const mockedRetrieveEmailSendingHistoryDetails = retrieveEmailSendingHistoryDetails as jest.MockedFunction<any>;
-
-describe('SCEN-599: 送信先メールアドレスに部分一致検索を適用した場合、条件に部分的に合致するメール履歴が抽出される', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('recipientEmail=@example.com の部分一致検索により、@example.com を含むメール履歴3件が返され、@other-domain.org は除外される', () => {
-    const leaderId = 'leader-001';
-    const startDate = '2024-01-01';
-    const endDate = '2024-01-31';
-    const recipientEmail = '@example.com';
-    const pageNumber = 1;
-    const pageSize = 20;
-
-    const result = mockedRetrieveEmailSendingHistoryDetails({
-      leaderId,
-      startDate,
-      endDate,
+    const input: RetrieveEmailSendingHistoryDetailsInput = {
+      leaderId: 'leader-001',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
       emailType: null,
       sendingStatus: null,
-      recipientEmail,
-      pageNumber,
-      pageSize,
-    });
+      recipientEmail: '@example.com',
+      pageNumber: 1,
+      pageSize: 20,
+    };
 
-    expect(result.emailHistoryList).toHaveLength(3);
+    const result = await retrieveEmailSendingHistoryDetails(input);
+
+    expect(result.emailHistoryList).toBeDefined();
+    expect(result.emailHistoryList!.length).toBe(3);
     expect(result.totalCount).toBe(3);
     expect(result.pageNumber).toBe(1);
     expect(result.pageSize).toBe(20);
     expect(result.hasNextPage).toBe(false);
 
-    const emailAddresses = result.emailHistoryList.map((h: any) => h.recipientEmail);
+    const emailAddresses = result.emailHistoryList!.map((h) => h.recipientEmail);
     expect(emailAddresses).toContain('user-a@example.com');
     expect(emailAddresses).toContain('user-b@example.co.jp');
     expect(emailAddresses).toContain('report-user@example.com');
     expect(emailAddresses).not.toContain('admin@other-domain.org');
 
-    expect(result.emailHistoryList[0]).toEqual(
+    expect(result.emailHistoryList![0]).toEqual(
       expect.objectContaining({
         recipientEmail: 'user-a@example.com',
         sendingStatus: 'success',
         errorMessage: null,
       })
     );
-    expect(result.emailHistoryList[1]).toEqual(
+    expect(result.emailHistoryList![1]).toEqual(
       expect.objectContaining({
         recipientEmail: 'user-b@example.co.jp',
         sendingStatus: 'failed',
         errorMessage: 'SMTP timeout',
       })
     );
-    expect(result.emailHistoryList[2]).toEqual(
+    expect(result.emailHistoryList![2]).toEqual(
       expect.objectContaining({
         recipientEmail: 'report-user@example.com',
         sendingStatus: 'pending',

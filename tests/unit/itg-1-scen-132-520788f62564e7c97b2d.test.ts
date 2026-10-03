@@ -2,9 +2,9 @@ import { describe, it, expect } from '@jest/globals';
 import { validateEmailAddress, ValidateEmailAddressInput, ValidateEmailAddressOutput } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-132: @の前の部分に不正な文字が含まれている場合、INVALID_EMAIL_FORMAT エラーが返される', () => {
-  it('@の前に不正な文字を含むメールアドレス（user@#example.com）で INVALID_EMAIL_FORMAT エラーが返される', async () => {
+  it('@の前に不正な文字（#）を含むメールアドレス（user#@example.com）で INVALID_EMAIL_FORMAT エラーが返される', async () => {
     const input: ValidateEmailAddressInput = {
-      emailAddress: 'user@#example.com'
+      emailAddress: 'user#@example.com'
     };
 
     const output: ValidateEmailAddressOutput = await validateEmailAddress(input);
@@ -26,7 +26,7 @@ describe('SCEN-132: @の前の部分に不正な文字が含まれている場�
     expect(output.errorCode).toBe('INVALID_EMAIL_FORMAT');
   });
 
-  it('@の前に特殊文字を含むメールアドレス（user!@example.com）で INVALID_EMAIL_FORMAT エラーが返される', async () => {
+  it('@の前に特殊文字（!）を含むメールアドレス（user!@example.com）で INVALID_EMAIL_FORMAT エラーが返される', async () => {
     const input: ValidateEmailAddressInput = {
       emailAddress: 'user!@example.com'
     };

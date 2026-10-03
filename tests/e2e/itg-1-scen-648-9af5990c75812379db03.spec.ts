@@ -1,76 +1,65 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-test.describe('SCEN-648: 管理画面にアクセスしたとき、提出済み・未提出者一覧、検知ステータス、催促状況を含むダッシュボードデータが取得され表示される', () => {
-  let page: Page;
+test('SCEN-648: 管理画面にアクセスしたとき、提出済み・未提出者一覧、検知ステータス、催促状況を含むダッシュボードデータが取得され表示される', async ({ page }) => {
+  // テストユーザー（管理者）でブラウザにログインする
+  await page.goto('/login.html');
+  await page.fill('input[type="text"]', 'admin-user');
+  await page.fill('input[type="password"]', 'password');
+  await page.click('button:has-text("ログイン")');
+  await page.waitForNavigation();
 
-  test.beforeEach(async ({ browser }) => {
-    page = await browser.newPage();
-    const baseUrl = process.env.TEST_BASE_URL || 'http://localhost:3000';
-    await page.goto(`${baseUrl}/panels/scr-1790147087109.html`);
-  });
+  // 日報確認・管理画面へ遷移する
+  await page.goto('/panels/scr-1790147095974.html');
 
-  test.afterEach(async () => {
-    await page.close();
-  });
+  // 画面読み込み完了を待つ
+  await page.waitForLoadState('networkidle');
 
-  test('should display dashboard with submission status, detection status, and reminder status', async () => {
-    const adminEmail = 'admin@company.com';
-    const adminPassword = 'password123';
+  // ダッシュボード領域に以下のデータ要素が表示されていることを確認する：
+  // (1)提出済み者一覧
+  const submittedSection = page.locator('text=提出済み日報');
+  await expect(submittedSection).toBeVisible();
 
-    const emailInput = page.locator('input[type="email"]');
-    const passwordInput = page.locator('input[type="password"]');
-    const loginButton = page.locator('button:has-text("ログイン")');
+  // (2)未提出者一覧
+  const nonSubmittedLabel = page.locator('text=未提出者');
+  await expect(nonSubmittedLabel).toBeVisible();
 
-    await emailInput.fill(adminEmail);
-    await passwordInput.fill(adminPassword);
-    await loginButton.click();
+  // (3)検知ステータス表示
+  const detectionStatus = page.locator('#rm-detect-status');
+  await expect(detectionStatus).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+  // (4)催促状況表示
+  const reminderStatusLabel = page.locator('text=メール送信履歴');
+  await expect(reminderStatusLabel).toBeVisible();
 
-    const managementScreenLink = page.locator('a, button').filter({ hasText: /日報確認|管理画面/ }).first();
-    await managementScreenLink.click();
+  // 提出済み者一覧に本日提出したユーザーが表示されていることを確認する
+  const submittedTable = page.locator('#rm-r-tbody');
+  const isSubmittedTableVisible = await submittedTable.count() > 0;
+  if (isSubmittedTableVisible) {
+    const submittedRow = submittedTable.locator('tr').first();
+    const submittedCells = submittedRow.locator('td');
+    const nameText = await submittedCells.nth(0).innerText();
+    expect(nameText).toBeTruthy();
+    const timeText = await submittedCells.nth(3).innerText();
+    expect(timeText).toMatch(/\d{1,2}:\d{2}/);
+  }
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+  // 未提出者一覧に本日未提出のユーザーが表示されていることを確認する
+  const nonSubmittedTable = page.locator('#rm-missing-tbody');
+  const nonSubmittedRows = nonSubmittedTable.locator('tr');
+  const nonSubmittedCount = await nonSubmittedRows.count();
+  if (nonSubmittedCount > 0) {
+    const nonSubmittedName = await nonSubmittedRows.first().locator('td').first().innerText();
+    expect(nonSubmittedName).toBeTruthy();
+  }
 
-    // 期待結果1: 提出済み者一覧が表示される
-    const submittedTab = page.locator('button:has-text("提出済み日報")');
-    await expect(submittedTab).toBeVisible();
+  // 検知ステータス表示に「定時自動検知」または同等のステータス値が表示されていることを確認する
+  const statusContent = await detectionStatus.innerText();
+  expect(statusContent).toMatch(/定時自動検知|実行済み|完了/);
 
-    const submittedPanel = page.locator('#rm-r-tbody, [id*="submitted"]').first();
-    await expect(submittedPanel).toBeVisible();
-
-    // 期待結果2: 未提出者一覧が表示される
-    const unsubmittedTab = page.locator('button:has-text("未提出者")');
-    await expect(unsubmittedTab).toBeVisible();
-
-    const unsubmittedPanel = page.locator('#rm-missing-tbody, [id*="missing"]').first();
-    await expect(unsubmittedPanel).toBeVisible();
-
-    // 期待結果3: 検知ステータスに「定時自動検知完了」と最終実行時刻が表示される
-    const detectionStatus = page.locator('#rm-detect-status, [id*="detect"]').first();
-    await expect(detectionStatus).toBeVisible();
-
-    const detectionText = await detectionStatus.innerText();
-    expect(/完了|実行済み|定時|検知/.test(detectionText)).toBeTruthy();
-
-    // 期待結果4: 催促状況に「送信済み：X件」「配信成功：Y件」「配信失敗：Z件」など具体的な件数が表示される
-    const settingsSummary = page.locator('#rm-settings-summary-text, [id*="settings"]').first();
-    if (await settingsSummary.isVisible()) {
-      const summaryText = await settingsSummary.innerText();
-      expect(summaryText.length).toBeGreaterThan(0);
-    }
-
-    // メール送信履歴タブを開いて催促状況を確認
-    const mailTab = page.locator('button:has-text("メール送信履歴")');
-    if (await mailTab.isVisible()) {
-      await mailTab.click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(1000);
-
-      const mailTable = page.locator('#rm-mail-tbody, [id*="mail"] tbody');
-      await expect(mailTable).toBeVisible();
-    }
-  });
+  // 催促状況表示にメール送信履歴の件数・配信状態が表示されていることを確認する
+  const mailTable = page.locator('#rm-mail-tbody');
+  if (await mailTable.count() > 0) {
+    const mailContent = await mailTable.innerText();
+    expect(mailContent.length > 0).toBe(true);
+  }
 });

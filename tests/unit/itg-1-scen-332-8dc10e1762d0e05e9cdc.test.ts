@@ -1,18 +1,9 @@
+import { registerReporter, RegisterReporterInput, InvalidEmailAddressFormat } from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as userAuth from '../../src/logic/user-authentication-authorization';
+
 jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/user-master-persistence');
-
-import { registerReporter, InvalidEmailAddressFormat } from '../../src/logic/reporter-master-management';
-import { validateEmailAddress, validateReporterNameFormat, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
-import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
-
-const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
 describe('SCEN-332: メールアドレスが標準的なメールアドレス形式に違反している場合、InvalidEmailAddressFormatエラーを返す', () => {
   const validUserId = 'valid-user-id';
@@ -21,17 +12,33 @@ describe('SCEN-332: メールアドレスが標準的なメールアドレス形
   const executionTimestamp = new Date('2024-01-15T09:00:00Z');
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: '有効な報告者名', errorCode: null });
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: false, validatedEmailAddress: null, errorCode: null });
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true, userId: validUserId, inactiveReason: null });
+    (inputValidation.validateReporterNameFormat as jest.Mock).mockResolvedValue({
+      isValid: true,
+      validatedReporterName: '有効な報告者名',
+      errorCode: null,
+    });
+
+    (inputValidation.detectDuplicateEmailAddress as jest.Mock).mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: null,
+      errorCode: null,
+    });
+
+    (userAuth.validateUserAccountActiveStatus as jest.Mock).mockResolvedValue({
+      isActive: true,
+      userId: validUserId,
+      inactiveReason: null,
+    });
   });
 
   it('メールアドレスに@がない場合、InvalidEmailAddressFormatエラーを返す', async () => {
-    mockedValidateEmailAddress.mockRejectedValue(new InvalidEmailAddressFormat('Invalid email format'));
+    (inputValidation.validateEmailAddress as jest.Mock).mockRejectedValue(
+      new InvalidEmailAddressFormat('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。')
+    );
 
-    const input = {
+    const input: RegisterReporterInput = {
       userId: validUserId,
       reporterName: validReporterName,
       emailAddress: 'invalid-email-no-at',
@@ -45,14 +52,14 @@ describe('SCEN-332: メールアドレスが標準的なメールアドレス形
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');
     expect(result.changeHistoryId).toBeNull();
-    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 
   it('ドメイン部分がない場合、InvalidEmailAddressFormatエラーを返す', async () => {
-    mockedValidateEmailAddress.mockRejectedValue(new InvalidEmailAddressFormat('Invalid email format'));
+    (inputValidation.validateEmailAddress as jest.Mock).mockRejectedValue(
+      new InvalidEmailAddressFormat('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。')
+    );
 
-    const input = {
+    const input: RegisterReporterInput = {
       userId: validUserId,
       reporterName: validReporterName,
       emailAddress: 'test@',
@@ -66,14 +73,14 @@ describe('SCEN-332: メールアドレスが標準的なメールアドレス形
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');
     expect(result.changeHistoryId).toBeNull();
-    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 
   it('@の後ろに.がない場合、InvalidEmailAddressFormatエラーを返す', async () => {
-    mockedValidateEmailAddress.mockRejectedValue(new InvalidEmailAddressFormat('Invalid email format'));
+    (inputValidation.validateEmailAddress as jest.Mock).mockRejectedValue(
+      new InvalidEmailAddressFormat('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。')
+    );
 
-    const input = {
+    const input: RegisterReporterInput = {
       userId: validUserId,
       reporterName: validReporterName,
       emailAddress: 'test@domaincom',
@@ -87,7 +94,5 @@ describe('SCEN-332: メールアドレスが標準的なメールアドレス形
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('メールアドレスは必須項目で、有効なメールアドレス形式で入力してください。');
     expect(result.changeHistoryId).toBeNull();
-    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

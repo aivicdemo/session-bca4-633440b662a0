@@ -3,11 +3,9 @@ import {
   DeadlineNotReachedError,
 } from '../../src/logic/daily-report-non-submission-detection';
 
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/business-day-deadline-judgment');
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-225: detectNonSubmittedReportersAtDeadline - Deadline Not Reached', () => {
   beforeEach(() => {
@@ -16,7 +14,7 @@ describe('SCEN-225: detectNonSubmittedReportersAtDeadline - Deadline Not Reached
 
   it('should reject execution when deadline has not been reached', async () => {
     // Mock judgeSchedulerExecutionTiming to return false (deadline not reached)
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(false);
+    (businessDayModule.judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(false);
 
     const input = {
       targetDate: '2024-01-15',

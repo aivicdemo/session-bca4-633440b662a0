@@ -1,16 +1,19 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { runTx5Imp1Agent, SchedulerExecutionTimingError } from '../../src/agents/tx-5-imp-1/orchestrator';
-import type { Tx5Imp1AiClient, Tx5Imp1AgentInput } from '../../src/agents/tx-5-imp-1/orchestrator';
+import { runTx5Imp1Agent, Tx5Imp1AiClient, SchedulerExecutionTimingError } from '../../src/agents/tx-5-imp-1/orchestrator';
+import * as businessDayDeadlineJudgment from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-051: スケジューラ実行タイミングが営業日カレンダーと不整合で処理が失敗する', () => {
-  let mockAiClient: Tx5Imp1AiClient;
-
   beforeEach(() => {
-    mockAiClient = {} as Tx5Imp1AiClient;
+    jest.clearAllMocks();
   });
 
-  it('スケジューラ実行タイミング判定がエラーを返し、処理が失敗し、以降の処理は呼び出されない', async () => {
-    const input: Tx5Imp1AgentInput = {
+  it('should fail with SchedulerExecutionTimingError when execution timing is invalid', async () => {
+    const mockAiClient: Tx5Imp1AiClient = {};
+
+    jest.spyOn(businessDayDeadlineJudgment, 'judgeSchedulerExecutionTiming' as any).mockRejectedValue(
+      new SchedulerExecutionTimingError('定時スケジューラの実行タイミングが不正です。営業日カレンダーと実行時刻を確認してください。')
+    );
+
+    const input = {
       targetDate: '2024-01-15',
       executionContext: {
         scheduledAt: '2024-01-15T17:30:00Z',
@@ -22,17 +25,15 @@ describe('SCEN-051: スケジューラ実行タイミングが営業日カレン
 
     expect(result.executionStatus).toBe('failure');
     expect(result.errorDetails).toBeDefined();
-    expect(result.errorDetails).not.toBeNull();
-
-    const errorDetail = result.errorDetails![0];
-    expect(errorDetail.step).toBe('judgeSchedulerExecutionTiming');
-    expect(errorDetail.errorCode).toBe('SchedulerExecutionTimingError');
-    expect(errorDetail.errorMessage).toContain('定時スケジューラの実行タイミングが不正です');
-
+    expect(result.errorDetails?.[0]).toMatchObject({
+      step: 'judgeSchedulerExecutionTiming',
+      errorCode: 'SchedulerExecutionTimingError',
+      errorMessage: '定時スケジューラの実行タイミングが不正です。営業日カレンダーと実行時刻を確認してください。',
+    });
     expect(result.nonSubmittedReporters).toEqual([]);
     expect(result.delayedReporters).toEqual([]);
     expect(result.promptNotificationsSent).toEqual([]);
-    expect(result.detectionLogId).toBeNull();
     expect(result.leaderNotificationSent).toBe(false);
+    expect(result.detectionLogId).toBeNull();
   });
 });

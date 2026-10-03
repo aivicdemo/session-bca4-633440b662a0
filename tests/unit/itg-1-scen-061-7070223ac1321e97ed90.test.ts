@@ -1,81 +1,124 @@
-import { describe, it, expect } from '@jest/globals';
-import { runTx6Imp1Agent, type Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  runTx6Imp1Agent,
+  type Tx6Imp1AiClient,
+  type Tx6Imp1AgentInput,
+} from '../../src/agents/tx-6-imp-1/orchestrator';
 
-describe('SCEN-061: runTx6Imp1Agent happy path - all processes complete successfully', () => {
-  it('should complete all processes successfully with correct output', async () => {
-    const mockAiClient = {} as Tx6Imp1AiClient;
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
+}));
 
-    const output = await runTx6Imp1Agent(
-      {
-        leaderUserId: 'leader001',
-        userInformationSubmissions: [
-          { userId: 'user001', userName: '太郎', email: 'taro@example.com', department: '営業部', role: '報告者' },
-          { userId: 'user002', userName: '花子', email: 'hanako@example.com', department: '営業部', role: '報告者' },
-          { userId: 'user003', userName: '次郎', email: 'jiro@example.com', department: '企画部', role: '報告者' },
-          { userId: 'user004', userName: '美咲', email: 'misaki@example.com', department: '営業部', role: '報告者' },
-          { userId: 'user005', userName: '健一', email: 'kenichi@example.com', department: '営業部', role: '報告者' },
-        ],
-        executionTimestamp: new Date('2024-01-15T10:00:00Z'),
-        targetDate: new Date('2024-01-15'),
-      },
-      mockAiClient
-    );
+jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
+}));
 
-    expect(output.executionStatus).toMatch(/success|partial_failure|failure/);
-    expect(output.executionLog).toBeDefined();
-    expect(output.userInformationProcessingResult).toBeDefined();
-    expect(output.reporterMasterUpdateResult).toBeDefined();
+jest.mock('../../src/logic/user-information-input-confirmation', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-information-input-confirmation')>('../../src/logic/user-information-input-confirmation'),
+}));
+
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
+}));
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
+}));
+
+jest.mock('../../src/logic/email-notification-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
+}));
+
+jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-non-submission-detection')>('../../src/logic/daily-report-non-submission-detection'),
+}));
+
+jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-reminder-notification')>('../../src/logic/daily-report-reminder-notification'),
+}));
+
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+}));
+
+describe('SCEN-061: リーダーが正規ユーザー情報をエージェントに提出し、全工程が正常に完了する', () => {
+  let mockAiClient: any;
+
+  beforeEach(() => {
+    mockAiClient = {
+      invokeModel: jest.fn(),
+    };
   });
 
-  it('should record approval notifications', async () => {
-    const mockAiClient = {} as Tx6Imp1AiClient;
-    const output = await runTx6Imp1Agent(
+  it('should complete all processes successfully for 5 valid users', async () => {
+    const leaderUserId = 'leader001';
+    const executionTimestamp = new Date('2024-01-15T10:00:00Z');
+    const targetDate = new Date('2024-01-15');
+
+    const userInformationSubmissions = [
       {
-        leaderUserId: 'leader001',
-        userInformationSubmissions: [
-          { userId: 'user001', userName: '太郎', email: 'taro@example.com', department: '営業部', role: '報告者' },
-        ],
-        executionTimestamp: new Date('2024-01-15T10:00:00Z'),
-        targetDate: new Date('2024-01-15'),
+        userId: 'user001',
+        userName: '田中太郎',
+        email: 'tanaka@example.com',
+        department: '営業部',
+        role: '報告者',
       },
-      mockAiClient
-    );
-
-    expect(output.notificationSendingResult).toBeDefined();
-  });
-
-  it('should have exception cases available', async () => {
-    const mockAiClient = {} as Tx6Imp1AiClient;
-    const output = await runTx6Imp1Agent(
       {
-        leaderUserId: 'leader001',
-        userInformationSubmissions: [
-          { userId: 'user001', userName: '太郎', email: 'taro@example.com', department: '営業部', role: '報告者' },
-        ],
-        executionTimestamp: new Date('2024-01-15T10:00:00Z'),
-        targetDate: new Date('2024-01-15'),
+        userId: 'user002',
+        userName: '鈴木花子',
+        email: 'suzuki@example.com',
+        department: '営業部',
+        role: '報告者',
       },
-      mockAiClient
-    );
-
-    expect(output.exceptionCases).toBeDefined();
-  });
-
-  it('should return execution output type correctly', async () => {
-    const mockAiClient = {} as Tx6Imp1AiClient;
-    const output = await runTx6Imp1Agent(
       {
-        leaderUserId: 'leader001',
-        userInformationSubmissions: [
-          { userId: 'user001', userName: '太郎', email: 'taro@example.com', department: '営業部', role: '報告者' },
-        ],
-        executionTimestamp: new Date('2024-01-15T10:00:00Z'),
-        targetDate: new Date('2024-01-15'),
+        userId: 'user003',
+        userName: '佐藤次郎',
+        email: 'sato@example.com',
+        department: 'IT部',
+        role: '報告者',
       },
-      mockAiClient
-    );
+      {
+        userId: 'user004',
+        userName: '伊藤美咲',
+        email: 'ito@example.com',
+        department: '営業部',
+        role: '報告者',
+      },
+      {
+        userId: 'user005',
+        userName: '渡辺健一',
+        email: 'watanabe@example.com',
+        department: '管理部',
+        role: '報告者',
+      },
+    ];
 
-    expect(output).toBeDefined();
-    expect(output.nonSubmissionDetectionResult).toBeDefined();
+    const input: Tx6Imp1AgentInput = {
+      leaderUserId,
+      userInformationSubmissions,
+      executionTimestamp,
+      targetDate,
+    };
+
+    const result = await runTx6Imp1Agent(input, mockAiClient);
+
+    expect(result).toBeDefined();
+    expect(result.executionStatus).toBe('success');
+    expect(result.userInformationProcessingResult.approved).toBe(5);
+    expect(result.userInformationProcessingResult.rejected).toBe(0);
+    expect(result.userInformationProcessingResult.errors).toEqual([]);
+    expect(result.reporterMasterUpdateResult.registered).toBe(2);
+    expect(result.reporterMasterUpdateResult.updated).toBe(2);
+    expect(result.reporterMasterUpdateResult.deactivated).toBe(1);
+    expect(result.reporterMasterUpdateResult.errors).toEqual([]);
+    expect(result.nonSubmissionDetectionResult.detectedCount).toBeGreaterThanOrEqual(0);
+    expect(result.nonSubmissionDetectionResult.promptedCount).toBeGreaterThanOrEqual(0);
+    expect(result.nonSubmissionDetectionResult.errors).toEqual([]);
+    expect(result.notificationSendingResult.approvalNotificationsSent).toBe(5);
+    expect(result.notificationSendingResult.promptNotificationsSent).toBeGreaterThanOrEqual(0);
+    expect(result.notificationSendingResult.failedNotifications).toEqual([]);
+    expect(result.exceptionCases).toEqual([]);
+    expect(result.executionLog).toBeDefined();
+    expect(typeof result.executionLog).toBe('string');
   });
 });

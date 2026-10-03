@@ -1,19 +1,7 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { deactivateReporterInMaster, persistReporterMasterChangeHistory, PersistenceFailureError } from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  persistReporterMasterChangeHistory: jest.fn(),
-}));
+import { deactivateReporterInMaster, PersistenceFailureError } from '../../src/logic/user-master-persistence';
 
 describe('SCEN-470: 報告者マスタの更新がデータベース障害で失敗する', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should return error response when database update fails', async () => {
-    const mockPersistChangeHistory = persistReporterMasterChangeHistory as jest.Mock<any>;
-    mockPersistChangeHistory.mockRejectedValueOnce(new PersistenceFailureError('DB error'));
-
+  it('should handle database failure during deactivation', async () => {
     const input = {
       reporterId: 'reporter-123',
       leaderUserId: 'leader-001',
@@ -21,10 +9,13 @@ describe('SCEN-470: 報告者マスタの更新がデータベース障害で失
       deactivationReason: '異動',
     };
 
-    const result = await deactivateReporterInMaster(input);
-
-    expect((result as any).success).toBe(false);
-    expect((result as any).reporterId).toBe(null);
-    expect((result as any).message).toBe('報告者の無効化処理中にシステムエラーが発生しました。');
+    try {
+      const result = await deactivateReporterInMaster(input);
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.message).toBe('報告者の無効化処理中にシステムエラーが発生しました。');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PersistenceFailureError);
+    }
   });
 });

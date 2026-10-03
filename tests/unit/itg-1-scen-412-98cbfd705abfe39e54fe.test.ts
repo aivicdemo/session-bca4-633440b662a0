@@ -1,12 +1,17 @@
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   authenticateAndAuthorizeLeaderAccess: jest.fn(),
 }));
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
   judgeBusinessDayAndDeadline: jest.fn(),
 }));
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   detectDuplicateEmailAddress: jest.fn(),
 }));
+jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/email-notification-management');
 
 import {
   confirmAndApproveUserInformation,
@@ -27,11 +32,13 @@ describe('SCEN-412: DuplicateEmailAddressDetectedError when email is already reg
   });
 
   it('should throw DuplicateEmailAddressDetectedError with correct message when email is already registered', async () => {
-    (mockedAuthenticateAndAuthorizeLeaderAccess as jest.Mock<any>).mockResolvedValue({
-      authorized: true,
+    mockedAuthenticateAndAuthorizeLeaderAccess.mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'leader-001',
     });
-    (mockedJudgeBusinessDayAndDeadline as jest.Mock<any>).mockResolvedValue({
-      withinDeadline: true,
+    mockedJudgeBusinessDayAndDeadline.mockResolvedValue({
+      isAcceptable: true,
+      isWithinDeadline: true,
     });
     mockedDetectDuplicateEmailAddress.mockRejectedValue(
       new DuplicateEmailAddressDetectedError('このメールアドレスは既に登録されています。')
@@ -45,12 +52,9 @@ describe('SCEN-412: DuplicateEmailAddressDetectedError when email is already reg
       approvalTimestamp: new Date(),
     };
 
-    try {
-      await confirmAndApproveUserInformation(input);
-      fail('Should have thrown DuplicateEmailAddressDetectedError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(DuplicateEmailAddressDetectedError);
-      expect((error as Error).message).toBe('このメールアドレスは既に登録されています。');
-    }
+    await expect(confirmAndApproveUserInformation(input)).rejects.toThrow(DuplicateEmailAddressDetectedError);
+    await expect(confirmAndApproveUserInformation(input)).rejects.toThrow(
+      'このメールアドレスは既に登録されています。'
+    );
   });
 });

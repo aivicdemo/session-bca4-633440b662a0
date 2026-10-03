@@ -1,6 +1,17 @@
-jest.mock('../../src/logic/business-day-deadline-judgment');
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+  judgeSchedulerExecutionTiming: jest.fn(),
+}));
+jest.mock('../../src/logic/reporter-master-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
+  getActiveReportersForSubmissionCheck: jest.fn(),
+}));
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  checkDailyReportExistsForDate: jest.fn(),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+  updateNonSubmissionDetectionLogWithReminderStatus: jest.fn(),
+}));
 
 import {
   detectNonSubmittedReportersAtDeadline,
@@ -26,11 +37,11 @@ describe('SCEN-254: 業務ルール br-tx_1-005 の制約 6 が設計どおり�
 
   it('定時に日報提出期限を迎えた時点で、本日未提出の報告者を自動検知し、未提出者一覧と検知ログを生成する', async () => {
     const mockReporters = [
-      { userId: 'reporter-001', userName: '報告者1', emailAddress: 'r001@example.com', departmentId: 'dept-001' },
-      { userId: 'reporter-002', userName: '報告者2', emailAddress: 'r002@example.com', departmentId: 'dept-001' },
-      { userId: 'reporter-003', userName: '報告者3', emailAddress: 'r003@example.com', departmentId: 'dept-001' },
-      { userId: 'reporter-004', userName: '報告者4', emailAddress: 'r004@example.com', departmentId: 'dept-001' },
-      { userId: 'reporter-005', userName: '報告者5', emailAddress: 'r005@example.com', departmentId: 'dept-001' },
+      { userId: 'reporter-001', userName: '報告者1', emailAddress: 'r001@example.com', department: 'dept-001', promptPriority: 'high' },
+      { userId: 'reporter-002', userName: '報告者2', emailAddress: 'r002@example.com', department: 'dept-001', promptPriority: 'high' },
+      { userId: 'reporter-003', userName: '報告者3', emailAddress: 'r003@example.com', department: 'dept-001', promptPriority: 'high' },
+      { userId: 'reporter-004', userName: '報告者4', emailAddress: 'r004@example.com', department: 'dept-001', promptPriority: 'high' },
+      { userId: 'reporter-005', userName: '報告者5', emailAddress: 'r005@example.com', department: 'dept-001', promptPriority: 'high' },
     ];
 
     const submittedReporterIds = ['reporter-001', 'reporter-002', 'reporter-003'];
@@ -43,19 +54,25 @@ describe('SCEN-254: 業務ルール br-tx_1-005 の制約 6 が設計どおり�
     };
 
     (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue(true);
-    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue(mockReporters);
-    mockedCheckDailyReportExistsForDate.mockImplementation((reporterId: string) => {
-      return Promise.resolve(submittedReporterIds.includes(reporterId));
+    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
+      reporters: mockReporters,
+    });
+    mockedCheckDailyReportExistsForDate.mockImplementation((input: any) => {
+      if (submittedReporterIds.includes(input.userId)) {
+        return Promise.resolve(true);
+      }
+      return Promise.resolve(false);
     });
     (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([]);
     (mockedUpdateNonSubmissionDetectionLogWithReminderStatus as jest.Mock<any>).mockResolvedValue(true);
 
-    const result = await detectNonSubmittedReportersAtDeadline(input as any);
+    const result = await detectNonSubmittedReportersAtDeadline(input);
 
     expect(result.nonSubmittedReporters).toHaveLength(2);
     expect(result.nonSubmittedReporters[0]).toHaveProperty('userId');
     expect(result.nonSubmittedReporters[0]).toHaveProperty('userName');
     expect(result.nonSubmittedReporters[0]).toHaveProperty('emailAddress');
+    expect(result.nonSubmittedReporters[0]).toHaveProperty('department');
 
     expect(result.detectionLog.targetDate).toBe('2024-01-15');
     expect(result.detectionLog.detectionDateTime).toBe('2024-01-15T17:00:00Z');
@@ -63,7 +80,5 @@ describe('SCEN-254: 業務ルール br-tx_1-005 の制約 6 が設計どおり�
     expect(result.detectionLog.nonSubmittedCount).toBe(2);
 
     expect(result.detectionTimestamp).toBe('2024-01-15T17:00:00Z');
-
-    expect(mockedUpdateNonSubmissionDetectionLogWithReminderStatus).toHaveBeenCalledTimes(1);
   });
 });

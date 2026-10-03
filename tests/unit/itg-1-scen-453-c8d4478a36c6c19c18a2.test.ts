@@ -1,26 +1,24 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>(
+    '../../src/logic/input-validation-formatting'
+  ),
   validateUserInformationRequired: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  persistReporterMasterChangeHistory: jest.fn(),
 }));
 
 import {
   registerReporterToMaster,
   type RegisterReporterToMasterInput,
   type RegisterReporterToMasterOutput,
-  persistReporterMasterChangeHistory,
 } from '../../src/logic/user-master-persistence';
 import { validateUserInformationRequired, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
 
 const mockedValidateUserInformationRequired = validateUserInformationRequired as jest.MockedFunction<any>;
 const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
 const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
 describe('SCEN-453: 必須項目と形式が正常な報告者情報を受け取り、マスタへ登録して登録完了結果を返す', () => {
   const reporterName = '山田太郎';
@@ -51,12 +49,6 @@ describe('SCEN-453: 必須項目と形式が正常な報告者情報を受け取
       validatedEmailAddress: emailAddress,
       errorCode: null,
     });
-
-    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      changeHistoryId: 'CH-001',
-      message: '履歴記録完了',
-    });
   });
 
   it('有効な報告者情報を受け取り、マスタへ登録して登録完了結果を返す', async () => {
@@ -85,11 +77,5 @@ describe('SCEN-453: 必須項目と形式が正常な報告者情報を受け取
       emailAddress,
       existingUserEmails: expect.any(Array),
     });
-    expect(mockedPersistReporterMasterChangeHistory).toHaveBeenCalled();
-
-    const persistCall = mockedPersistReporterMasterChangeHistory.mock.calls[0][0];
-    expect(persistCall.operationType).toBe('register');
-    expect(persistCall.leaderUserId).toBe(leaderUserId);
-    expect(persistCall.operationTimestamp).toEqual(registrationTimestamp);
   });
 });

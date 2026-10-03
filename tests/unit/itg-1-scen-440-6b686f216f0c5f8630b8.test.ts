@@ -1,22 +1,20 @@
-import { describe, it, expect } from '@jest/globals';
 import { retrieveDailyReportsForLeaderReview } from '../../src/logic/daily-report-persistence';
+import type { RetrieveDailyReportsForLeaderReviewInput } from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-440: リーダーがソート対象を指定しないで検索し、報告日の降順で日報が返される', () => {
   it('should return daily reports sorted by reportDate in descending order when sortBy is undefined', async () => {
-    const leaderId = 'leader001';
-    const startDate = '2024-01-01';
-    const endDate = '2024-01-31';
-
-    const result = await retrieveDailyReportsForLeaderReview({
-      leaderId,
-      startDate,
-      endDate,
+    const input: RetrieveDailyReportsForLeaderReviewInput = {
+      leaderId: 'leader001',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
       filterByUserId: undefined,
       filterBySubmissionStatus: undefined,
       sortBy: undefined,
       pageNumber: undefined,
       pageSize: undefined,
-    });
+    };
+
+    const result = await retrieveDailyReportsForLeaderReview(input);
 
     expect(result).toBeDefined();
     expect(result.dailyReports).toBeDefined();

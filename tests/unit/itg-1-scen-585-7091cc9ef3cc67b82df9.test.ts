@@ -1,18 +1,13 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-jest.mock('../../src/logic/daily-report-persistence', () => ({
-  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
-}));
-jest.mock('../../src/logic/user-master-persistence', () => ({
-  retrieveReporterByUserId: jest.fn(),
-}));
+import {
+  retrieveNonSubmissionDetectionDetails,
+  RetrieveNonSubmissionDetectionDetailsInput,
+  RetrieveNonSubmissionDetectionDetailsOutput,
+} from '../../src/logic/daily-report-management-view';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as userMasterModule from '../../src/logic/user-master-persistence';
 
-import { retrieveNonSubmissionDetectionDetails } from '../../src/logic/daily-report-management-view';
-import { retrieveNonSubmissionDetectionLogsByDate } from '../../src/logic/daily-report-persistence';
-import { retrieveReporterByUserId } from '../../src/logic/user-master-persistence';
-
-const mockedRetrieveNonSubmissionDetectionLogsByDate = retrieveNonSubmissionDetectionLogsByDate as jest.MockedFunction<any>;
-const mockedRetrieveReporterByUserId = retrieveReporterByUserId as jest.MockedFunction<any>;
 
 describe('SCEN-585: リーダーが自身のチームの検知ログIDを指定して詳細を確認すると、検知日時・対象者・リマインダー送信状況・提出状況が詳細表示用に整形されて返される', () => {
   const detectionLogId = 'DL-2024-001';
@@ -20,67 +15,68 @@ describe('SCEN-585: リーダーが自身のチームの検知ログIDを指定�
   const targetDate = '2024-01-15';
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedRetrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      detectionLogs: [
-        {
-          detectionLogId,
-          targetDate,
-          detectionDateTime: '2024-01-15T09:30:00Z',
-          nonSubmittedReporters: [
-            { userId: 'USER-002', name: '山田太郎', team: '営業部' },
-            { userId: 'USER-004', name: '鈴木花子', team: '営業部' },
-          ],
-          reminderSent: true,
-          reminderSentDateTime: '2024-01-15T09:35:00Z',
-          reminderSendingMethod: 'email',
-        },
-      ],
-      totalCount: 1,
-    });
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock<any>).mockResolvedValue([
+      {
+        detectionLogId,
+        targetDate,
+        detectionDateTime: '2024-01-15T09:30:00Z',
+        nonSubmittedReporters: [
+          { userId: 'USER-002', userName: '山田太郎', department: '営業部' },
+          { userId: 'USER-004', userName: '鈴木花子', department: '営業部' },
+        ],
+        reminderSentDateTime: '2024-01-15T09:35:00Z',
+        reminderSendingMethod: 'email',
+      },
+    ]);
 
-    mockedRetrieveReporterByUserId.mockImplementation((input: any) => {
-      if (input.userId === leaderId) {
-        return Promise.resolve({
-          success: true,
-          reporter: {
-            userId: leaderId,
-            reporterName: 'リーダー太郎',
-            team: '営業部',
-            email: 'leader@example.com',
-          },
-        });
-      }
-      return Promise.reject(new Error('Reporter not found'));
+    (userMasterModule.retrieveReporterByUserId as jest.Mock<any>).mockResolvedValue({
+      userId: leaderId,
+      userName: 'リーダー太郎',
+      department: '営業部',
     });
   });
 
-  it('検知ログIDとリーダーIDで詳細情報が取得できる', async () => {
-    const result = await retrieveNonSubmissionDetectionDetails({
+  it('検知ログの詳細が正常に返される', async () => {
+    const input: RetrieveNonSubmissionDetectionDetailsInput = {
       detectionLogId,
       leaderId,
-    });
+    };
 
-    expect(result).toBeDefined();
+    const result: RetrieveNonSubmissionDetectionDetailsOutput = await retrieveNonSubmissionDetectionDetails(input);
+
+    expect(result.detectionLogId).toBe(detectionLogId);
+    expect(result.targetDate).toBe(targetDate);
+    expect(result.detectionDateTime).toBe('2024-01-15T09:30:00Z');
+    expect(result.nonSubmittedReporters).toHaveLength(2);
   });
 
-  it('戻り値はオブジェクト型である', async () => {
-    const result = await retrieveNonSubmissionDetectionDetails({
+  it('未提出者情報が正確に返される', async () => {
+    const input: RetrieveNonSubmissionDetectionDetailsInput = {
       detectionLogId,
       leaderId,
-    });
+    };
 
-    expect(typeof result).toBe('object');
+    const result: RetrieveNonSubmissionDetectionDetailsOutput = await retrieveNonSubmissionDetectionDetails(input);
+
+    expect(result.nonSubmittedReporters[0].reporterId).toBe('USER-002');
+    expect(result.nonSubmittedReporters[0].reporterName).toBe('山田太郎');
+    expect(result.nonSubmittedReporters[0].department).toBe('営業部');
+    expect(result.nonSubmittedReporters[1].reporterId).toBe('USER-004');
+    expect(result.nonSubmittedReporters[1].reporterName).toBe('鈴木花子');
+    expect(result.nonSubmittedReporters[1].department).toBe('営業部');
   });
 
-  it('RetrieveNonSubmissionDetectionDetailsOutput型の一部フィールドを返す', async () => {
-    const result = await retrieveNonSubmissionDetectionDetails({
+  it('リマインダー送信状況が返される', async () => {
+    const input: RetrieveNonSubmissionDetectionDetailsInput = {
       detectionLogId,
       leaderId,
-    });
+    };
 
-    expect(result).toBeDefined();
+    const result: RetrieveNonSubmissionDetectionDetailsOutput = await retrieveNonSubmissionDetectionDetails(input);
+
+    expect(result.reminderSendingStatus).toBeDefined();
+    expect(result.reminderSendingStatus.reminderSentDateTime).toBe('2024-01-15T09:35:00Z');
   });
 });

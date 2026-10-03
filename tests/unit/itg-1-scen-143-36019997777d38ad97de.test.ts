@@ -1,8 +1,4 @@
-import {
-  validateUserInformationRequired,
-  ValidateUserInformationRequiredInput,
-  ValidateUserInformationRequiredOutput,
-} from '../../src/logic/input-validation-formatting';
+import { validateUserInformationRequired } from '../../src/logic/input-validation-formatting';
 
 describe('SCEN-143: 名前フィールドがnull・undefined・空白のみの場合、UserNameEmptyErrorが発生して名前の確定値がnullになる', () => {
   const testCases = [
@@ -14,7 +10,7 @@ describe('SCEN-143: 名前フィールドがnull・undefined・空白のみの�
 
   testCases.forEach(({ userName, description }) => {
     test(`${description}を入力した場合、UserNameEmptyErrorが発生して名前の確定値がnullになる`, async () => {
-      const input: ValidateUserInformationRequiredInput = {
+      const input = {
         userName,
         emailAddress: 'user@example.com',
         department: '営業部',

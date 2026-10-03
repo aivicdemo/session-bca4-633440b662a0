@@ -1,15 +1,19 @@
-import { updateReporter, ReporterNotFoundError } from '../../src/logic/reporter-master-management';
-import * as persistenceModule from '../../src/logic/user-master-persistence';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  ReporterNotFoundError,
+} from '../../src/logic/reporter-master-management';
 
-jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/reporter-master-persistence');
 
-describe('SCEN-373: updateReporter with non-existent reporterId', () => {
+describe('SCEN-373: 指定された報告者IDが存在しないと、ReporterNotFoundErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should throw ReporterNotFoundError when reporter ID does not exist', async () => {
-    const input = {
+  it('指定された報告者IDが存在しないと、ReporterNotFoundErrorが発生する', async () => {
+    const input: UpdateReporterInput = {
       reporterId: 'reporter-999',
       reporterName: '新しい名前',
       emailAddress: 'newemail@example.com',
@@ -19,12 +23,18 @@ describe('SCEN-373: updateReporter with non-existent reporterId', () => {
       executionTimestamp: new Date('2025-01-15T10:00:00Z'),
     };
 
-    (persistenceModule.retrieveReporterByUserId as jest.Mock).mockResolvedValue(null);
+    const {
+      retrieveReporterByUserId,
+      updateReporterInMaster,
+      persistReporterMasterChangeHistory,
+    } = require('../../src/logic/reporter-master-persistence');
+
+    retrieveReporterByUserId.mockResolvedValue(null);
 
     await expect(updateReporter(input)).rejects.toThrow(ReporterNotFoundError);
     await expect(updateReporter(input)).rejects.toThrow('指定された報告者が見つかりません。');
-    
-    expect(persistenceModule.updateReporterInMaster).not.toHaveBeenCalled();
-    expect(persistenceModule.persistReporterMasterChangeHistory).not.toHaveBeenCalled();
+
+    expect(updateReporterInMaster).not.toHaveBeenCalled();
+    expect(persistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

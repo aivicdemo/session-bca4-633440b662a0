@@ -1,52 +1,61 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { sendLeaderSubmissionNotification, DailyReportNotFoundError } from '../../src/logic/daily-report-reminder-notification';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as dailyReportPersistenceModule from '../../src/logic/daily-report-persistence';
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserHasLeaderRole: jest.fn(),
 }));
+
 jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
   retrieveDailyReportsForLeaderReview: jest.fn(),
 }));
-jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  buildReminderNotificationContent: jest.fn(),
-  selectNotificationDeliveryMethod: jest.fn(),
-  recordReminderNotificationSendingResult: jest.fn(),
-}));
-jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
-}));
 
-import {
-  sendLeaderSubmissionNotification,
-  type SendLeaderSubmissionNotificationInput,
-  DailyReportNotFoundError,
-} from '../../src/logic/daily-report-reminder-notification';
-
-describe('SCEN-309: DailyReportNotFoundError when daily report is not found', () => {
-  const mockInput: SendLeaderSubmissionNotificationInput = {
-    reporterId: 'reporter-001',
-    leaderId: 'leader-001',
-    targetDate: new Date('2025-01-15'),
-    submissionTimestamp: new Date('2025-01-15T09:30:00Z'),
-    executionTimestamp: new Date('2025-01-15T09:35:00Z'),
-  };
-
+describe('SCEN-309: 指定された対象日付に対応する日報が存在しない場合、DailyReportNotFoundErrorが発生する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    jest.spyOn(userAuthModule, 'validateUserHasLeaderRole').mockResolvedValue({
+      hasLeaderRole: true,
+      userId: 'leader-001',
+    });
+
+    jest.spyOn(dailyReportPersistenceModule, 'retrieveDailyReportsForLeaderReview').mockRejectedValue(
+      new DailyReportNotFoundError('指定日付の日報が見つかりません。')
+    );
   });
 
-  it('should throw DailyReportNotFoundError when daily report does not exist for target date', async () => {
+  test('指定日付の日報が見つからないとき、DailyReportNotFoundErrorをスロー', async () => {
+    const input = {
+      reporterId: 'reporter-001',
+      leaderId: 'leader-001',
+      targetDate: new Date('2025-01-15'),
+      submissionTimestamp: new Date('2025-01-15T09:30:00Z'),
+      executionTimestamp: new Date('2025-01-15T09:35:00Z'),
+    };
+
     await expect(
-      sendLeaderSubmissionNotification(mockInput)
+      sendLeaderSubmissionNotification(input)
     ).rejects.toThrow(DailyReportNotFoundError);
   });
 
-  it('DailyReportNotFoundError should contain correct error message', async () => {
+  test('エラーメッセージが「指定日付の日報が見つかりません。」である', async () => {
+    const input = {
+      reporterId: 'reporter-001',
+      leaderId: 'leader-001',
+      targetDate: new Date('2025-01-15'),
+      submissionTimestamp: new Date('2025-01-15T09:30:00Z'),
+      executionTimestamp: new Date('2025-01-15T09:35:00Z'),
+    };
+
     try {
-      await sendLeaderSubmissionNotification(mockInput);
-      throw new Error('Expected DailyReportNotFoundError to be thrown');
+      await sendLeaderSubmissionNotification(input);
+      fail('Expected DailyReportNotFoundError to be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(DailyReportNotFoundError);
       expect((error as Error).message).toBe('指定日付の日報が見つかりません。');
     }
   });
+
 });

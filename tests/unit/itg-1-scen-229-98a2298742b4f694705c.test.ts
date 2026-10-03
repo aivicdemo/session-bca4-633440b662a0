@@ -1,14 +1,12 @@
 import {
   detectNonSubmittedReportersAtDeadline,
-  InvalidReporterDataError,
 } from '../../src/logic/daily-report-non-submission-detection';
 
-jest.mock('../../src/logic/reporter-master-management');
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/business-day-deadline-judgment');
+import * as reporterModule from '../../src/logic/reporter-master-management';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
+jest.mock('../../src/logic/reporter-master-management');
+jest.mock('../../src/logic/business-day-deadline-judgment');
 
 describe('SCEN-229: detectNonSubmittedReportersAtDeadline - Invalid Reporter ID', () => {
   beforeEach(() => {
@@ -51,10 +49,12 @@ describe('SCEN-229: detectNonSubmittedReportersAtDeadline - Invalid Reporter ID'
     ];
 
     // Mock judgeSchedulerExecutionTiming to return true
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+    (businessDayModule.judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
 
     // Mock getActiveReportersForSubmissionCheck to return reporters with empty ID
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue(activeReporters);
+    (reporterModule.getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue({
+      reporters: activeReporters,
+    });
 
     const input = {
       targetDate: '2024-01-15',
@@ -64,6 +64,8 @@ describe('SCEN-229: detectNonSubmittedReportersAtDeadline - Invalid Reporter ID'
     };
 
     // Should throw an error for invalid reporter ID format
-    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow();
+    await expect(detectNonSubmittedReportersAtDeadline(input)).rejects.toThrow(
+      '報告者情報が不正です。管理者に確認してください'
+    );
   });
 });

@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   validateReporterNameFormat: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
 }));
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserAccountActiveStatus: jest.fn(),
 }));
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   registerReporterToMaster: jest.fn(),
   persistReporterMasterChangeHistory: jest.fn(),
 }));

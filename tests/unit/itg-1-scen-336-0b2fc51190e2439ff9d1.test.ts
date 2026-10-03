@@ -1,21 +1,24 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   validateReporterNameFormat: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserAccountActiveStatus: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   registerReporterToMaster: jest.fn(),
   persistReporterMasterChangeHistory: jest.fn(),
 }));
 
-import { registerReporter, RegistrationFailed } from '../../src/logic/reporter-master-management';
+import { registerReporter } from '../../src/logic/reporter-master-management';
 import { validateReporterNameFormat, validateEmailAddress, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
 import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
 import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
@@ -27,7 +30,7 @@ const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as
 const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
 const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
-describe('SCEN-336: データベースへの保存処理に失敗した場合、RegistrationFailedエラーを返す', () => {
+describe('SCEN-336: データベースへの保存処理に失敗した場合、RegisterReporterOutputを返す', () => {
   const now = new Date('2024-01-15T10:00:00Z');
   const input = {
     userId: 'U001',
@@ -41,42 +44,42 @@ describe('SCEN-336: データベースへの保存処理に失敗した場合、
     jest.clearAllMocks();
   });
 
-  it('registerReporterToMasterが失敗状態で設定される場合、RegistrationFailedエラーを返す', async () => {
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
+  it('registerReporterToMasterが失敗状態で設定される場合、success=false, reporterId=null, 指定されたメッセージを返す', async () => {
+    mockedValidateReporterNameFormat.mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    mockedValidateEmailAddress.mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada@example.com',
       errorCode: null,
     });
 
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
+    mockedValidateUserAccountActiveStatus.mockResolvedValue({
       isActive: true,
       userId: 'U001',
     });
 
-    const dbError = new Error('Database connection failed');
-    mockedRegisterReporterToMaster.mockRejectedValue(dbError);
+    mockedRegisterReporterToMaster.mockResolvedValue({
+      success: false,
+      reporterId: null,
+      message: 'Database error',
+    });
 
-    let errorThrown: any = null;
-    try {
-      await registerReporter(input);
-    } catch (error: any) {
-      errorThrown = error;
-    }
+    const result = await registerReporter(input);
 
-    expect(errorThrown).toBeInstanceOf(RegistrationFailed);
-    expect(errorThrown?.message).toBe('報告者の登録に失敗しました。システム管理者に連絡してください。');
+    expect(result.success).toBe(false);
+    expect(result.reporterId).toBeNull();
+    expect(result.message).toBe('報告者の登録に失敗しました。システム管理者に連絡してください。');
+    expect(result.changeHistoryId).toBeNull();
 
     expect(mockedRegisterReporterToMaster).toHaveBeenCalled();
     expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();

@@ -1,15 +1,13 @@
 import { judgeBusinessDayAndDeadline } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-185: 営業日外の場合 rejectionReason に「営業日外」が設定される', () => {
-  it('営業日外時に rejectionReason=営業日外 を返す', async () => {
-    const input = {
+  it('営業日外に判定すると rejectionReason に「営業日外です」が設定される', async () => {
+    const result = await judgeBusinessDayAndDeadline({
       targetDate: '2024-01-06',
-      teamLeaderId: 'leader-001',
+      teamLeaderId: 'tl001',
       reporterUserId: 'reporter001',
       submissionAttemptTimestamp: '2024-01-06T14:00:00Z'
-    };
-
-    const result = await judgeBusinessDayAndDeadline(input);
+    });
 
     expect(result.isAcceptable).toBe(false);
     expect(result.isBusinessDay).toBe(false);

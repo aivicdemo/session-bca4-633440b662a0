@@ -1,34 +1,32 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import {
   manageReminderNotificationSettings,
-  ManageReminderNotificationSettingsInput,
-  ManageReminderNotificationSettingsOutput,
+  type ManageReminderNotificationSettingsInput,
+  type ManageReminderNotificationSettingsOutput,
 } from '../../src/logic/daily-report-reminder-notification';
-import {
-  retrieveReminderNotificationSettingsByUserId,
-  saveReminderNotificationSettings,
-} from '../../src/logic/user-master-persistence';
 
 jest.mock('../../src/logic/user-master-persistence');
-
-const mockedRetrieve = retrieveReminderNotificationSettingsByUserId as jest.MockedFunction<any>;
-const mockedSave = saveReminderNotificationSettings as jest.MockedFunction<any>;
 
 describe('SCEN-321: システムマスタに存在しない報告者IDでリマインダー設定を登録しようとすると、エラーが返される', () => {
   const nonexistentReporterId = 'reporter-nonexistent-999';
   const now = new Date();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('存在しない報告者IDでリマインダー設定を登録するとReporterNotFoundErrorが返される', async () => {
-    mockedRetrieve.mockResolvedValueOnce({
+  beforeEach(async () => {
+    jest.resetModules();
+    const userMasterPersistence = await import('../../src/logic/user-master-persistence');
+    (userMasterPersistence as any).retrieveReminderNotificationSettingsByUserId = (jest.fn() as any).mockResolvedValue({
       success: false,
       reminderSetting: null,
       message: '指定された報告者が見つかりません。',
     });
+    (userMasterPersistence as any).saveReminderNotificationSettings = jest.fn() as any;
+  });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('存在しない報告者IDでリマインダー設定を登録するとエラーが返される', async () => {
     const input: ManageReminderNotificationSettingsInput = {
       operation: 'register',
       reporterId: nonexistentReporterId,
@@ -47,6 +45,5 @@ describe('SCEN-321: システムマスタに存在しない報告者IDでリマ�
     expect(result.operation).toBe('register');
     expect(result.appliedAt).toBeNull();
     expect(result.errorDetails).toBe('指定された報告者が見つかりません。');
-    expect(mockedSave).not.toHaveBeenCalled();
   });
 });

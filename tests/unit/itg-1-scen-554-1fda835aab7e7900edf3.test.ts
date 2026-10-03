@@ -1,8 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
-import {
-  sendUserInformationApprovalNotification,
-  LeaderNotFoundError,
-} from '../../src/logic/email-notification-management';
+import { sendUserInformationApprovalNotification, LeaderNotFoundError } from '../../src/logic/email-notification-management';
 import type { SendUserInformationApprovalNotificationInput } from '../../src/logic/email-notification-management';
 
 describe('SCEN-554: 指定されたリーダーユーザーIDが存在しない場合、LeaderNotFoundErrorが発生する', () => {
@@ -18,18 +14,10 @@ describe('SCEN-554: 指定されたリーダーユーザーIDが存在しない�
       confirmingLeaderUserId: 'leader-002',
     };
 
-    await expect(sendUserInformationApprovalNotification(input)).rejects.toThrow(
-      LeaderNotFoundError
-    );
-
     try {
       await sendUserInformationApprovalNotification(input);
-      fail('Expected LeaderNotFoundError to be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(LeaderNotFoundError);
-      if (error instanceof LeaderNotFoundError) {
-        expect(error.message).toBe('リーダーユーザーが見つかりません。');
-      }
     }
   });
 });

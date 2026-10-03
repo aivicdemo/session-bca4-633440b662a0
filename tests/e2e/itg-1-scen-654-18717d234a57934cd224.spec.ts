@@ -1,66 +1,36 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-// SCEN-654: リーダーのメールアドレスが登録されていないとき、メール通知が送信されず
-// 「通知送信失敗」フラグが管理画面に表示される
-
-interface AivicTableDef {
-  tableName: string;
-}
-
-async function readAivicConfig(page: Page) {
-  return page.evaluate(() => {
-    const w = window as unknown as {
-      AIVIC_API_URL?: string;
-      AIVIC_APP_ID?: string;
-      AIVIC_SYSTEM_NAME?: string;
-      AIVIC_TABLES?: AivicTableDef[];
-    };
-    return {
-      apiUrl: w.AIVIC_API_URL ?? '',
-      appId: w.AIVIC_APP_ID ?? '',
-      systemName: w.AIVIC_SYSTEM_NAME ?? '',
-      tables: w.AIVIC_TABLES ?? [],
-    };
-  });
-}
-
-async function fetchTableRecords(
-  request: APIRequestContext,
-  config: { apiUrl: string; appId: string; systemName: string; tables: AivicTableDef[] },
-  tableName: string,
-): Promise<any[]> {
-  const tableIndex = config.tables.findIndex((t) => t.tableName === tableName);
-  if (tableIndex < 0 || !config.apiUrl) return [];
-  const query =
-    `?app=${encodeURIComponent(config.appId)}` +
-    `&system=${encodeURIComponent(config.systemName)}` +
-    `&table=${encodeURIComponent(tableName)}`;
-  const res = await request.get(`${config.apiUrl}/api/${tableIndex}${query}`);
-  if (!res.ok()) return [];
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.items ?? []);
-}
-
-test('SCEN-654: リーダーのメールアドレスが未登録の場合、通知送信失敗フラグが表示される', async ({
+test('SCEN-654: リーダーのメールアドレスが登録されていないとき、通知送信失敗フラグが表示される', async ({
   page,
 }) => {
-  await page.goto('./panels/scr-1790147095974.html');
+  // テスト環境で日報確認・管理画面にアクセスする
+  await page.goto('/panels/scr-1790147095974.html');
   await page.waitForLoadState('networkidle');
 
-  // 未提出者検知機能を手動実行
-  const detectBtn = page.locator('button:has-text("未提出者を検知")').first();
+  // 未提出者検知機能を手動実行する
+  // リーダーのメールアドレスが登録されていない状態を想定し、
+  // 検知処理でメール送信が失敗する
+  const detectBtn = page.locator('#rm-send-reminder-btn');
   if (await detectBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
     await detectBtn.click();
   }
 
-  // 画面を更新して未提出者一覧を表示
+  // 画面を更新して未提出者一覧を表示する
   await page.reload();
   await page.waitForLoadState('networkidle');
 
-  // 未提出者一覧テーブルのテキスト内容を確認
-  const unsubmittedTable = page.locator('#rm-missing-tbody');
-  const tableContent = await unsubmittedTable.textContent();
+  // 未提出者一覧を表示する
+  await page.waitForSelector('#rm-missing-tbody', { timeout: 10000 });
 
-  // 「通知送信失敗」フラグが表示されることを確認
-  expect(tableContent).toContain('通知送信失敗');
+  // 該当するリーダー配下の報告者に対応する行を確認する
+  const missingTbody = page.locator('#rm-missing-tbody');
+  const tableContent = await missingTbody.textContent();
+
+  // 「通知送信失敗」フラグが管理画面に表示されることを確認
+  // 該当行に通知送信失敗が示されることを確認
+  const failureIndicator = page.locator(
+    '#rm-missing-tbody:has-text("通知送信失敗")',
+  );
+
+  await expect(failureIndicator).toBeVisible({ timeout: 10000 });
 });

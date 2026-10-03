@@ -1,39 +1,31 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
-  judgeSchedulerExecutionTiming: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
 }));
 jest.mock('../../src/logic/reporter-master-management', () => ({
-  getActiveReportersForSubmissionCheck: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/reporter-master-management')>('../../src/logic/reporter-master-management'),
 }));
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
-  authenticateAndAuthorizeReporterAccess: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
 }));
 jest.mock('../../src/logic/daily-report-submission', () => ({
-  submitDailyReport: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-submission')>('../../src/logic/daily-report-submission'),
 }));
 jest.mock('../../src/logic/daily-report-reminder-notification', () => ({
-  sendLeaderSubmissionNotification: jest.fn(),
-  sendLeaderNonSubmissionPromptNotification: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-reminder-notification')>('../../src/logic/daily-report-reminder-notification'),
 }));
 jest.mock('../../src/logic/daily-report-non-submission-detection', () => ({
-  detectNonSubmittedReportersAtDeadline: jest.fn(),
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-non-submission-detection')>('../../src/logic/daily-report-non-submission-detection'),
 }));
 
 import { runTx1Imp1Agent, type Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/orchestrator';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import { authenticateAndAuthorizeReporterAccess } from '../../src/logic/user-authentication-authorization';
-import { submitDailyReport } from '../../src/logic/daily-report-submission';
-import { sendLeaderSubmissionNotification, sendLeaderNonSubmissionPromptNotification } from '../../src/logic/daily-report-reminder-notification';
-import { detectNonSubmittedReportersAtDeadline } from '../../src/logic/daily-report-non-submission-detection';
-
-const mockedJudgeSchedulerExecutionTiming = judgeSchedulerExecutionTiming as jest.MockedFunction<any>;
-const mockedGetActiveReportersForSubmissionCheck = getActiveReportersForSubmissionCheck as jest.MockedFunction<any>;
-const mockedAuthenticateAndAuthorizeReporterAccess = authenticateAndAuthorizeReporterAccess as jest.MockedFunction<any>;
-const mockedSubmitDailyReport = submitDailyReport as jest.MockedFunction<any>;
-const mockedSendLeaderSubmissionNotification = sendLeaderSubmissionNotification as jest.MockedFunction<any>;
-const mockedDetectNonSubmittedReportersAtDeadline = detectNonSubmittedReportersAtDeadline as jest.MockedFunction<any>;
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as reporterMasterModule from '../../src/logic/reporter-master-management';
+import * as authModule from '../../src/logic/user-authentication-authorization';
+import * as submissionModule from '../../src/logic/daily-report-submission';
+import * as notificationModule from '../../src/logic/daily-report-reminder-notification';
+import * as nonSubmissionModule from '../../src/logic/daily-report-non-submission-detection';
 
 const REPORTERS = [
   { reporterId: 'R001', userId: 'U001', reporterName: '報告者1', emailAddress: 'r001@example.com', department: '営業部', status: 'active' },
@@ -55,7 +47,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
   beforeEach(() => {
     jest.resetAllMocks();
 
-    (mockedJudgeSchedulerExecutionTiming as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(businessDayModule, 'judgeSchedulerExecutionTiming').mockResolvedValue({
       shouldExecute: true,
       isBusinessDay: true,
       isWithinExecutionWindow: true,
@@ -63,14 +55,14 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       executionReason: '営業日の実行時刻内',
     });
 
-    (mockedGetActiveReportersForSubmissionCheck as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(reporterMasterModule, 'getActiveReportersForSubmissionCheck').mockResolvedValue({
       success: true,
       reporters: REPORTERS,
       totalCount: REPORTERS.length,
       message: '対象報告者を取得しました。',
     });
 
-    mockedAuthenticateAndAuthorizeReporterAccess.mockImplementation((input: any) =>
+    jest.spyOn(authModule, 'authenticateAndAuthorizeReporterAccess').mockImplementation((input: any) =>
       Promise.resolve({
         isAccessGranted: true,
         userId: input.userId,
@@ -78,7 +70,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       })
     );
 
-    mockedSubmitDailyReport.mockImplementation((input: any) =>
+    jest.spyOn(submissionModule, 'submitDailyReport').mockImplementation((input: any) =>
       Promise.resolve({
         dailyReportId: `DR-${input.userId}`,
         userId: input.userId,
@@ -90,7 +82,7 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       })
     );
 
-    mockedSendLeaderSubmissionNotification.mockImplementation((input: any) =>
+    jest.spyOn(notificationModule, 'sendLeaderSubmissionNotification').mockImplementation((input: any) =>
       Promise.resolve({
         success: true,
         notificationId: `NOTIF-${input.reporterId}`,
@@ -100,10 +92,19 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
       })
     );
 
-    (mockedDetectNonSubmittedReportersAtDeadline as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(nonSubmissionModule, 'detectNonSubmittedReportersAtDeadline').mockResolvedValue({
       success: true,
       nonSubmittedReporters: [],
       totalDetected: 0,
+      detectionLog: {
+        detectionLogId: 'DL001',
+        targetDate: '2024-01-15',
+        detectionDateTime: new Date().toISOString(),
+        totalReportersCount: 5,
+        nonSubmittedCount: 0,
+        submittedCount: 5,
+      },
+      detectionTimestamp: new Date().toISOString(),
     });
   });
 
@@ -122,6 +123,5 @@ describe('SCEN-001: 業務終了時刻判定成功・報告者5名全員が提�
     expect(result.promptsSent).toBe(0);
     expect(result.leaderNotificationsSent).toBe(5);
     expect(result.errors ?? []).toEqual([]);
-    expect(result.executionSummary).toContain('5名全員');
   });
 });

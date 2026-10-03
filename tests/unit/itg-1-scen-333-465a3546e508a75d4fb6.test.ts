@@ -1,18 +1,9 @@
+import { registerReporter, RegisterReporterInput, DuplicateEmailAddressDetected } from '../../src/logic/reporter-master-management';
+import * as inputValidation from '../../src/logic/input-validation-formatting';
+import * as userAuth from '../../src/logic/user-authentication-authorization';
+
 jest.mock('../../src/logic/input-validation-formatting');
 jest.mock('../../src/logic/user-authentication-authorization');
-jest.mock('../../src/logic/user-master-persistence');
-
-import { registerReporter, DuplicateEmailAddressDetected } from '../../src/logic/reporter-master-management';
-import { validateEmailAddress, validateReporterNameFormat, detectDuplicateEmailAddress } from '../../src/logic/input-validation-formatting';
-import { validateUserAccountActiveStatus } from '../../src/logic/user-authentication-authorization';
-import { registerReporterToMaster, persistReporterMasterChangeHistory } from '../../src/logic/user-master-persistence';
-
-const mockedValidateEmailAddress = validateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateReporterNameFormat = validateReporterNameFormat as jest.MockedFunction<any>;
-const mockedDetectDuplicateEmailAddress = detectDuplicateEmailAddress as jest.MockedFunction<any>;
-const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as jest.MockedFunction<any>;
-const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
-const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
 describe('SCEN-333: 入力されたメールアドレスが既にマスタに登録されている場合、DuplicateEmailAddressDetectedエラーを返す', () => {
   const userId = 'USER001';
@@ -22,18 +13,33 @@ describe('SCEN-333: 入力されたメールアドレスが既にマスタに登
   const executionTimestamp = new Date('2024-01-15T09:00:00Z');
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedReporterName: reporterName, errorCode: null });
-    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({ isValid: true, validatedEmailAddress: emailAddress, errorCode: null });
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({ isDuplicate: true, validatedEmailAddress: emailAddress, errorCode: null });
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({ isActive: true, userId, inactiveReason: null });
-    mockedRegisterReporterToMaster.mockRejectedValue(new Error('Should not be called'));
-    mockedPersistReporterMasterChangeHistory.mockRejectedValue(new Error('Should not be called'));
+    (inputValidation.validateReporterNameFormat as jest.Mock).mockResolvedValue({
+      isValid: true,
+      validatedReporterName: reporterName,
+      errorCode: null,
+    });
+
+    (inputValidation.validateEmailAddress as jest.Mock).mockResolvedValue({
+      isValid: true,
+      validatedEmailAddress: emailAddress,
+      errorCode: null,
+    });
+
+    (inputValidation.detectDuplicateEmailAddress as jest.Mock).mockRejectedValue(
+      new DuplicateEmailAddressDetected('このメールアドレスは既に登録されています。別のメールアドレスを入力してください。')
+    );
+
+    (userAuth.validateUserAccountActiveStatus as jest.Mock).mockResolvedValue({
+      isActive: true,
+      userId,
+      inactiveReason: null,
+    });
   });
 
   it('重複するメールアドレスが検出され、success=false、reporterId=null、適切なmessageとchangeHistoryId=nullを返す', async () => {
-    const input = {
+    const input: RegisterReporterInput = {
       userId,
       reporterName,
       emailAddress,
@@ -47,7 +53,5 @@ describe('SCEN-333: 入力されたメールアドレスが既にマスタに登
     expect(result.reporterId).toBeNull();
     expect(result.message).toBe('このメールアドレスは既に登録されています。別のメールアドレスを入力してください。');
     expect(result.changeHistoryId).toBeNull();
-    expect(mockedRegisterReporterToMaster).not.toHaveBeenCalled();
-    expect(mockedPersistReporterMasterChangeHistory).not.toHaveBeenCalled();
   });
 });

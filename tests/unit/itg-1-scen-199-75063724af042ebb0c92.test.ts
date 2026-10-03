@@ -1,21 +1,22 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   judgeSchedulerExecutionTiming,
-  JudgeSchedulerExecutionTimingInput
+  JudgeSchedulerExecutionTimingInput,
+  JudgeSchedulerExecutionTimingOutput,
 } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-199: 許容誤差の上限境界で実行可能と判定される', () => {
-  it('should judge execution as possible at tolerance upper boundary (17:35:00)', () => {
+  it('should judge execution as possible at tolerance upper boundary (17:35:00)', async () => {
     const input: JudgeSchedulerExecutionTimingInput = {
       currentTimestamp: '2024-01-15T17:35:00Z',
       scheduledExecutionTime: '17:30',
       executionTimeToleranceMinutes: 5,
-      timeZone: 'Asia/Tokyo'
+      timeZone: 'Asia/Tokyo',
     };
 
-    const result = judgeSchedulerExecutionTiming(input) as any;
+    const result: JudgeSchedulerExecutionTimingOutput =
+      await judgeSchedulerExecutionTiming(input);
 
-    expect(result).toBeDefined();
     expect(result.shouldExecute).toBe(true);
     expect(result.isBusinessDay).toBe(true);
     expect(result.isWithinExecutionWindow).toBe(true);

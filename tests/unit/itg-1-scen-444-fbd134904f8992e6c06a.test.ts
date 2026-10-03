@@ -8,7 +8,7 @@ import {
 describe('SCEN-444: 呼び出し元ユーザーがリーダー権限を持たない場合、UnauthorizedAccessErrorが発生', () => {
   it('リーダー権限を持たないユーザーIDで呼び出した場合、UnauthorizedAccessError がスローされる', async () => {
     // リーダー権限を持たないユーザーのID
-    const unauthorizedLeaderId = 'user_without_leader_permission';
+    const unauthorizedLeaderId = 'user_without_leader_authority';
 
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: unauthorizedLeaderId,
@@ -24,7 +24,7 @@ describe('SCEN-444: 呼び出し元ユーザーがリーダー権限を持たな
 
   it('エラー発生時、エラー文言として「この操作を実行する権限がありません。」が返される', async () => {
     // リーダー権限を持たないユーザーのID
-    const unauthorizedLeaderId = 'user_without_leader_permission';
+    const unauthorizedLeaderId = 'user_without_leader_authority';
 
     const input: RetrieveDailyReportsForLeaderReviewInput = {
       leaderId: unauthorizedLeaderId,

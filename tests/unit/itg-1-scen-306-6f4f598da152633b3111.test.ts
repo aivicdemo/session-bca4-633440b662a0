@@ -1,57 +1,58 @@
 import { sendLeaderSubmissionNotification } from '../../src/logic/daily-report-reminder-notification';
-import {
-  buildReminderNotificationContent,
-  selectNotificationDeliveryMethod,
-  recordReminderNotificationSendingResult,
-} from '../../src/logic/daily-report-reminder-notification';
-import { sendDailyReportSubmissionNotification } from '../../src/logic/email-notification-management';
+import * as userAuthModule from '../../src/logic/user-authentication-authorization';
+import * as dailyReportPersistenceModule from '../../src/logic/daily-report-persistence';
+import * as emailNotificationModule from '../../src/logic/email-notification-management';
 
-jest.mock('../../src/logic/daily-report-reminder-notification');
-jest.mock('../../src/logic/email-notification-management');
+jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
+  validateUserHasLeaderRole: jest.fn(),
+}));
 
-const mockedBuildReminderNotificationContent =
-  buildReminderNotificationContent as jest.MockedFunction<typeof buildReminderNotificationContent>;
-const mockedSelectNotificationDeliveryMethod =
-  selectNotificationDeliveryMethod as jest.MockedFunction<typeof selectNotificationDeliveryMethod>;
-const mockedRecordReminderNotificationSendingResult =
-  recordReminderNotificationSendingResult as jest.MockedFunction<typeof recordReminderNotificationSendingResult>;
-const mockedSendDailyReportSubmissionNotification =
-  sendDailyReportSubmissionNotification as jest.MockedFunction<typeof sendDailyReportSubmissionNotification>;
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  retrieveDailyReportsForLeaderReview: jest.fn(),
+}));
+
+jest.mock('../../src/logic/email-notification-management', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/email-notification-management')>('../../src/logic/email-notification-management'),
+  sendDailyReportSubmissionNotification: jest.fn(),
+}));
 
 describe('SCEN-306: 報告者が日報を提出し、リーダーへの通知が正常に送信される', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
 
-    (mockedBuildReminderNotificationContent as jest.Mock<any>).mockResolvedValue({
-      subject: '日報提出のお知らせ',
-      body: '報告者による日報が提出されました。',
-      notificationType: 'leader_submission',
-      generatedAt: new Date('2024-01-15T09:31:00Z'),
+    jest.spyOn(userAuthModule, 'validateUserHasLeaderRole').mockResolvedValue({
+      hasLeaderRole: true,
+      userId: 'leader-001',
     });
 
-    (mockedSelectNotificationDeliveryMethod as jest.Mock<any>).mockResolvedValue({
-      deliveryMethod: 'email',
-      isDeliveryEnabled: true,
-      selectedAt: new Date('2024-01-15T09:31:00Z'),
+    jest.spyOn(dailyReportPersistenceModule, 'retrieveDailyReportsForLeaderReview').mockResolvedValue({
+      dailyReports: [
+        {
+          dailyReportId: 'report-001',
+          userId: 'reporter-001',
+          reportDate: '2024-01-15',
+          submittedAt: '2024-01-15T09:30:00Z',
+          businessContent: 'Sample report content',
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 10,
+      retrievedAt: '2024-01-15T09:31:00Z',
     });
 
-    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
+    jest.spyOn(emailNotificationModule, 'sendDailyReportSubmissionNotification').mockResolvedValue({
       success: true,
-      emailSendingHistoryId: null,
+      emailSendingHistoryId: 'notif-12345',
       sentAt: '2024-01-15T09:31:05Z',
       errorMessage: null,
-      adminNotificationSent: true,
-    });
-
-    (mockedRecordReminderNotificationSendingResult as jest.Mock<any>).mockResolvedValue({
-      success: true,
-      detectionLogId: null,
-      notificationStatus: 'sent',
-      recordedAt: new Date('2024-01-15T09:31:05Z'),
+      adminNotificationSent: false,
     });
   });
 
-  it('reporterId="reporter-001", leaderId="leader-001", targetDate=2024-01-15 の日報提出に対して、リーダーへのメール通知が正常に送信される', async () => {
+  test('reporterId="reporter-001", leaderId="leader-001", targetDate=2024-01-15 の日報提出に対して、リーダーへのメール通知が正常に送信される', async () => {
     const input = {
       reporterId: 'reporter-001',
       leaderId: 'leader-001',
@@ -67,10 +68,6 @@ describe('SCEN-306: 報告者が日報を提出し、リーダーへの通知が
     expect(result.sentAt).toEqual(new Date('2024-01-15T09:31:05Z'));
     expect(result.deliveryMethod).toBe('email');
     expect(result.errorDetails).toBeNull();
-
-    expect(mockedBuildReminderNotificationContent).toHaveBeenCalledTimes(1);
-    expect(mockedSelectNotificationDeliveryMethod).toHaveBeenCalledTimes(1);
-    expect(mockedSendDailyReportSubmissionNotification).toHaveBeenCalledTimes(1);
-    expect(mockedRecordReminderNotificationSendingResult).toHaveBeenCalledTimes(1);
   });
+
 });

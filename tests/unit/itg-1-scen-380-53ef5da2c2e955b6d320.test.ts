@@ -1,30 +1,45 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  deactivateReporter,
-  DeactivateReporterInput,
-  DeactivateReporterOutput,
-} from '../../src/logic/reporter-master-management';
+import { deactivateReporter } from '../../src/logic/reporter-master-management';
 import * as dailyReportPersistence from '../../src/logic/daily-report-persistence';
 import * as userMasterPersistence from '../../src/logic/user-master-persistence';
 
-jest.mock('../../src/logic/daily-report-persistence');
-jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  archivePastDailyReports: jest.fn(),
+}));
+
+jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
+  deactivateReporterInMaster: jest.fn(),
+  persistReporterMasterChangeHistory: jest.fn(),
+}));
 
 describe('SCEN-380: チームリーダーが有効な報告者を無効化し、過去日報をアーカイブして変更履歴を記録する', () => {
+  const mockArchivePastDailyReports = dailyReportPersistence.archivePastDailyReports as jest.MockedFunction<typeof dailyReportPersistence.archivePastDailyReports>;
+  const mockDeactivateReporterInMaster = userMasterPersistence.deactivateReporterInMaster as jest.MockedFunction<typeof userMasterPersistence.deactivateReporterInMaster>;
+  const mockPersistReporterMasterChangeHistory = userMasterPersistence.persistReporterMasterChangeHistory as jest.MockedFunction<typeof userMasterPersistence.persistReporterMasterChangeHistory>;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should deactivate reporter and archive past daily reports successfully', async () => {
-    (dailyReportPersistence.archivePastDailyReports as jest.Mock).mockReturnValue({
-      archivedCount: 5,
-      archiveLocation: 'archive_table',
-      activeReporterListUpdated: true,
+  it('チームリーダーが有効な報告者を無効化し、過去日報をアーカイブして変更履歴を記録する', async () => {
+    mockArchivePastDailyReports.mockResolvedValue({
+      userId: 'RPT002',
+      archivedReportCount: 5,
+      archivedAt: '2024-01-15T09:00:00Z',
     });
-    (userMasterPersistence.deactivateReporterInMaster as jest.Mock).mockReturnValue(true);
-    (userMasterPersistence.persistReporterMasterChangeHistory as jest.Mock).mockReturnValue('CHG20240115001');
+    mockDeactivateReporterInMaster.mockResolvedValue({
+      success: true,
+      reporterId: 'RPT002',
+      message: 'Success'
+    });
+    mockPersistReporterMasterChangeHistory.mockResolvedValue({
+      success: true,
+      changeHistoryId: 'CHG20240115001',
+      message: 'Success'
+    });
 
-    const input: DeactivateReporterInput = {
+    const input = {
       reporterId: 'RPT002',
       teamLeaderId: 'TL001',
       deactivationReason: '異動',
@@ -36,14 +51,23 @@ describe('SCEN-380: チームリーダーが有効な報告者を無効化し、
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('RPT002');
     expect(result.archivedReportCount).toBe(5);
-    expect(result.message).toBe('報告者RPT002を無効化し、5件の過去日報をアーカイブしました。');
+    expect(result.message).toContain('報告者RPT002を無効化し、5件の過去日報をアーカイブしました。');
     expect(result.changeHistoryId).toBe('CHG20240115001');
 
-    expect(dailyReportPersistence.archivePastDailyReports).toHaveBeenCalledWith('RPT002');
-    expect(userMasterPersistence.deactivateReporterInMaster).toHaveBeenCalledWith('RPT002', new Date('2024-01-15T09:00:00Z'));
-    const historyCall = (userMasterPersistence.persistReporterMasterChangeHistory as jest.Mock).mock.calls[0][0] as any;
-    expect(historyCall.reporterId).toBe('RPT002');
-    expect(historyCall.teamLeaderId).toBe('TL001');
-    expect(historyCall.deactivationReason).toBe('異動');
+    expect(mockArchivePastDailyReports).toHaveBeenCalledWith({ userId: 'RPT002', archivedAt: expect.any(String) });
+    expect(mockDeactivateReporterInMaster).toHaveBeenCalledWith({
+      reporterId: 'RPT002',
+      leaderUserId: 'TL001',
+      deactivationTimestamp: new Date('2024-01-15T09:00:00Z'),
+      deactivationReason: '異動'
+    });
+    expect(mockPersistReporterMasterChangeHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reporterId: 'RPT002',
+        executorId: 'TL001',
+        executionTimestamp: new Date('2024-01-15T09:00:00Z'),
+        deactivationReason: '異動'
+      })
+    );
   });
 });

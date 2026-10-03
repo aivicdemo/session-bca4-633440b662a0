@@ -3,16 +3,13 @@ import {
   SubmissionStatusCheckFailureError,
 } from '../../src/logic/daily-report-non-submission-detection';
 
+import * as reporterModule from '../../src/logic/reporter-master-management';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+
 jest.mock('../../src/logic/reporter-master-management');
 jest.mock('../../src/logic/daily-report-persistence');
 jest.mock('../../src/logic/business-day-deadline-judgment');
-
-import { getActiveReportersForSubmissionCheck } from '../../src/logic/reporter-master-management';
-import {
-  checkDailyReportExistsForDate,
-  retrieveNonSubmissionDetectionLogsByDate,
-} from '../../src/logic/daily-report-persistence';
-import { judgeSchedulerExecutionTiming } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-231: detectNonSubmittedReportersAtDeadline - Database Temporarily Unavailable', () => {
   beforeEach(() => {
@@ -42,18 +39,22 @@ describe('SCEN-231: detectNonSubmittedReportersAtDeadline - Database Temporarily
     ];
 
     // Mock judgeSchedulerExecutionTiming to return true
-    (judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
+    (businessDayModule.judgeSchedulerExecutionTiming as jest.Mock).mockResolvedValue(true);
 
     // Mock getActiveReportersForSubmissionCheck to return reporters
-    (getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue(activeReporters);
+    (reporterModule.getActiveReportersForSubmissionCheck as jest.Mock).mockResolvedValue({
+      reporters: activeReporters,
+    });
 
     // Mock checkDailyReportExistsForDate to throw connection error
-    (checkDailyReportExistsForDate as jest.Mock).mockRejectedValue(
+    (persistenceModule.checkDailyReportExistsForDate as jest.Mock).mockRejectedValue(
       new Error('Connection timeout')
     );
 
     // Mock retrieveNonSubmissionDetectionLogsByDate to return empty array
-    (retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue([]);
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockResolvedValue({
+      detectionLogs: [],
+    });
 
     const input = {
       targetDate: '2024-01-15',

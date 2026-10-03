@@ -1,11 +1,18 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-
-jest.mock('../../src/logic/business-day-deadline-judgment');
-
 import { judgePromptNecessityAndMethod } from '../../src/logic/non-submission-prompt-decision';
-import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
 
-const mockedIsWithinSubmissionDeadline = businessDayModule.isWithinSubmissionDeadline as jest.MockedFunction<any>;
+jest.mock('../../src/logic/business-day-deadline-judgment', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/business-day-deadline-judgment')>('../../src/logic/business-day-deadline-judgment'),
+  isWithinSubmissionDeadline: jest.fn(),
+}));
+
+jest.mock('../../src/logic/daily-report-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/daily-report-persistence')>('../../src/logic/daily-report-persistence'),
+  retrieveNonSubmissionDetectionLogsByDate: jest.fn(),
+}));
+
+import * as businessDayModule from '../../src/logic/business-day-deadline-judgment';
+import * as persistenceModule from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-280: システム障害の兆候が検出された場合、推測理由に「system_issue」が設定される', () => {
   beforeEach(() => {
@@ -22,7 +29,19 @@ describe('SCEN-280: システム障害の兆候が検出された場合、推測
       previousReminderSentDateTime: null,
     };
 
-    mockedIsWithinSubmissionDeadline.mockReturnValue(false);
+    (businessDayModule.isWithinSubmissionDeadline as jest.Mock).mockReturnValue(Promise.resolve({
+      isWithinDeadline: false,
+      submissionDeadlineForTargetDate: '2024-01-15T17:00:00Z',
+      minutesUntilDeadline: -90,
+    }));
+
+    (persistenceModule.retrieveNonSubmissionDetectionLogsByDate as jest.Mock).mockReturnValue(Promise.resolve({
+      detectionLogs: [
+        { userId: 'user001', targetDate: '2024-01-15' },
+        { userId: 'user001', targetDate: '2024-01-14' },
+        { userId: 'user001', targetDate: '2024-01-13' },
+      ],
+    }));
 
     const result = await judgePromptNecessityAndMethod(input);
 

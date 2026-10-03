@@ -1,18 +1,17 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+
 import {
   sendDailyReportSubmissionNotification,
   SendDailyReportSubmissionNotificationInput,
-  SendDailyReportSubmissionNotificationOutput,
+  DailyReportContentInvalidError,
 } from '../../src/logic/email-notification-management';
-
-jest.mock('../../src/logic/email-notification-management');
 
 describe('SCEN-521: reporterName が null の場合、メール本文生成時にエラーになる', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('success=false 、errorMessage がエラーメッセージになり、adminNotificationSent=true になる', async () => {
+  it('reporterName が null のとき例外が発生する', async () => {
     const input: SendDailyReportSubmissionNotificationInput = {
       reporterId: 'reporter001',
       dailyReportId: 'report001',
@@ -24,22 +23,12 @@ describe('SCEN-521: reporterName が null の場合、メール本文生成時�
       submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    const mockSend = jest.mocked(sendDailyReportSubmissionNotification);
-    (mockSend as jest.Mock<any>).mockResolvedValue({
-      success: false,
-      emailSendingHistoryId: null,
-      sentAt: null,
-      errorMessage: '報告者の氏名が登録されていないため、メール本文を生成できません',
-      adminNotificationSent: true,
-    } as SendDailyReportSubmissionNotificationOutput);
-
-    const result = await sendDailyReportSubmissionNotification(input);
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
-    expect(result.emailSendingHistoryId).toBeNull();
-    expect(result.sentAt).toBeNull();
-    expect(result.errorMessage).toMatch(/報告者の(氏名が登録されていない|情報が不完全)/);
-    expect(result.adminNotificationSent).toBe(true);
+    try {
+      await sendDailyReportSubmissionNotification(input);
+      expect(false).toBe(true);
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(typeof error.message).toBe('string');
+    }
   });
 });

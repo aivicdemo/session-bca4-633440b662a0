@@ -1,34 +1,8 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  updateReporterInMaster,
-  PersistenceFailureError,
-  persistReporterMasterChangeHistory,
-} from '../../src/logic/user-master-persistence';
-
-jest.mock('../../src/logic/user-master-persistence');
-
-interface UpdateReporterInMasterInput {
-  reporterId: string;
-  reporterName?: string;
-  emailAddress?: string;
-  department?: string;
-  status?: string;
-  leaderUserId: string;
-  updateTimestamp: Date;
-}
-
-interface UpdateReporterInMasterOutput {
-  success: boolean;
-  reporterId: string | null;
-  message: string;
-}
+import { updateReporterInMaster, PersistenceFailureError } from '../../src/logic/user-master-persistence';
+import type { UpdateReporterInMasterInput, UpdateReporterInMasterOutput } from '../../src/logic/user-master-persistence';
 
 describe('SCEN-462: データベースへの更新処理が失敗すると、PersistenceFailureErrorが発生して失敗を返す', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should fail when database update fails', async () => {
+  it('should throw PersistenceFailureError when database update fails', async () => {
     const input: UpdateReporterInMasterInput = {
       reporterId: 'RPT-001',
       reporterName: '新しい名前',
@@ -39,10 +13,48 @@ describe('SCEN-462: データベースへの更新処理が失敗すると、Per
       updateTimestamp: new Date(),
     };
 
-    (updateReporterInMaster as any).mockRejectedValue(
-      new PersistenceFailureError('報告者情報の更新に失敗しました。')
-    );
+    await expect(updateReporterInMaster(input)).rejects.toThrow(PersistenceFailureError);
+  });
 
-    await expect((updateReporterInMaster as any)(input)).rejects.toThrow(PersistenceFailureError);
+  it('should return UpdateReporterInMasterOutput with success=false and error message', async () => {
+    const input: UpdateReporterInMasterInput = {
+      reporterId: 'RPT-001',
+      reporterName: '新しい名前',
+      emailAddress: 'new@example.com',
+      department: '営業部',
+      status: 'active',
+      leaderUserId: 'LEAD-001',
+      updateTimestamp: new Date(),
+    };
+
+    try {
+      const result = await updateReporterInMaster(input);
+      expect(result.success).toBe(false);
+      expect(result.reporterId).toBeNull();
+      expect(result.message).toBe('報告者情報の更新に失敗しました。');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PersistenceFailureError);
+      expect((error as Error).message).toBe('報告者情報の更新に失敗しました。');
+    }
+  });
+
+  it('should have PersistenceFailureError name and message matching spec', async () => {
+    const input: UpdateReporterInMasterInput = {
+      reporterId: 'RPT-001',
+      reporterName: '新しい名前',
+      emailAddress: 'new@example.com',
+      department: '営業部',
+      status: 'active',
+      leaderUserId: 'LEAD-001',
+      updateTimestamp: new Date(),
+    };
+
+    try {
+      await updateReporterInMaster(input);
+      fail('Should have thrown PersistenceFailureError');
+    } catch (error) {
+      expect(error.constructor.name).toBe('PersistenceFailureError');
+      expect((error as Error).message).toBe('報告者情報の更新に失敗しました。');
+    }
   });
 });

@@ -1,33 +1,27 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   validateEmailAddress,
-  ValidateEmailAddressInput,
-  ValidateEmailAddressOutput,
   EmailAddressNotProvidedError,
+  ValidateEmailAddressInput,
+  ValidateEmailAddressOutput
 } from '../../src/logic/input-validation-formatting';
 
-describe('SCEN-127: メールアドレスが空白のみの場合、EMAIL_NOT_PROVIDED エラーが返される', () => {
-  it('validateEmailAddress関数を呼び出す際に、入力型ValidateEmailAddressInputのemailAddressフィールドに空白のみの文字列（例：「   」）を渡し、関数の戻り値である出力型ValidateEmailAddressOutputを取得する', async () => {
+describe('SCEN-127: validateEmailAddress - whitespace-only input', () => {
+  it('should return EMAIL_NOT_PROVIDED error when emailAddress is whitespace only', async () => {
     const input: ValidateEmailAddressInput = {
-      emailAddress: '   ',
+      emailAddress: '   '
     };
 
     const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
 
     expect(result.isValid).toBe(false);
     expect(result.validatedEmailAddress).toBeNull();
-    expect(result.errorCode).toBe('EmailAddressEmptyError');
+    expect(result.errorCode).toBe('EMAIL_NOT_PROVIDED');
   });
 
-  it('出力型ValidateEmailAddressOutputが以下の値を返す：isValid=false、validatedEmailAddress=null、errorCodeが返される', async () => {
-    const input: ValidateEmailAddressInput = {
-      emailAddress: '   ',
-    };
-
-    const result: ValidateEmailAddressOutput = await validateEmailAddress(input);
-
-    expect(result.isValid).toBe(false);
-    expect(result.validatedEmailAddress).toBeNull();
-    expect(result.errorCode).toBeTruthy();
+  it('should have EmailAddressNotProvidedError with message', () => {
+    const error = new EmailAddressNotProvidedError('メールアドレスを入力してください。');
+    expect(error.message).toBe('メールアドレスを入力してください。');
+    expect(error).toBeInstanceOf(EmailAddressNotProvidedError);
   });
 });

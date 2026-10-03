@@ -1,29 +1,34 @@
-import {
-  generateNonSubmissionDetectionResult,
-  InvalidReporterDataError,
-} from '../../src/logic/daily-report-non-submission-detection';
+import { generateNonSubmissionDetectionResult, InvalidReporterDataError, type GenerateNonSubmissionDetectionResultInput, type NonSubmissionDetectionLog } from '../../src/logic/daily-report-non-submission-detection';
 
 describe('SCEN-270: 未提出者の中にdepartmentIdが欠けている要素があるとき、必須項目不足エラーが発生する', () => {
-  it('InvalidReporterDataErrorが throw され、エラー文言が「未提出者情報に必須項目が不足しています。」であること。処理は中断し、dashboardDisplayData と promptNotificationData は出力されないこと。', () => {
-    const input = {
-      nonSubmittedReporters: [
-        {
-          userId: 'U001',
-          userName: '報告者1',
-          emailAddress: 'u001@example.com',
-          departmentId: undefined,
-        },
-      ],
-      detectionLog: { nonSubmittedCount: 1 },
-      detectionTimestamp: '2024-01-01T09:00:00Z',
-    } as any;
+  it('should throw InvalidReporterDataError when departmentId is missing from a nonSubmittedReporter', () => {
+    const nonSubmittedReporters: any[] = [
+      {
+        userId: 'user-001',
+        userName: '山田太郎',
+        emailAddress: 'yamada@example.com',
+        // departmentId is intentionally omitted
+      },
+    ];
 
-    try {
-      generateNonSubmissionDetectionResult(input);
-      fail('Should have thrown InvalidReporterDataError');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(InvalidReporterDataError);
-      expect(error.message).toBe('未提出者情報に必須項目が不足しています。');
-    }
+    const detectionLog: NonSubmissionDetectionLog = {
+      detectionLogId: 'log-20240115-001',
+      targetDate: '2024-01-15',
+      detectionDateTime: '2024-01-15T09:00:00Z',
+      totalReportersCount: 5,
+      nonSubmittedCount: 1,
+      submittedCount: 4,
+    };
+
+    const detectionTimestamp = '2024-01-15T09:00:00Z';
+
+    const input: GenerateNonSubmissionDetectionResultInput = {
+      nonSubmittedReporters,
+      detectionLog,
+      detectionTimestamp,
+    };
+
+    expect(() => generateNonSubmissionDetectionResult(input)).toThrow(InvalidReporterDataError);
+    expect(() => generateNonSubmissionDetectionResult(input)).toThrow('未提出者情報に必須項目が不足しています。');
   });
 });

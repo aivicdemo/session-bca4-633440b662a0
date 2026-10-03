@@ -4,20 +4,9 @@ import type {
   DetectDuplicateEmailAddressOutput,
 } from '../../src/logic/input-validation-formatting';
 
-jest.mock('../../src/logic/input-validation-formatting');
-
 describe('SCEN-165: 報告者が入力したメールアドレスが正しいメール形式でない場合、形式エラーを発生させる', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
 
-  it('should return InvalidEmailAddressFormatError when emailAddress format is invalid', async () => {
-    (detectDuplicateEmailAddress as jest.MockedFunction<any>).mockResolvedValue({
-      isDuplicate: false,
-      validatedEmailAddress: null,
-      errorCode: 'InvalidEmailAddressFormatError',
-    });
-
+  it('should return EmailAddressInvalidFormat error when emailAddress format is invalid', async () => {
     const input: DetectDuplicateEmailAddressInput = {
       emailAddress: 'invalid-email-format',
       excludeUserId: undefined,
@@ -28,6 +17,6 @@ describe('SCEN-165: 報告者が入力したメールアドレスが正しいメ
 
     expect(result.isDuplicate).toBe(false);
     expect(result.validatedEmailAddress).toBeNull();
-    expect(result.errorCode).toBe('InvalidEmailAddressFormatError');
+    expect(result.errorCode).toBe('EmailAddressInvalidFormat');
   });
 });

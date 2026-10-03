@@ -1,66 +1,102 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
-/**
- * SCEN-662: 検知ログ確認
- * 検知ログ画面で、提出期限を過ぎても日報が提出されていない報告者が
- * 未提出者として一覧に表示される
- */
-test('提出期限を過ぎても日報が提出されていない報告者が未提出者として表示される', async ({ page }) => {
-  // テスト環境に管理者ユーザーでログインし、日報確認・管理画面を開く
-  await page.goto('/');
-  await page.fill('input[type="text"]', 'admin_yamada');
-  await page.fill('input[type="password"]', 'password');
-  await page.click('button:has-text("ログイン")');
+interface AivicTableDef {
+  tableName: string;
+}
 
-  await page.waitForLoadState('networkidle');
-
-  // システム日時を「提出期限の翌日以降」に設定する
-  // （テスト環境ではシステム日付を操作可能と仮定）
-  await page.evaluate(() => {
-    // クライアント側でシステム日時を翌日以降に設定
-    // 実装例: 定時検知処理を手動トリガーする API へのアクセス
+async function readAivicConfig(page: Page) {
+  return page.evaluate(() => {
+    const w = window as unknown as {
+      AIVIC_API_URL?: string;
+      AIVIC_APP_ID?: string;
+      AIVIC_SYSTEM_NAME?: string;
+      AIVIC_TABLES?: AivicTableDef[];
+    };
+    return {
+      apiUrl: w.AIVIC_API_URL ?? '',
+      appId: w.AIVIC_APP_ID ?? '',
+      systemName: w.AIVIC_SYSTEM_NAME ?? '',
+      tables: w.AIVIC_TABLES ?? [],
+    };
   });
+}
 
-  // 定時検知処理を手動トリガーまたは自動実行させる（提出期限超過の未提出者を検知する処理）
-  // 管理画面上で検知を実行するボタンがある場合はそれをクリック
-  const detectButton = page.locator('button:has-text("検知")').first();
-  if (await detectButton.isVisible()) {
-    await detectButton.click();
-    await page.waitForLoadState('networkidle');
-  }
+async function fetchTableRecords(
+  request: APIRequestContext,
+  config: { apiUrl: string; appId: string; systemName: string; tables: AivicTableDef[] },
+  tableName: string,
+): Promise<any[]> {
+  const tableIndex = config.tables.findIndex((t) => t.tableName === tableName);
+  if (tableIndex < 0 || !config.apiUrl) return [];
+  const query =
+    `?app=${encodeURIComponent(config.appId)}` +
+    `&system=${encodeURIComponent(config.systemName)}` +
+    `&table=${encodeURIComponent(tableName)}`;
+  const res = await request.get(`${config.apiUrl}/api/${tableIndex}${query}`);
+  if (!res.ok()) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.items ?? []);
+}
 
-  // 日報確認・管理画面の「検知ログ」セクションを表示する
-  const logTab = page.locator('.rm-tab').filter({ hasText: '検知ログ' });
-  await logTab.click();
+test('SCEN-662: 提出期限を過ぎても日報が提出されていない報告者が未提出者として一覧に表示される', async ({ page, request }) => {
+  const config = await readAivicConfig(page);
 
+  // 日報確認・管理画面にアクセス
+  await page.goto('/panels/scr-1790147095974.html');
   await page.waitForLoadState('networkidle');
 
-  // 検知ログ一覧から、本日の検知実行レコードを確認する
-  const logTable = page.locator('.rm-table');
-  const rows = logTable.locator('tbody tr');
+  // 検知ログタブをクリック
+  await page.click('button[data-tab="log"]');
 
-  // 本日の検知実行レコードが存在することを確認
-  const rowCount = await rows.count();
-  expect(rowCount).toBeGreaterThan(0);
+  // テーブルが表示されるまで待機
+  await page.waitForSelector('#rm-log-tbody');
 
-  // 提出期限を過ぎても日報が提出されていない報告者（5人中の未提出者）が
-  // 「未提出者として一覧に表示」されていることが確認できる
-  let unpublishedFound = false;
-  for (let i = 0; i < rowCount; i++) {
-    const row = rows.nth(i);
-    const statusCell = row.locator('td').nth(4);
-    const statusText = await statusCell.textContent();
-    if (statusText?.includes('未提出') || statusText?.includes('期限超過')) {
-      unpublishedFound = true;
-      // 該当レコードには報告者名・検知実行日時・未提出フラグが記載されている
-      const reporterName = await row.locator('td').nth(0).textContent();
-      const detectedAt = await row.locator('td').nth(2).textContent();
-      expect(reporterName).toBeTruthy();
-      expect(detectedAt).toBeTruthy();
-      expect(detectedAt).toMatch(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
-      break;
+  // 検知ログ一覧から検知実行レコードを確認
+  const logRows = await page.locator('#rm-log-tbody tr').all();
+  
+  let validRowCount = 0;
+  let hasExpiredStatus = false;
+  
+  for (const row of logRows) {
+    const text = await row.textContent();
+    if (text && !text.includes('検知ログがありません')) {
+      validRowCount++;
+      
+      const cells = await row.locator('td').all();
+      if (cells.length >= 5) {
+        const statusText = await cells[4].textContent();
+        if (statusText?.includes('期限超過')) {
+          hasExpiredStatus = true;
+        }
+      }
     }
   }
 
-  expect(unpublishedFound).toBe(true);
+  // 提出期限超過の未提出者が一覧に表示されていることを確認
+  expect(validRowCount).toBeGreaterThanOrEqual(1);
+
+  // データベースから検知ログレコードを確認
+  await expect.poll(
+    async () => {
+      const logs = await fetchTableRecords(request, config, '日報未提出者検知ログ');
+      // 提出状況が「期限超過」のレコードが存在することを確認
+      return logs.some((log) => log['提出状況'] === '期限超過');
+    },
+    { timeout: 10000, message: '提出期限超過のログレコードが存在すること' },
+  ).toBe(true);
+
+  // 画面に少なくとも1件のレコードが表示されていることを確認
+  if (validRowCount > 0) {
+    const firstRow = logRows[0];
+    const cells = await firstRow.locator('td').all();
+    
+    // 報告者名が表示されていることを確認
+    const reporterNameText = await cells[0].textContent();
+    expect(reporterNameText?.trim()).not.toBe('');
+
+    // 検知実行日時が表示されていることを確認
+    const detectedAtText = await cells[2].textContent();
+    const dateTimeRegex = /\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/;
+    expect(detectedAtText).toMatch(dateTimeRegex);
+  }
 });

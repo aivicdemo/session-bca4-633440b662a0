@@ -1,33 +1,118 @@
-import { runTx6Imp1Agent, Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { runTx6Imp1Agent, type Tx6Imp1AiClient } from '../../src/agents/tx-6-imp-1/orchestrator';
+import * as userAuthLogic from '../../src/logic/user-authentication-authorization';
+import * as inputValidationLogic from '../../src/logic/input-validation-formatting';
+import * as userInfoConfirmationLogic from '../../src/logic/user-information-input-confirmation';
+import * as reporterMasterLogic from '../../src/logic/reporter-master-management';
+import * as userMasterPersistenceLogic from '../../src/logic/user-master-persistence';
+import * as emailNotificationLogic from '../../src/logic/email-notification-management';
+import * as nonSubmissionDetectionLogic from '../../src/logic/daily-report-non-submission-detection';
+import * as nonSubmissionPromptLogic from '../../src/logic/daily-report-reminder-notification';
+import * as nonSubmissionPersistenceLogic from '../../src/logic/daily-report-persistence';
 
 describe('SCEN-070: 提出されたユーザー情報が0件の場合、エージェントが正常に完了し各工程の件数が0で出力される', () => {
+  let mockAiClient: Tx6Imp1AiClient;
+
+  beforeEach(() => {
+    mockAiClient = {} as Tx6Imp1AiClient;
+
+    jest.spyOn(userAuthLogic, 'authenticateAndAuthorizeLeaderAccess').mockResolvedValue({
+      isAccessGranted: true,
+      userId: 'leader001',
+    });
+    jest.spyOn(inputValidationLogic, 'validateUserInformationRequired').mockResolvedValue({
+      isValid: true,
+      validatedUserName: null,
+      validatedEmailAddress: null,
+      validatedDepartment: null,
+      errorCode: null,
+    });
+    jest.spyOn(inputValidationLogic, 'detectDuplicateEmailAddress').mockResolvedValue({
+      isDuplicate: false,
+      validatedEmailAddress: null,
+      errorCode: null,
+    });
+    jest.spyOn(userInfoConfirmationLogic, 'submitUserInformationForConfirmation').mockResolvedValue({
+      success: true,
+      userInformationId: 'sub-001',
+      confirmationStatus: 'submitted',
+      leaderNotificationSent: true,
+      approvalDeadline: new Date('2024-01-22T10:00:00Z'),
+    });
+    jest.spyOn(userInfoConfirmationLogic, 'confirmAndApproveUserInformation').mockResolvedValue({
+      success: true,
+      approvalDecision: null,
+      reporterUserId: null,
+      approvalNotificationSent: false,
+      reporterMasterRegistered: false,
+      processedTimestamp: new Date('2024-01-15T10:00:00Z'),
+    });
+    jest.spyOn(reporterMasterLogic, 'registerReporter').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'No reporters to register',
+      changeHistoryId: null,
+    });
+    jest.spyOn(reporterMasterLogic, 'updateReporter').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'No reporters to update',
+      changeHistoryId: null,
+    });
+    jest.spyOn(reporterMasterLogic, 'deactivateReporter').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      archivedReportCount: 0,
+      message: 'No reporters to deactivate',
+      changeHistoryId: null,
+    });
+    jest.spyOn(userMasterPersistenceLogic, 'registerReporterToMaster').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'No reporters to register to master',
+    });
+    jest.spyOn(userMasterPersistenceLogic, 'updateReporterInMaster').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'No reporters to update in master',
+    });
+    jest.spyOn(userMasterPersistenceLogic, 'deactivateReporterInMaster').mockResolvedValue({
+      success: true,
+      reporterId: null,
+      message: 'No reporters to deactivate in master',
+    });
+    jest.spyOn(emailNotificationLogic, 'sendUserInformationApprovalNotification').mockResolvedValue({
+      success: true,
+      emailSendingHistoryId: null,
+      sentAt: null,
+      errorMessage: null,
+      adminNotificationSent: false,
+    });
+    jest.spyOn(nonSubmissionDetectionLogic, 'detectNonSubmittedReportersAtDeadline').mockResolvedValue({
+      nonSubmittedReporters: [],
+      detectionLog: { detectionLogId: 'det-001', targetDate: '2024-01-15', detectionDateTime: '2024-01-15T10:00:00Z', totalReportersCount: 0, nonSubmittedCount: 0, submittedCount: 0 },
+      detectionTimestamp: '2024-01-15T10:00:00Z',
+    });
+    jest.spyOn(nonSubmissionPromptLogic, 'sendLeaderNonSubmissionPromptNotification').mockResolvedValue({
+      success: true,
+      notificationId: null,
+      sentAt: null,
+      deliveryMethod: null,
+      nonSubmittedReporterCount: 0,
+      errorDetails: null,
+    });
+    jest.spyOn(nonSubmissionPersistenceLogic, 'retrieveNonSubmissionDetectionLogsByDate').mockResolvedValue({
+      detectionLogs: [],
+      totalCount: 0,
+      retrievedAt: '2024-01-15T10:00:00Z',
+    });
+  });
+
   it('should complete successfully with zero counts when userInformationSubmissions is empty', async () => {
     const leaderUserId = 'leader001';
     const userInformationSubmissions: any[] = [];
     const executionTimestamp = new Date('2024-01-15T10:00:00Z');
     const targetDate = new Date('2024-01-15');
-
-    const mockAiClient: Tx6Imp1AiClient = {
-      authenticateAndAuthorizeLeaderAccess: jest.fn().mockResolvedValue({ authorized: true }),
-      validateUserInformationRequired: jest.fn().mockResolvedValue({ valid: true, errors: [] }),
-      detectDuplicateEmailAddress: jest.fn().mockResolvedValue({ duplicateFound: false, duplicates: [] }),
-      submitUserInformationForConfirmation: jest.fn().mockResolvedValue({ submitted: true, count: 0 }),
-      confirmAndApproveUserInformation: jest.fn().mockResolvedValue({
-        approved: 0,
-        rejected: 0,
-        details: [],
-      }),
-      registerReporter: jest.fn().mockResolvedValue({ registered: 0, errors: [] }),
-      updateReporter: jest.fn().mockResolvedValue({ updated: 0, errors: [] }),
-      deactivateReporter: jest.fn().mockResolvedValue({ deactivated: 0, errors: [] }),
-      registerReporterToMaster: jest.fn().mockResolvedValue({ registered: 0, errors: [] }),
-      updateReporterInMaster: jest.fn().mockResolvedValue({ updated: 0, errors: [] }),
-      deactivateReporterInMaster: jest.fn().mockResolvedValue({ deactivated: 0, errors: [] }),
-      sendUserInformationApprovalNotification: jest.fn().mockResolvedValue({ sent: 0, failed: [] }),
-      detectNonSubmittedReportersAtDeadline: jest.fn().mockResolvedValue({ detectedCount: 0, reporters: [] }),
-      sendLeaderNonSubmissionPromptNotification: jest.fn().mockResolvedValue({ sent: 0, failed: [] }),
-      retrieveNonSubmissionDetectionLogsByDate: jest.fn().mockResolvedValue({ logs: [] }),
-    };
 
     const result = await runTx6Imp1Agent(
       { leaderUserId, userInformationSubmissions, executionTimestamp, targetDate },

@@ -1,69 +1,54 @@
-jest.mock('../../src/logic/email-notification-management', () => ({
-  sendDailyReportSubmissionNotification: jest.fn(),
-  validateEmailAddressForDelivery: jest.fn(),
-  buildNotificationContent: jest.fn(),
-  recordEmailSendingHistory: jest.fn(),
-}));
+import { sendDailyReportSubmissionNotification, LeaderEmailAddressInvalidError } from '../../src/logic/email-notification-management';
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import {
-  sendDailyReportSubmissionNotification,
-  validateEmailAddressForDelivery,
-  LeaderEmailAddressInvalidError,
-  SendDailyReportSubmissionNotificationInput,
-} from '../../src/logic/email-notification-management';
-
-const mockedSendDailyReportSubmissionNotification = sendDailyReportSubmissionNotification as jest.MockedFunction<any>;
-
-describe('SCEN-499: メールアドレスの形式が不正な場合、LeaderEmailAddressInvalidError が発生する', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
-
-  it('should throw LeaderEmailAddressInvalidError when email format is invalid', async () => {
-    const input: SendDailyReportSubmissionNotificationInput = {
+describe('SCEN-499: メールアドレスの形式が不正な場合のエラー', () => {
+  it('不正な形式のメールアドレスの場合、LeaderEmailAddressInvalidError が発生する', async () => {
+    const input = {
       reporterId: 'reporter-001',
-      dailyReportId: 'report-001',
-      reportContent: '業務内容',
+      dailyReportId: 'report-123',
+      reportContent: '本日の業務を実施しました',
       reportDate: '2024-01-15',
       leaderUserId: 'leader-001',
       leaderEmailAddress: 'user@',
-      reporterName: '田中太郎',
-      submissionTimestamp: '2024-01-15T14:30:00Z',
+      reporterName: '山田太郎',
+      submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    mockedSendDailyReportSubmissionNotification.mockRejectedValue(
-      new LeaderEmailAddressInvalidError('メールアドレスの形式が正しくありません。確認してください')
-    );
-
-    await expect(mockedSendDailyReportSubmissionNotification(input)).rejects.toThrow(
+    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
       LeaderEmailAddressInvalidError
     );
   });
 
-  it('should return error message when email format is invalid', async () => {
-    const input: SendDailyReportSubmissionNotificationInput = {
+  it('@domain.com 形式のメールアドレスは不正と判定される', async () => {
+    const input = {
       reporterId: 'reporter-001',
-      dailyReportId: 'report-001',
-      reportContent: '業務内容',
+      dailyReportId: 'report-123',
+      reportContent: '本日の業務を実施しました',
       reportDate: '2024-01-15',
       leaderUserId: 'leader-001',
-      leaderEmailAddress: 'userdomain.com',
-      reporterName: '田中太郎',
-      submissionTimestamp: '2024-01-15T14:30:00Z',
+      leaderEmailAddress: '@domain.com',
+      reporterName: '山田太郎',
+      submissionTimestamp: '2024-01-15T09:00:00Z',
     };
 
-    (mockedSendDailyReportSubmissionNotification as jest.Mock<any>).mockResolvedValue({
-      success: false,
-      emailSendingHistoryId: null,
-      sentAt: null,
-      errorMessage: 'メールアドレスの形式が正しくありません。確認してください',
-      adminNotificationSent: true,
-    });
+    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
+      LeaderEmailAddressInvalidError
+    );
+  });
 
-    const result = await mockedSendDailyReportSubmissionNotification(input);
+  it('スペースを含むメールアドレスは不正と判定される', async () => {
+    const input = {
+      reporterId: 'reporter-001',
+      dailyReportId: 'report-123',
+      reportContent: '本日の業務を実施しました',
+      reportDate: '2024-01-15',
+      leaderUserId: 'leader-001',
+      leaderEmailAddress: 'user name@domain.com',
+      reporterName: '山田太郎',
+      submissionTimestamp: '2024-01-15T09:00:00Z',
+    };
 
-    expect(result.success).toBe(false);
-    expect(result.errorMessage).toBe('メールアドレスの形式が正しくありません。確認してください');
+    await expect(sendDailyReportSubmissionNotification(input)).rejects.toThrow(
+      LeaderEmailAddressInvalidError
+    );
   });
 });

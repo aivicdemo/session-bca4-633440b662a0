@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 jest.mock('../../src/logic/input-validation-formatting', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/input-validation-formatting')>('../../src/logic/input-validation-formatting'),
   validateReporterNameFormat: jest.fn(),
   validateEmailAddress: jest.fn(),
   detectDuplicateEmailAddress: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-authentication-authorization', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-authentication-authorization')>('../../src/logic/user-authentication-authorization'),
   validateUserAccountActiveStatus: jest.fn(),
 }));
 
 jest.mock('../../src/logic/user-master-persistence', () => ({
+  ...jest.requireActual<typeof import('../../src/logic/user-master-persistence')>('../../src/logic/user-master-persistence'),
   registerReporterToMaster: jest.fn(),
   persistReporterMasterChangeHistory: jest.fn(),
 }));
@@ -27,7 +30,7 @@ const mockedValidateUserAccountActiveStatus = validateUserAccountActiveStatus as
 const mockedRegisterReporterToMaster = registerReporterToMaster as jest.MockedFunction<any>;
 const mockedPersistReporterMasterChangeHistory = persistReporterMasterChangeHistory as jest.MockedFunction<any>;
 
-describe('SCEN-340: 新入社員配属で既存報告者IDがない場合、br-tx_7-002により登録操作が決定される', () => {
+describe('SCEN-340: 新入社員配属で既存報告者IDがない場合、登録操作が決定される', () => {
   const now = new Date('2024-01-15T10:00:00Z');
   const input = {
     userId: 'USER-001',
@@ -41,36 +44,40 @@ describe('SCEN-340: 新入社員配属で既存報告者IDがない場合、br-t
     jest.clearAllMocks();
   });
 
-  it('新入社員配属シナリオで正常に報告者が登録される', async () => {
-    (mockedValidateReporterNameFormat as jest.Mock<any>).mockResolvedValue({
+  it('新入社員配属で既存reporterIdがない場合、登録処理が正常に完了する', async () => {
+    mockedValidateReporterNameFormat.mockResolvedValue({
       isValid: true,
       validatedReporterName: '山田太郎',
       errorCode: null,
     });
 
-    (mockedValidateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    mockedValidateEmailAddress.mockResolvedValue({
       isValid: true,
       validatedEmailAddress: 'yamada.taro@company.example.com',
       errorCode: null,
     });
 
-    (mockedDetectDuplicateEmailAddress as jest.Mock<any>).mockResolvedValue({
+    mockedDetectDuplicateEmailAddress.mockResolvedValue({
       isDuplicate: false,
       validatedEmailAddress: 'yamada.taro@company.example.com',
       errorCode: null,
     });
 
-    (mockedValidateUserAccountActiveStatus as jest.Mock<any>).mockResolvedValue({
+    mockedValidateUserAccountActiveStatus.mockResolvedValue({
       isActive: true,
       userId: 'USER-001',
     });
 
-    (mockedRegisterReporterToMaster as jest.Mock<any>).mockResolvedValue({
+    mockedRegisterReporterToMaster.mockResolvedValue({
+      success: true,
       reporterId: 'REPORTER-001',
+      message: 'Reporter registered successfully',
     });
 
-    (mockedPersistReporterMasterChangeHistory as jest.Mock<any>).mockResolvedValue({
+    mockedPersistReporterMasterChangeHistory.mockResolvedValue({
+      success: true,
       changeHistoryId: 'HISTORY-001',
+      message: 'Change history recorded',
     });
 
     const result = await registerReporter(input);

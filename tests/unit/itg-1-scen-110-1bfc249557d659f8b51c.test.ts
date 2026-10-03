@@ -1,16 +1,17 @@
+import { describe, it, expect } from '@jest/globals';
 import { validateDailyReportContent } from '../../src/logic/input-validation-formatting';
 
-describe('SCEN-110: validateDailyReportContent - エラー系: null入力', () => {
-  it('nullが入力されたとき、EmptyOrNullContentErrorを返す', async () => {
+describe('SCEN-110: エラー：nullが入力されたとき、EmptyOrNullContentErrorを返す', () => {
+  it('should return errorCode=EmptyOrNullContentError when null is provided', async () => {
     const input = {
       content: null,
-      minimumCharacterLength: 10
+      minimumCharacterLength: 10,
     };
 
-    const result = await validateDailyReportContent(input);
+    const output = await validateDailyReportContent(input);
 
-    expect(result.isValid).toBe(false);
-    expect(result.validatedContent).toBeNull();
-    expect(result.errorCode).toBe('EmptyOrNullContentError');
+    expect(output.isValid).toBe(false);
+    expect(output.validatedContent).toBeNull();
+    expect(output.errorCode).toBe('EmptyOrNullContentError');
   });
 });

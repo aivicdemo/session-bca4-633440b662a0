@@ -1,28 +1,38 @@
-import { updateReporter } from '../../src/logic/reporter-master-management';
-import * as validationModule from '../../src/logic/input-validation-formatting';
-import * as persistenceModule from '../../src/logic/user-master-persistence';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  updateReporter,
+  UpdateReporterInput,
+  UpdateReporterOutput,
+} from '../../src/logic/reporter-master-management';
 
 jest.mock('../../src/logic/input-validation-formatting');
-jest.mock('../../src/logic/user-master-persistence');
+jest.mock('../../src/logic/reporter-master-persistence');
 
-describe('SCEN-372: updateReporter with reporter name change', () => {
+describe('SCEN-372: チームリーダーが既存報告者の名前を更新すると、変更履歴が記録されて成功する', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should successfully update reporter name and record change history', async () => {
-    const input = {
+  it('チームリーダーが既存報告者の名前を更新すると、変更履歴が記録されて成功する', async () => {
+    const input: UpdateReporterInput = {
       reporterId: 'RPT001',
       reporterName: '田中花子',
-      emailAddress: null,
-      department: null,
-      status: null,
+      emailAddress: undefined,
+      department: undefined,
+      status: undefined,
       teamLeaderId: 'TL001',
       executionTimestamp: new Date('2025-01-15T10:00:00Z'),
     };
 
-    (validationModule.validateReporterNameFormat as jest.Mock).mockResolvedValue(true);
-    (persistenceModule.retrieveReporterByUserId as jest.Mock).mockResolvedValue({
+    const {
+      validateReporterNameFormat,
+      retrieveReporterByUserId,
+      updateReporterInMaster,
+      persistReporterMasterChangeHistory,
+    } = require('../../src/logic/reporter-master-persistence');
+
+    validateReporterNameFormat.mockResolvedValue({ isValid: true });
+    retrieveReporterByUserId.mockResolvedValue({
       reporterId: 'RPT001',
       userId: 'USER001',
       reporterName: '田中太郎',
@@ -30,14 +40,16 @@ describe('SCEN-372: updateReporter with reporter name change', () => {
       department: '営業部',
       status: 'active',
     });
-    (persistenceModule.updateReporterInMaster as jest.Mock).mockResolvedValue(true);
-    (persistenceModule.persistReporterMasterChangeHistory as jest.Mock).mockResolvedValue('CHG20250115001');
+    updateReporterInMaster.mockResolvedValue({ success: true });
+    persistReporterMasterChangeHistory.mockResolvedValue({
+      changeHistoryId: 'CHG20250115001',
+    });
 
-    const result = await updateReporter(input);
+    const result: UpdateReporterOutput = await updateReporter(input);
 
     expect(result.success).toBe(true);
     expect(result.reporterId).toBe('RPT001');
-    expect(result.message).toMatch(/正常に更新|更新されました/);
     expect(result.changeHistoryId).toBe('CHG20250115001');
+    expect(result.message).toMatch(/更新されました|正常に更新/);
   });
 });

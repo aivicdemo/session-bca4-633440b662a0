@@ -1,31 +1,9 @@
+import { describe, it, expect } from '@jest/globals';
 import {
   detectDuplicateEmailAddress,
   DetectDuplicateEmailAddressInput,
   DetectDuplicateEmailAddressOutput,
 } from '../../src/logic/input-validation-formatting';
-
-jest.mock('../../src/logic/input-validation-formatting', () => {
-  const actual = jest.requireActual('../../src/logic/input-validation-formatting');
-  return {
-    ...actual,
-    validateEmailAddress: jest.fn((input) => {
-      // RFC 5322形式に違反するメールアドレスの場合、形式エラーを返す
-      const invalidPatterns = [/.*@$/, /^@/, /^[^@]+$/, /.*@[^@]*$(?!.*\.)/];
-      if (invalidPatterns.some((pattern) => pattern.test(input.emailAddress))) {
-        return Promise.resolve({
-          isValid: false,
-          validatedEmailAddress: null,
-          errorCode: 'InvalidEmailAddressFormatError',
-        });
-      }
-      return Promise.resolve({
-        isValid: true,
-        validatedEmailAddress: input.emailAddress,
-        errorCode: null,
-      });
-    }),
-  };
-});
 
 describe('SCEN-160: 入力メールアドレスが RFC 5322 形式に違反している場合、形式エラーを返す', () => {
   it('should return InvalidEmailAddressFormatError for RFC 5322 format violation: invalid.email@', async () => {
