@@ -173,6 +173,15 @@ export async function sendNonSubmissionPromptNotification(
 }
 
 export async function sendUserInformationApprovalNotification(input: any): Promise<any> {
+  if (!input.leaderEmailAddress || input.leaderEmailAddress === '' || input.leaderEmailAddress === null) {
+    throw new InvalidLeaderEmailAddressError('リーダーのメールアドレスが無効です。');
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(input.leaderEmailAddress)) {
+    throw new LeaderEmailAddressInvalidError('メールアドレスの形式が無効です。');
+  }
+
   return { success: true };
 }
 
