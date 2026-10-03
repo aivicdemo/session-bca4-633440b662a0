@@ -79,15 +79,98 @@ export interface SubmitDailyReportOutput {
 export async function submitDailyReport(
   input: SubmitDailyReportInput
 ): Promise<SubmitDailyReportOutput> {
-  return {
-    dailyReportId: 'report-' + Date.now(),
-    userId: input.userId,
-    reportDate: input.reportDate,
-    submissionTimestamp: input.submissionTimestamp || new Date().toISOString(),
-    submissionStatus: 'within_deadline',
-    notificationTriggered: true,
-    completionMessage: '日報が正常に保存されました。リーダーへの通知を送信しました。',
-  };
+  try {
+    // Step 1: Import dependencies
+    const {
+      authenticateAndAuthorizeReporterAccess,
+    } = require('./user-authentication-authorization');
+    const {
+      validateDailyReportContent,
+    } = require('./input-validation-formatting');
+    const {
+      judgeBusinessDayAndDeadline,
+    } = require('./business-day-deadline-judgment');
+    const {
+      checkDailyReportExistsForDate,
+      saveDailyReport,
+      updateDailyReportSubmissionTimestamp,
+    } = require('./daily-report-persistence');
+    const {
+      sendDailyReportSubmissionNotification,
+    } = require('./email-notification-management');
+
+    // Step 2: Authenticate and authorize
+    await authenticateAndAuthorizeReporterAccess({
+      userId: input.userId,
+      isAuthenticated: true,
+    });
+
+    // Step 3: Validate content
+    await validateDailyReportContent({
+      businessContent: input.businessContent,
+      achievements: input.achievements,
+      challenges: input.challenges,
+    });
+
+    // Step 4: Judge business day and deadline
+    await judgeBusinessDayAndDeadline({
+      reportDate: input.reportDate,
+      submissionTimestamp: input.submissionTimestamp,
+    });
+
+    // Step 5: Check for duplicate submission
+    const reportExists = await checkDailyReportExistsForDate({
+      userId: input.userId,
+      reportDate: input.reportDate,
+    });
+
+    if (reportExists) {
+      throw new DuplicateSubmissionForDateException(
+        '既にこの日付で日報が提出されています。'
+      );
+    }
+
+    // Step 6: Save daily report
+    const saveResult = await saveDailyReport({
+      userId: input.userId,
+      reportDate: input.reportDate,
+      businessContent: input.businessContent,
+      achievements: input.achievements,
+      challenges: input.challenges,
+      tomorrowPlan: input.tomorrowPlan,
+      submissionTimestamp: input.submissionTimestamp,
+    });
+
+    const dailyReportId = saveResult.dailyReportId;
+
+    // Step 7: Update submission timestamp
+    await updateDailyReportSubmissionTimestamp({
+      dailyReportId,
+      userId: input.userId,
+      submissionTimestamp: input.submissionTimestamp,
+    });
+
+    // Step 8: Send notification
+    await sendDailyReportSubmissionNotification({
+      dailyReportId,
+      userId: input.userId,
+      reportDate: input.reportDate,
+      submissionTimestamp: input.submissionTimestamp,
+      businessContent: input.businessContent,
+    });
+
+    return {
+      dailyReportId,
+      userId: input.userId,
+      reportDate: input.reportDate,
+      submissionTimestamp: input.submissionTimestamp,
+      submissionStatus: 'within_deadline',
+      notificationTriggered: true,
+      completionMessage: '日報が正常に保存されました。リーダーへの通知を送信しました。',
+    };
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function validateDailyReportSubmissionEligibility(

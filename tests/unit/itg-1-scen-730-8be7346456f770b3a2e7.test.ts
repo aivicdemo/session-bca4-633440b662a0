@@ -1,5 +1,5 @@
-import { judgeSchedulerExecutionTiming, BusinessCalendarNotFoundError } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, BusinessCalendarNotFoundError } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-730: 日報データベースが一時的に取得できないときのエラー処理', () => {
   it('日報データベースの接続障害がBusinessCalendarNotFoundErrorで報告される', async () => {

@@ -179,11 +179,12 @@ export async function runTx1Imp1Agent(
     let reporters: any[] = [];
     try {
       if (aiClient.getActiveReportersForSubmissionCheck) {
-        reporters = await aiClient.getActiveReportersForSubmissionCheck(
+        const aiResult = await aiClient.getActiveReportersForSubmissionCheck(
           targetDateStr,
           input.systemContext,
           undefined
         );
+        reporters = Array.isArray(aiResult) ? aiResult : (aiResult.reporters || []);
         reportersResponse = {
           success: true,
           reporters: reporters,
@@ -196,6 +197,7 @@ export async function runTx1Imp1Agent(
           targetDate: targetDateAsDate,
           teamLeaderId: ''
         });
+        reporters = Array.from(reportersResponse.reporters || []);
       }
     } catch (error) {
       const errorMessage =
@@ -219,7 +221,7 @@ export async function runTx1Imp1Agent(
       };
     }
 
-    if (!reportersResponse.success || !reportersResponse.reporters) {
+    if (!reporters || reporters.length === 0) {
       return {
         executionStatus: 'success',
         reportersPrompted: 0,
@@ -230,10 +232,6 @@ export async function runTx1Imp1Agent(
         errors: [],
         executionSummary: '対象報告者が見つかりませんでした。',
       };
-    }
-
-    if (!reporters || reporters.length === 0) {
-      reporters = Array.from(reportersResponse.reporters);
     }
     let reportersPrompted = 0;
     let reportsSubmitted = 0;
@@ -253,7 +251,7 @@ export async function runTx1Imp1Agent(
         try {
           if (aiClient.authenticateAndAuthorizeReporterAccess) {
             const aiAuthResult = await aiClient.authenticateAndAuthorizeReporterAccess(authInput);
-            authResult = { isAccessGranted: aiAuthResult.authorized !== false } as AuthenticateAndAuthorizeReporterAccessOutput;
+            authResult = { isAccessGranted: aiAuthResult.isAuthorized || aiAuthResult.authorized !== false } as AuthenticateAndAuthorizeReporterAccessOutput;
           } else {
             authResult = await authenticateAndAuthorizeReporterAccess(authInput);
           }
@@ -270,7 +268,7 @@ export async function runTx1Imp1Agent(
           hasAuthError = true;
           nonSubmittedReporters.push({
             userId: reporter.userId,
-            userName: reporter.reporterName,
+            userName: reporter.userName || reporter.reporterName,
             emailAddress: reporter.emailAddress,
             promptSent: false,
           });
@@ -287,7 +285,7 @@ export async function runTx1Imp1Agent(
           hasAuthError = true;
           nonSubmittedReporters.push({
             userId: reporter.userId,
-            userName: reporter.reporterName,
+            userName: reporter.userName || reporter.reporterName,
             emailAddress: reporter.emailAddress,
             promptSent: false,
           });
@@ -414,11 +412,19 @@ export async function runTx1Imp1Agent(
     let detectedNonSubmittedCount = 0;
     try {
       if (aiClient.detectNonSubmittedReportersAtDeadline) {
-        const detectedNonSubmitted = await aiClient.detectNonSubmittedReportersAtDeadline(
+        const detectedResult = await aiClient.detectNonSubmittedReportersAtDeadline(
           targetDateStr,
           input.systemContext,
           undefined
         );
+
+        // 返却値がオブジェクトまたは配列か判定
+        let detectedNonSubmitted: any[] = [];
+        if (Array.isArray(detectedResult)) {
+          detectedNonSubmitted = detectedResult;
+        } else if (detectedResult && detectedResult.nonSubmittedReporters) {
+          detectedNonSubmitted = detectedResult.nonSubmittedReporters;
+        }
 
         if (detectedNonSubmitted && detectedNonSubmitted.length > 0) {
           detectedNonSubmittedCount = detectedNonSubmitted.length;
@@ -428,9 +434,9 @@ export async function runTx1Imp1Agent(
           // 未提出者情報を nonSubmittedReporters に追加
           for (const nonSubmitted of detectedNonSubmitted) {
             nonSubmittedReporters.push({
-              userId: nonSubmitted.reporterId,
-              userName: nonSubmitted.reporterName,
-              emailAddress: '',
+              userId: nonSubmitted.reporterId || nonSubmitted.userId,
+              userName: nonSubmitted.reporterName || nonSubmitted.userName,
+              emailAddress: nonSubmitted.emailAddress || '',
               promptSent: false,
               lastSubmittedDate: nonSubmitted.lastSubmittedDate,
             });
@@ -445,8 +451,8 @@ export async function runTx1Imp1Agent(
               for (const nonSubmitted of detectedNonSubmitted) {
                 try {
                   const promptInput = {
-                    reporterId: nonSubmitted.reporterId,
-                    reporterName: nonSubmitted.reporterName,
+                    reporterId: nonSubmitted.reporterId || nonSubmitted.userId,
+                    reporterName: nonSubmitted.reporterName || nonSubmitted.userName,
                     lastSubmittedDate: nonSubmitted.lastSubmittedDate,
                     targetDate: targetDateStr,
                   };
@@ -521,7 +527,7 @@ export async function runTx1Imp1Agent(
       nonSubmittedReporters,
       promptsSent,
       leaderNotificationsSent,
-      errors: errors.length > 0 ? errors : undefined,
+      errors: errors,
       executionSummary,
     };
   } catch (error) {

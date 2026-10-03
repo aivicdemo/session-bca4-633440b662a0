@@ -1,5 +1,5 @@
-import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
-import type { JudgeSchedulerExecutionTimingInput } from '../../.aivic/design/contract/src/logic/business-day-deadline-judgment';
+import { judgeSchedulerExecutionTiming, InvalidSchedulerConfigurationError } from '../../src/logic/business-day-deadline-judgment';
+import type { JudgeSchedulerExecutionTimingInput } from '../../src/logic/business-day-deadline-judgment';
 
 describe('SCEN-728: スケジューラ設定が無効なときのエラー検証', () => {
   it('InvalidSchedulerConfigurationErrorが発生し、エラー文言が「スケジューラ実行時刻の設定が無効です。管理者に確認してください。」である', async () => {
