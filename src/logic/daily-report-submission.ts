@@ -126,7 +126,7 @@ export async function submitDailyReport(
 
     if (reportExists) {
       throw new DuplicateSubmissionForDateException(
-        '既にこの日付で日報が提出されています。'
+        '本日の日報は既に提出済みです。'
       );
     }
 

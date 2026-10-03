@@ -759,7 +759,7 @@ window.AIVIC_PAGE_INIT_JS = "function(container, apiUrl, tables) {\n  var root =
     .rp-right-actions { display: flex; gap: var(--space-unit); }
     .rp-mail-status {
       margin-top: calc(var(--space-unit) * 2);
-      display: none;
+      display: flex;
       align-items: center;
       gap: var(--space-unit);
       font-size: 13px;
@@ -768,8 +768,9 @@ window.AIVIC_PAGE_INIT_JS = "function(container, apiUrl, tables) {\n  var root =
       border: var(--border-width) solid var(--border);
       border-radius: var(--radius-control);
       padding: var(--space-unit) calc(var(--space-unit) * 1.5);
+      visibility: hidden;
     }
-    .rp-mail-status.is-visible { display: flex; }
+    .rp-mail-status.is-visible { visibility: visible; }
     .rp-spinner {
       width: 14px;
       height: 14px;
@@ -783,7 +784,7 @@ window.AIVIC_PAGE_INIT_JS = "function(container, apiUrl, tables) {\n  var root =
     @keyframes rp-spin { to { transform: rotate(360deg); } }
     .rp-success {
       margin-top: calc(var(--space-unit) * 2);
-      display: none;
+      display: block;
       font-size: 13px;
       color: var(--text);
       background: var(--bg-sidebar);
@@ -791,8 +792,9 @@ window.AIVIC_PAGE_INIT_JS = "function(container, apiUrl, tables) {\n  var root =
       border-radius: var(--radius-control);
       padding: var(--space-unit) calc(var(--space-unit) * 1.5);
       font-weight: 600;
+      visibility: hidden;
     }
-    .rp-success.is-visible { display: block; }
+    .rp-success.is-visible { visibility: visible; }
   </style>
 
   <div class="rp-wrap">
