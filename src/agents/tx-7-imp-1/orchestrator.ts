@@ -8,10 +8,21 @@ export interface Tx7Imp1AiClient {
   invokeModel?: (prompt: string, systemPrompt?: string) => any;
 }
 
+export interface PersonnelMovementRecord {
+  movementType: 'new_hire' | 'transfer' | 'retirement';
+  userId: string;
+  userName: string;
+  email: string;
+  fullName: string;
+  department: string;
+  teamId: string;
+  effectiveDate: Date;
+}
+
 export interface Tx7Imp1AgentInput {
   [key: string]: any;
   executionTimestamp?: Date;
-  personnelMovementData?: any[];
+  personnelMovementData?: PersonnelMovementRecord[];
   systemContext?: {
     timezone?: string;
     locale?: string;
@@ -67,6 +78,11 @@ export async function runTx7Imp1Agent(
   let errorCount = 0;
 
   try {
+    const reporterMgt = await import('../../logic/reporter-master-management');
+    const userMasterPersist = await import('../../logic/user-master-persistence');
+    const emailNotif = await import('../../logic/email-notification-management');
+    const inputValidation = await import('../../logic/input-validation-formatting');
+
     const personnelMovementData = input.personnelMovementData || [];
 
     if (personnelMovementData.length === 0) {
@@ -78,6 +94,178 @@ export async function runTx7Imp1Agent(
         leaderNotificationSent: false,
         executionSummary: '人事異動情報が空のため、処理は実行されませんでした。(登録件数: 0、更新件数: 0、削除件数: 0、エラー件数: 0)',
       };
+    }
+
+    const executionTimestamp = input.executionTimestamp || new Date();
+    const teamLeaderId = (input as any)?.teamLeaderId || 'default-leader';
+
+    for (const record of personnelMovementData) {
+      try {
+        await inputValidation.validateUserInformationRequired({
+          userName: record.fullName,
+          emailAddress: record.email,
+          department: record.department || '',
+        });
+
+        if (record.movementType === 'new_hire') {
+          await inputValidation.detectDuplicateEmailAddress({
+            emailAddress: record.email,
+            excludeUserId: record.userId,
+            existingUserEmails: [],
+          });
+
+          const registerResult = await reporterMgt.registerReporter({
+            userId: record.userId,
+            reporterName: record.fullName,
+            emailAddress: record.email,
+            teamLeaderId,
+            executionTimestamp,
+          });
+
+          await userMasterPersist.registerReporterToMaster({
+            userId: record.userId,
+            reporterName: record.fullName,
+            emailAddress: record.email,
+            department: record.department,
+            teamId: record.teamId,
+            executionTimestamp,
+          });
+
+          await userMasterPersist.persistReporterMasterChangeHistory({
+            operationType: 'register',
+            reporterId: registerResult.reporterId || record.userId,
+            afterValues: {
+              reporterName: record.fullName,
+              emailAddress: record.email,
+              department: record.department,
+              status: 'active',
+            },
+            executorId: teamLeaderId,
+            executionTimestamp,
+          });
+
+          await emailNotif.sendUserInformationApprovalNotification({
+            userId: record.userId,
+            operationType: 'register',
+            executionTimestamp,
+          });
+
+          registeredReporters.push({
+            userId: record.userId,
+            status: registerResult.success ? 'success' : 'failed',
+            errorMessage: registerResult.success ? null : registerResult.message,
+          });
+        } else if (record.movementType === 'transfer') {
+          const updateResult = await reporterMgt.updateReporter({
+            userId: record.userId,
+            reporterId: record.userId,
+            department: record.department,
+            reporterName: record.fullName,
+            emailAddress: record.email,
+            teamLeaderId,
+            executionTimestamp,
+          });
+
+          await userMasterPersist.updateReporterInMaster({
+            userId: record.userId,
+            reporterName: record.fullName,
+            emailAddress: record.email,
+            department: record.department,
+            teamId: record.teamId,
+            executionTimestamp,
+          });
+
+          await userMasterPersist.persistReporterMasterChangeHistory({
+            operationType: 'update',
+            reporterId: record.userId,
+            afterValues: {
+              reporterName: record.fullName,
+              emailAddress: record.email,
+              department: record.department,
+            },
+            executorId: teamLeaderId,
+            executionTimestamp,
+          });
+
+          await emailNotif.sendUserInformationApprovalNotification({
+            userId: record.userId,
+            operationType: 'update',
+            executionTimestamp,
+          });
+
+          updatedReporters.push({
+            userId: record.userId,
+            status: updateResult.success ? 'success' : 'failed',
+            changedFields: ['department'],
+            errorMessage: updateResult.success ? null : updateResult.message,
+          });
+        } else if (record.movementType === 'retirement') {
+          const deactivateResult = await reporterMgt.deactivateReporter({
+            userId: record.userId,
+            reporterId: record.userId,
+            teamLeaderId,
+            deactivationReason: '退職',
+            executionTimestamp,
+          });
+
+          await userMasterPersist.deactivateReporterInMaster({
+            userId: record.userId,
+            executionTimestamp,
+          });
+
+          await userMasterPersist.persistReporterMasterChangeHistory({
+            operationType: 'deactivate',
+            reporterId: record.userId,
+            beforeValues: {
+              status: 'active',
+            },
+            afterValues: {
+              status: 'inactive',
+            },
+            executorId: teamLeaderId,
+            executionTimestamp,
+            deactivationReason: '退職',
+          });
+
+          await emailNotif.sendUserInformationApprovalNotification({
+            userId: record.userId,
+            operationType: 'deactivate',
+            executionTimestamp,
+          });
+
+          deactivatedReporters.push({
+            userId: record.userId,
+            status: deactivateResult.success ? 'success' : 'failed',
+            deactivationReason: '退職',
+            errorMessage: deactivateResult.success ? null : deactivateResult.message,
+          });
+        }
+      } catch (recordError) {
+        errorCount++;
+        const errorMsg = (recordError as any)?.message || '処理中にエラーが発生しました';
+
+        if (personnelMovementData.find(r => r.userId === record.userId)?.movementType === 'new_hire') {
+          registeredReporters.push({
+            userId: record.userId,
+            status: 'failed',
+            errorMessage: errorMsg,
+          });
+        } else if (personnelMovementData.find(r => r.userId === record.userId)?.movementType === 'transfer') {
+          updatedReporters.push({
+            userId: record.userId,
+            status: 'failed',
+            changedFields: [],
+            errorMessage: errorMsg,
+          });
+        } else if (personnelMovementData.find(r => r.userId === record.userId)?.movementType === 'retirement') {
+          deactivatedReporters.push({
+            userId: record.userId,
+            status: 'failed',
+            deactivationReason: '退職',
+            errorMessage: errorMsg,
+          });
+        }
+      }
     }
 
     changeHistoryRecorded = true;
@@ -109,25 +297,3 @@ export async function runTx7Imp1Agent(
   }
 }
 
-/**
- * PersonnelMovementRecord
- */
-export interface PersonnelMovementRecord {
-  [key: string]: any;
-  /** 人事異動の種別。 */
-  movementType: 'new_hire' | 'transfer' | 'retirement' | 'project_reassignment';
-  /** 対象ユーザーID。 */
-  userId: string;
-  /** 対象ユーザー名。 */
-  userName: string;
-  /** 対象ユーザーのメールアドレス。 */
-  email: string;
-  /** 対象ユーザーの氏名。 */
-  fullName: string;
-  /** 異動後の部門（新規登録・転属時に必須）。 */
-  department?: string;
-  /** 異動後のチームID（新規登録・転属時に必須）。 */
-  teamId?: string;
-  /** 異動の有効日。 */
-  effectiveDate: Date;
-}

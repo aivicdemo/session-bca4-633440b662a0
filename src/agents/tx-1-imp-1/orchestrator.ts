@@ -117,7 +117,7 @@ export async function runTx1Imp1Agent(
 
   try {
     // Step 1: スケジューラ実行タイミング判定
-    let judgmentResult: JudgeSchedulerExecutionTimingOutput;
+    let judgmentResult: any;
     try {
       if (aiClient.judgeSchedulerExecutionTiming) {
         const aiResult = await aiClient.judgeSchedulerExecutionTiming(
@@ -125,7 +125,7 @@ export async function runTx1Imp1Agent(
           input.targetDate instanceof Date ? input.targetDate : new Date(input.targetDate),
           input.systemContext
         );
-        judgmentResult = { shouldExecute: aiResult } as JudgeSchedulerExecutionTimingOutput;
+        judgmentResult = aiResult;
       } else {
         judgmentResult = await judgeSchedulerExecutionTiming({
           currentTimestamp: input.executionTimestamp.toISOString(),
@@ -160,7 +160,8 @@ export async function runTx1Imp1Agent(
     }
 
     // 実行タイミングが不適切な場合は終了
-    if (!judgmentResult.shouldExecute) {
+    const shouldExecute = judgmentResult.shouldExecute !== undefined ? judgmentResult.shouldExecute : judgmentResult.isExecutionTiming;
+    if (!shouldExecute) {
       return {
         executionStatus: 'success',
         reportersPrompted: 0,
